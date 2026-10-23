@@ -1824,9 +1824,10 @@ span.frchip{cursor:default}
  * room furniture and pets, shop stock, greenhouse plants, neighbours) gets a dark ellipse right where it meets the
  * surface, a hair of overlap into it, and only a tight 1 px edge shadow. --cs is the footprint as a share of the width. */
 .nb,.prop.owned,.avatar{isolation:isolate}
-.nb::before,.prop.owned::before,.avatar::before{content:'';position:absolute;left:50%;bottom:0;width:calc(var(--cs,.7) * 100%);aspect-ratio:4/1;transform:translate(-50%,48%);border-radius:50%;
+.nb::before,.prop.owned::before,.avatar::before,.keeper::before{content:'';position:absolute;left:50%;bottom:0;width:calc(var(--cs,.7) * 100%);aspect-ratio:4/1;transform:translate(-50%,48%);border-radius:50%;
   background:radial-gradient(closest-side,rgba(52,26,72,.46),rgba(52,26,72,.2) 58%,rgba(52,26,72,0));z-index:-1;pointer-events:none;opacity:var(--co,1)}
 .avatar::before{--cs:.62}
+.keeper::before{--cs:.62} /* the same ground shadow under a keeper's feet as under hers: without it they read as hovering (Jamie, 22 Oct: "make sure the people dont float") */
 .avatar.hidden::before,.avatar.walking.cycling::before{opacity:.85}
 /* footprints: narrow bases get small shadows, flat or wide pieces get wide thin ones */
 [data-id=lamp],[data-item=lamp]{--cs:.36}
@@ -1843,7 +1844,7 @@ span.frchip{cursor:default}
 .nb.nbperson,.nb.sitter{--cs:.6}
 /* lifted in arrange mode: the shadow stays on the floor, smaller and fainter */
 .prop.owned.lift::before{opacity:.35;width:calc(var(--cs,.7) * 80%)}
-@media (prefers-reduced-motion:reduce){.nb::before,.prop.owned::before,.avatar::before{transition:none}}
+@media (prefers-reduced-motion:reduce){.nb::before,.prop.owned::before,.avatar::before,.keeper::before{transition:none}}
 /* the storybook map: a painted meadow, a clay drawing at every place, labels on white pills so they read on the painting */
 .worldmap{background:#e9f1ea url(assets/room/dream/map-bg.webp) center/cover no-repeat;border:0;box-shadow:inset 0 0 0 1px rgba(150,120,190,.18),0 6px 18px rgba(90,66,116,.12);overflow:hidden}
 .worldlines path{stroke:#fff;stroke-width:3.2;stroke-dasharray:1.2 3.2;stroke-linecap:round;filter:drop-shadow(0 1px 1px rgba(90,66,116,.35))}
@@ -2442,3 +2443,28 @@ html[data-mindful=quick] .mindline:not(.keep){display:none}
 .moons button.on::before{background:radial-gradient(circle at 35% 35%,#fff8df,#f3d49b 72%);border-color:#e9c27a;box-shadow:0 0 8px rgba(243,212,155,.6)}
 .thought .ms{display:block;font-size:20px;line-height:1;color:var(--rm-mauve)}
 .c-emo.ms{font-size:20px;color:var(--rm-mauve);vertical-align:-4px}
+/* shopkeepers (ovu-keepers.js, 22 Oct): at her height, a gentle idle, a bubble with one line on a tap */
+.keeper{position:absolute;transform:translate(-50%,-100%);background:none;border:0;padding:0;cursor:pointer;pointer-events:none;z-index:2;filter:drop-shadow(0 1px 2px rgba(70,40,100,.2))} /* her own drop shadow, not one offset downward: an offset shadow lifts a figure off the floor */
+.keeper img{width:100%;display:block;transform-origin:50% 100%;animation:keeperidle 4.2s ease-in-out infinite;pointer-events:auto} /* the button lets taps through; only the picture, clipped to her outline, takes them */
+.keeper.flip img{transform:scaleX(-1);animation-name:keeperidleflip}
+@keyframes keeperidle{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.018)}}
+@keyframes keeperidleflip{0%,100%{transform:scaleX(-1) scaleY(1)}50%{transform:scaleX(-1) scaleY(1.018)}}
+@media (prefers-reduced-motion:reduce){.keeper img{animation:none}}
+.keeper .keepsay{position:absolute;left:50%;bottom:100%;transform:translate(-50%,6px) scale(.6);opacity:0;pointer-events:none;width:max-content;max-width:180px;background:#fff;color:var(--rm-plum);font:800 12px/1.3 var(--sans);padding:7px 11px;border-radius:14px 14px 14px 4px;box-shadow:0 6px 16px rgba(90,60,130,.18);transition:opacity .2s,transform .2s;white-space:normal;text-align:center}
+.keeper.saying .keepsay{opacity:1;transform:translate(-50%,-4px) scale(1)}
+.keeper:focus-visible{outline:2px solid #fff;outline-offset:2px;border-radius:12px}
+/* the soak (ovu-soak.js): head and shoulders above the water, a towel on her head, a little steam */
+.nb.soaker{position:absolute;transform:translate(-50%,-100%);pointer-events:none;z-index:3} /* the picture's bottom edge is the water line */
+.nb.soaker img{width:100%;display:block}
+.soaker .ripple{position:absolute;left:-14%;right:-14%;bottom:-7%;height:16%;border-radius:50%;background:radial-gradient(ellipse at center,rgba(214,252,240,.75) 0 38%,rgba(150,226,206,.45) 56%,rgba(150,226,206,0) 72%);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35)}
+.scene.soaking #avatar{opacity:0;pointer-events:none}
+.scene.soaking .hotspot[data-id="springsoak"],.scene.soaking .hotspot[data-id="warmstone"]{opacity:0;pointer-events:none}
+.soaker .steam{position:absolute;bottom:6%;width:26%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.55),rgba(255,255,255,0) 70%);opacity:0;animation:soaksteam 4.5s ease-out infinite}
+.soaker .steam.s1{left:-6%}.soaker .steam.s2{left:78%;animation-delay:1.5s}.soaker .steam.s3{left:36%;animation-delay:3s}
+@keyframes soaksteam{0%{opacity:0;transform:translateY(0) scale(.6)}30%{opacity:.8}100%{opacity:0;transform:translateY(-260%) scale(1.5)}}
+@media (prefers-reduced-motion:reduce){.soaker .steam{animation:none;opacity:.35}}
+
+/* Settings sheet (You tab, 22 Oct): a small status word beside each health connection */
+.stat b .spill{display:inline-block;margin-left:4px;padding:2px 7px;border-radius:99px;background:var(--rm-lilac-2);color:var(--rm-plum);font:800 9.5px var(--sans);letter-spacing:.05em;text-transform:uppercase;vertical-align:1px}
+.ygroup .stat{margin-top:0}
+.ygroup .stat span:not(.ms):not(.spill){display:block;line-height:1.45;margin-top:2px}

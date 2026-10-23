@@ -226,3 +226,4 @@ details.more summary::-webkit-details-marker{display:none}
 .sncheck .snnotes{color:#9b4a2c}
 .snfoot{font:600 11px var(--sans);color:var(--rm-ink-3);line-height:1.45;margin-top:8px}
 
+.nav a.on{background:rgba(231,220,245,.55)} /* the room's selected tab (room.css) */

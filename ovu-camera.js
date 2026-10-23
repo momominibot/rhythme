@@ -129,7 +129,7 @@
     scene.addEventListener('scroll', function () { if (scene.scrollLeft || scene.scrollTop) { scene.scrollLeft = 0; scene.scrollTop = 0; } });
     /* keyboard focus on a pin the view does not show (along a wide plate, or zoomed in): bring it into view and hold there */
     inner.addEventListener('focusin', function (e) {
-      var b = e.target && e.target.closest && e.target.closest('.hotspot,.nb,.prop.owned'); if (!b) return;
+      var b = e.target && e.target.closest && e.target.closest('.hotspot,.nb,.prop.owned,.keeper'); if (!b) return;
       var sr = scene.getBoundingClientRect(), r = b.getBoundingClientRect();
       if (r.left >= sr.left && r.right <= sr.right && r.top >= sr.top && r.bottom <= sr.bottom) return;
       var f = { x: parseFloat(b.style.left), y: parseFloat(b.style.top) }; if (!isFinite(f.x) || !isFinite(f.y)) return;

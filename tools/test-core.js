@@ -3993,6 +3993,70 @@ var summarised = false;
   check('room.html loads the lane after the harbour', (function () { var h = fs.readFileSync(path.join(root, 'room.html'), 'utf8'); return h.indexOf('ovu-lane.js') > h.indexOf('ovu-harbour.js') && h.indexOf('ovu-harbour.js') > -1; })());
 })();
 
+(function shopkeepersAndSoak() {
+  console.log('2k7s. shopkeepers and the soak (22 Oct): a keeper in every store at her height, never in her way; a soak in the spring with a towel, a hood under it in the tudung');
+  var w = scenes('2026-10-22'); w.OvuRoom = null; w.OvuZones = null;
+  ['ovu-farm.js', 'ovu-stamina.js', 'ovu-harbour.js', 'ovu-lane.js', 'ovu-lanescene.js', 'ovu-barn.js', 'ovu-keepers.js', 'ovu-soak.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w, { filename: f }); });
+  var KP = w.OvuKeepers, K = w.OvuWalk, LS = w.OvuLaneScene.LAYOUTS, ids = Object.keys(KP.KEEPERS);
+  var lay = function (id) { return LS[id] || w.LAYOUTS[id]; };
+  check('a keeper in each store (Jamie, 22 Oct: "I want NPC in each store"): the grocer, the boutique, the gym, the tackle shelf on the lane and the three Dream Street shops, each picture on disk on her own canvas', ids.slice().sort().join() === 'lane,lane-boutique,lane-grocer,lane-gym,shop-furniture,shop-homes,shop-pet' && ids.every(function (id) { var k = KP.KEEPERS[id], p = path.join(root, 'assets/room/dream', k.img); return !!lay(id) && fs.existsSync(p) && k.lines.length >= 3 && k.name && k.role; }));
+  var trouble = [];
+  ids.forEach(function (id) {
+    var k = KP.KEEPERS[id], L = JSON.parse(JSON.stringify(lay(id)));
+    if (k.x < 5 || k.x > 95 || k.y < 20 || k.y > 95) trouble.push(id + ' off the plate');
+    if (k.block) L.solids = (L.solids || []).concat([Object.assign({ id: 'keeper' }, k.block)]);
+    var bad = K.checkLayout(L); if (bad.length) trouble.push(id + ': ' + bad.join('; '));
+    var wd = K.world(L, []), starts = (L.doors && L.doors.length ? L.doors : [L.home]).map(function (x) { return { x: x.x, y: x.y }; });
+    var targets = (L.hotspots || []).filter(function (h) { return h.wp; }).map(function (h) { return h.wp; }).concat([L.home]);
+    starts.forEach(function (a) { targets.forEach(function (t) { if (!(Math.abs(a.x - t.x) < 0.01 && Math.abs(a.y - t.y) < 0.01) && !K.plan(wd, a, t, 2)) trouble.push(id + ' cannot reach ' + t.x + ',' + t.y); }); });
+  });
+  check('with each keeper\'s floor taken, every stand point, home and door of that store is still on the floor, outside every solid, and reachable from the way in', trouble.length === 0, trouble.join(' | '));
+  /* Codex (22 Oct): four keepers stood on scenery (a banister base, a window trim, a sofa, a display platform). Each keeper's
+   * feet must be on the drawn floor, outside every piece of furniture, and clear of every place she stands, the stock's
+   * stand points included; with the keeper's block taken, she still reaches every piece of stock from the way in */
+  var footing = [];
+  ids.forEach(function (id) {
+    var k = KP.KEEPERS[id], L0 = lay(id), L = JSON.parse(JSON.stringify(L0)), wd0 = K.world(L0, []);
+    /* an alcove keeper (the boutique's fitting alcove) stands on drawn floor outside the walkable floor, so needs no block */
+    if (k.alcove ? K.inZones(wd0.zones, k.x, k.y) : !K.inZones(wd0.zones, k.x, k.y)) footing.push(id + (k.alcove ? ' alcove keeper on the walkable floor without a block' : ' feet off the floor'));
+    if (K.blocked((L0.solids || []).filter(function (s) { return s.id !== 'keeper'; }), k.x, k.y)) footing.push(id + ' feet inside furniture');
+    if (!k.block && !k.alcove) footing.push(id + ' has no block: she would walk through');
+    var stands = (L0.hotspots || []).filter(function (h) { return h.wp; }).map(function (h) { return h.wp; }).concat([L0.home]).concat(L0.doors || []), stock = [];
+    (function walk(o) { if (Array.isArray(o)) o.forEach(function (s) { if (s && s.wp) stock.push(s.wp); }); else if (o && typeof o === 'object') Object.keys(o).forEach(function (q) { walk(o[q]); }); })(L0.spots);
+    stands.concat(stock).forEach(function (p) { if (Math.hypot(p.x - k.x, p.y - k.y) < 3) footing.push(id + ' within 3 of where she stands at ' + p.x + ',' + p.y); });
+    if (k.block) L.solids = (L.solids || []).filter(function (s) { return s.id !== 'keeper'; }).concat([Object.assign({ id: 'keeper' }, k.block)]);
+    var wd = K.world(L, []), starts = (L.doors && L.doors.length ? L.doors : [L.home]).map(function (x) { return { x: x.x, y: x.y }; });
+    /* compared with the same store without its keeper: the planner here does not climb the stairs (the room walks those
+     * itself), so a gallery stand point counts only if the keeper is what takes it away */
+    var reach = function (w, a, t) { var pl = K.plan(w, a, t, 2), end = pl && pl.pts[pl.pts.length - 1]; return !!end && Math.hypot(end.x - t.x, end.y - t.y) <= 1; };
+    stock.forEach(function (t) { if (K.blocked(wd.solids, t.x, t.y)) footing.push(id + ' stock stand point ' + t.x + ',' + t.y + ' inside a solid'); starts.forEach(function (a) { if (reach(wd0, a, t) && !reach(wd, a, t)) footing.push(id + ' takes away the way to the stock at ' + t.x + ',' + t.y); }); });
+  });
+  check('every keeper\'s feet are on the drawn floor, outside the furniture, at least 3 from every place she stands (the stock\'s stand points too), and with the keeper there she still reaches every piece of stock (Codex, 22 Oct)', footing.length === 0, footing.join(' | '));
+  /* the browser suite (22 Oct): Ms Clara stood in front of the first house model and took its taps. A keeper's canvas
+   * (her sprite width, 720/318 tall) may cover at most a third of any piece of stock, and none of the showroom's models;
+   * only her own figure takes taps: every keeper has a traced outline the picture is clipped to */
+  var cover = [];
+  ids.forEach(function (id) {
+    var k = KP.KEEPERS[id], L = lay(id); if (!L.spots || !L.w || !L.h) return;
+    var aw = (L.avatarW || 10) * (k.wk || 1), ch = aw * (720 / (318 * (k.wk || 1))) * (L.w / L.h), box = [k.x - aw / 2, k.y - ch, k.x + aw / 2, k.y];
+    (function walk(o) { if (Array.isArray(o)) o.forEach(function (s) { var w = s.w || 8, h = w * (L.w / L.h) * 0.9, b = [s.x - w / 2, s.y - h, s.x + w / 2, s.y], ov = Math.max(0, Math.min(box[2], b[2]) - Math.max(box[0], b[0])) * Math.max(0, Math.min(box[3], b[3]) - Math.max(box[1], b[1])) / (w * h); if (ov > (id === 'shop-homes' ? 0 : 0.34)) cover.push(id + ' covers ' + Math.round(ov * 100) + '% of the stock at ' + s.x + ',' + s.y); }); else if (o && typeof o === 'object') Object.keys(o).forEach(function (q) { walk(o[q]); }); })(L.spots);
+  });
+  var outlined = ids.every(function (id) { var o = KP.OUTLINE[KP.KEEPERS[id].id] || '', pts = o.split(','); return pts.length >= 12 && pts.every(function (p) { var m = /^\s*(\d+(?:\.\d)?)% (\d+(?:\.\d)?)%$/.exec(p); return m && +m[1] <= 100 && +m[2] <= 100; }); });
+  var cssk = fs.readFileSync(path.join(root, 'room.css'), 'utf8');
+  check('nobody floats and everyone is one size (Jamie, 22 Oct): keepers share her ground shadow under the feet and her drop shadow (never one offset downward), and the meditate event invalidates a pending session fade like activity does (Codex)', /\.avatar::before,\.keeper::before\{content:''/.test(cssk) && /\.keeper::before\{--cs:\.62\}/.test(cssk) && /\.keeper\{[^}]*filter:drop-shadow\(0 1px 2px rgba\(70,40,100,\.2\)\)\}/.test(cssk) && !/\.keeper\{[^}]*drop-shadow\(0 4px/.test(cssk) && /name === 'layout' \|\| name === 'meditate'\) activityGen\+\+/.test(fs.readFileSync(path.join(root, 'room.js'), 'utf8')));
+  check('a keeper hides at most a third of any piece of stock and none of the showroom\'s house models; only her own figure takes a tap (each picture clipped to its traced outline, the button itself lets taps through)', cover.length === 0 && outlined && /\.keeper\{position:absolute;transform:translate\(-50%,-100%\);background:none;border:0;padding:0;cursor:pointer;pointer-events:none;/.test(fs.readFileSync(path.join(root, 'room.css'), 'utf8')), cover.join(' | ') + (outlined ? '' : ' | an outline is missing or malformed'));
+  var wsrc = fs.readFileSync(path.join(root, 'ovu-walk.js'), 'utf8'), csrc = fs.readFileSync(path.join(root, 'ovu-camera.js'), 'utf8'), rmsrc = fs.readFileSync(path.join(root, 'room.js'), 'utf8');
+  check('keepers join the depth sort by their feet (never as a second solid: the block is in the layout) and rank themselves when drawn; keyboard focus on one brings it into view; opening Mind or the bench is an activity, so a soak or a sit by the water ends first (Codex, 22 Oct)', /#ownedProps \.keeper, #plateOcc/.test(wsrc) && /!el\.classList\.contains\('keeper'\)/.test(wsrc) && /wrap\.appendChild\(el\);\n    if \(root\.OvuWalk && root\.OvuWalk\.sortDepth\) root\.OvuWalk\.sortDepth\(\);/.test(fs.readFileSync(path.join(root, 'ovu-keepers.js'), 'utf8')) && /closest\('\.hotspot,\.nb,\.prop\.owned,\.keeper'\)/.test(csrc) && /endMoment\(\); emit\('meditate'\);/.test(rmsrc) && !/function enterMeditation\(\) \{[^\n]*\n[^\n]*emit\('activity'/.test(rmsrc) && ['ovu-soak.js', 'ovu-tones.js', 'ovu-barn.js', 'ovu-harbour.js', 'ovu-garden.js'].every(function (f) { return /R\.on\('meditate', /.test(fs.readFileSync(path.join(root, f), 'utf8')); }));
+  var k0 = KP.KEEPERS['lane-grocer'], r1 = KP.nextLine(k0, null, '2026-10-22', 9), r2 = KP.nextLine(k0, r1.mem, '2026-10-22', 9), r3 = KP.nextLine(k0, r2.mem, '2026-10-22', 9), r4 = KP.nextLine(k0, r3.mem, '2026-10-23', 20);
+  check('a tap says hello first each day (by the hour), then the shop\'s own lines in turn, and a new day says hello again', r1.text === 'Good morning! I am ' + k0.name + '.' && r2.text === k0.lines[0] && r3.text === k0.lines[1] && r4.text === 'Good evening! I am ' + k0.name + '.' && KP.hello('X', 14) === 'Good afternoon! I am X.');
+  var ksrc = fs.readFileSync(path.join(root, 'ovu-keepers.js'), 'utf8');
+  check('keepers sell nothing, count nothing and save nothing: no store writes, no hearts, no diary; the line is also read to screen readers', !/S\.setState|setProfile|OvuRewards|OvuStore\.add|localStorage/.test(ksrc) && /aria-live/.test(ksrc) && /aria-label/.test(ksrc));
+  var Q = w.OvuSoak, CV = w.OvuBarn.CAVE, soak = CV.hotspots.filter(function (h) { return h.id === 'springsoak'; })[0];
+  check('the soak: a hotspot on the warm water with its stand point by the edge; the towel picture, and the swim hood under the towel in the tudung so her hair never shows; both pictures on disk', !!soak && !!CV.soak && Q.picFor('tudung') === 'soak-tudung.webp' && Q.picFor('base') === 'soak-base.webp' && Q.picFor('gown') === 'soak-base.webp' && ['soak-base.webp', 'soak-tudung.webp'].every(function (f) { return fs.existsSync(path.join(root, 'assets/room/dream', f)); }));
+  var qsrc = fs.readFileSync(path.join(root, 'ovu-soak.js'), 'utf8');
+  check('the soak counts nothing and ends like sitting by the water: on walking, leaving the cave, a practice, sleep, a hidden screen or a sync; it waits its turn behind a running activity', !/OvuRewards|OvuStamina|S\.setState|OvuStore\.add/.test(qsrc) && ['beforeWalk', "'walk'", "'layout'", "'activity'", 'visibilitychange', 'sleeping', 'sync'].every(function (k) { return qsrc.indexOf(k) > -1; }) && /refuseBusy/.test(qsrc));
+})();
+
 (function harbourLaneScene() {
   console.log('2k7c. Harbour Lane as a place (21 Oct): the signpost walks her up the lane; the grocer, the boutique and the gym are rooms to walk into; every spot on the floor and reachable; the map shows the lane, not its rooms; nothing new is written');
   var w = scenes('2026-10-21'); w.OvuRoom = null; w.OvuZones = null;

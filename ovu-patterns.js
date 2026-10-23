@@ -50,9 +50,9 @@
     var nI = st.intervals;
     var html = '<div class="kpis k4">' +
       kpi('Intervals', String(nI), nI ? 'start to next start' : 'needs two starts') +
-      kpi('Median', st.median !== null ? st.median + '<em>d</em>' : '—', nI ? 'of ' + plural(nI, 'interval') : '') +
-      kpi('Shortest–longest', st.shortest !== null ? st.shortest + '–' + st.longest + '<em>d</em>' : '—', nI ? 'counted intervals' : '') +
-      kpi('Variation', st.variation !== null ? st.variation + '<em>d</em>' : '—', st.variation !== null ? 'longest minus shortest, ' + plural(nI, 'interval') : 'needs two intervals') +
+      kpi('Median', st.median !== null ? st.median + '<em>d</em>' : 'Not yet', nI ? 'of ' + plural(nI, 'interval') : '') +
+      kpi('Shortest–longest', st.shortest !== null ? st.shortest + '–' + st.longest + '<em>d</em>' : 'Not yet', nI ? 'counted intervals' : '') +
+      kpi('Variation', st.variation !== null ? st.variation + '<em>d</em>' : 'Not yet', st.variation !== null ? 'longest minus shortest, ' + plural(nI, 'interval') : 'needs two intervals') +
       '</div>';
     html += '<div class="chart">' + plot(rows) + '</div>';
     html += '<ol class="prows">' + rows.slice().reverse().map(function (r) {
