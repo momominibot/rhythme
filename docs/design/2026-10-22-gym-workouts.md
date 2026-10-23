@@ -211,3 +211,15 @@ kit shows in five of its eight walk frames, and its blink has faint smudges at t
 - P3, left as a follow-up: when an action pose is on screen as a workout begins and her saved outfit's picture also fails,
   there is no standing picture to go back to. It needs a pose on screen, a failing outfit picture, and a workout started
   in between.
+
+## After Codex diff review 5 (MERGE; docs/design/reviews/2026-10-23-codex-gym-diff-5.md)
+
+No P1 or P2 left. Two P3 follow-ups, both rare:
+
+- A fallback picture that is itself still loading. If her own clothes' picture never loads, a second workout begun while
+  it is pending can take that unloaded picture as its way back. The fix is to keep the last standing picture that really
+  loaded, apart from whatever is on screen, and replace it only after a successful load. The same fix covers review 4's
+  action-pose case.
+- An overlay opened and closed within one 400 ms offer poll. Light Flower or Koi Pond opened and shut between two polls is
+  missed, and the waiting log offer opens afterwards. The fix is to drop the offer the moment either overlay opens (a room
+  event or a body class observer), with a test that opens and closes it between polls.
