@@ -22,6 +22,7 @@ function fresh(todayIso) {
   return w;
 }
 var fails = 0, passes = 0;
+var openHarness = {}; /* async harnesses register here and clear on finish, so one that stalls fails the run instead of silently dropping its checks */
 function check(name, cond, detail) { if (cond) { passes++; console.log('  ok   ' + name); } else { fails++; console.log('  FAIL ' + name + (detail ? '  ->  ' + detail : '')); } }
 function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); }
 
@@ -2596,8 +2597,9 @@ function scenes(todayIso) {
   var tick = function () { return new Promise(function (r) { setTimeout(r, 0); }); };
   var oldRow = [{ id: 5, run_id: 'r1', title: 'cycle: 21 eligible adults', detail: { summary: { eligible: 21 } } }];
   answers.admin_overview = { latest_run: 'r1', held_runs: 0 };
-  T.loadOverview().then(tick).then(function () {
-    var f = T.loadFeed(true); return tick().then(function () { pendingFeed.shift().res(oldRow); return f; });
+  openHarness.dashboardFeedHold = true;
+  T.loadOverview().then(tick).then(tick).then(function () {
+    pendingFeed.shift().res(oldRow); /* the first overview's own full reload */ return tick().then(tick);
   }).then(function () {
     var inc = T.loadFeed(false); /* an incremental poll sent before the hold lands, answered late */
     answers.admin_overview = { latest_run: null, held_runs: 1 };
@@ -2612,10 +2614,39 @@ function scenes(todayIso) {
         var wasFull = null;
         return tick().then(function () { var req = pendingFeed.shift(); wasFull = !('p_after' in req.args);
         req.res([{ id: 6, title: 'orchestrator: (held: an account withdrew the improvement choice)', detail: { held: true } }]);
-        return retry; }).then(function () { var s2 = T.state(); check('the next poll makes the owed full reload, and once it succeeds the feed holds only redacted rows', wasFull && s2.needsFull === false && s2.feed.length === 1 && s2.feed[0].detail.held === true, JSON.stringify({ wasFull: wasFull, s2: s2 })); });
+        return retry; }).then(function () { var s2 = T.state(); check('the next poll makes the owed full reload, and once it succeeds the feed holds only redacted rows', wasFull && s2.needsFull === false && s2.feed.length === 1 && s2.feed[0].detail.held === true, JSON.stringify({ wasFull: wasFull, s2: s2 })); delete openHarness.dashboardFeedHold; });
       });
     });
   }).catch(function (e) { check('dashboard feed hold harness ran', false, String(e && e.stack || e)); });
+})();
+(function dashboardFeedFirstLoad() {
+  console.log('phase 0 (23 Oct): on first load, a feed answer sent before a hold never outlives the first overview');
+  var el = function () { return { innerHTML: '', textContent: '', className: '', style: {}, dataset: {}, classList: { add: function () { }, remove: function () { }, toggle: function () { } }, setAttribute: function () { }, addEventListener: function () { }, querySelector: function () { return null; }, querySelectorAll: function () { return []; }, insertAdjacentHTML: function () { }, appendChild: function () { } }; };
+  var w = { console: console, setTimeout: setTimeout, clearTimeout: clearTimeout, setInterval: function () { return 0; }, clearInterval: function () { }, Promise: Promise, JSON: JSON, Date: Date, Math: Math, String: String, Number: Number, Array: Array, Object: Object, encodeURIComponent: encodeURIComponent, location: { search: '', hash: '', href: 'x' }, history: { replaceState: function () { } } };
+  w.window = w; w.document = { getElementById: function () { return el(); }, createElement: el, querySelector: function () { return null; }, querySelectorAll: function () { return []; }, addEventListener: function () { }, body: el(), documentElement: el(), hidden: false };
+  w.OVU_CONFIG = { supabaseUrl: 'https://t.invalid', supabaseKey: 'k' };
+  w.OvuAuth = { token: function () { return 't'; }, init: function () { return new Promise(function () { }); }, session: function () { return null; } };
+  w.__ADMIN_TEST__ = {};
+  var pendingFeed = [];
+  w.fetch = function (u, o) {
+    var name = String(u).split('/rpc/')[1], body = JSON.parse(o.body || '{}');
+    if (name === 'admin_feed') return new Promise(function (res) { pendingFeed.push({ args: body, res: function (rows) { res({ ok: true, status: 200, text: function () { return Promise.resolve(JSON.stringify(rows)); } }); } }); });
+    return Promise.resolve({ ok: true, status: 200, text: function () { return Promise.resolve(JSON.stringify({ latest_run: null, held_runs: 1 })); } });
+  };
+  vm.runInContext(fs.readFileSync(path.join(root, 'admin.js'), 'utf8'), vm.createContext(w), { filename: 'admin.js' });
+  var T = w.__ADMIN_TEST__.api; T.setTab('none');
+  var tick = function () { return new Promise(function (r) { setTimeout(r, 0); }); };
+  openHarness.dashboardFeedFirstLoad = true;
+  var boot = T.loadFeed(false); /* boot starts the feed and the overview together */
+  tick().then(function () { return T.loadOverview(); }).then(tick).then(tick).then(function () {
+    var early = pendingFeed.shift(), full = pendingFeed.shift();
+    full.res([{ id: 6, title: 'orchestrator: (held: an account withdrew the improvement choice)', detail: { held: true } }]);
+    return tick().then(function () { early.res([{ id: 5, title: 'cycle: 21 eligible adults', detail: { summary: { eligible: 21 } } }]); return boot; }).then(tick).then(function () {
+      var st = T.state();
+      check('the first overview owes a full reload, and the slower pre-hold answer from boot cannot bring its words back', !!full && !('p_after' in full.args) && st.needsFull === false && st.feed.length === 1 && st.feed[0].detail.held === true, JSON.stringify(st));
+      delete openHarness.dashboardFeedFirstLoad;
+    });
+  }).catch(function (e) { check('dashboard first-load harness ran', false, String(e && e.stack || e)); });
 })();
 (function plotGrowth() {
   console.log('the plot grows a stage per credited day and never shrinks');
@@ -5260,4 +5291,4 @@ var summarised = false;
   })();
 })();
 
-process.on('beforeExit', function () { if (summarised) return; summarised = true; console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });
+process.on('beforeExit', function () { if (summarised) return; summarised = true; Object.keys(openHarness).forEach(function (k) { check('async harness ' + k + ' finished', false, 'its promises never settled'); }); console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });

@@ -308,3 +308,21 @@ No additional P0/P1/P2 findings in the changed-code sweep. All stated owner defe
 Independently verified **1,810 core checks**, **81 pages with zero static problems**, Python parsing and scoped code-diff checks. PostgreSQL **64/64** and the three mutation catches remain owner-reported, not rerun. No files or live state changed.
 
 FIX
+
+# Round six (commit 20e4329, verdict FIX, one P1; fixed in the following commit)
+
+**P1 remains: first-load reconciliation skips invalidation.** At [admin.js:337](/Users/michiyomimi/Doubao/chats/2026-10-16/new-chat-12/ovumind/.claude/worktrees/farm-barn-cave/admin.js:337), `releaseKey !== null` excludes the first overview, while `boot()` starts overview and feed concurrently.
+
+Reproduced with the real loading functions:
+
+1. First overview reports `latest_run:null, held_runs:1`.
+2. A delayed pre-hold feed response restores `eligible:21`.
+3. Identical overviews and subsequent incremental polls retain those words, with `feedNeedsFull=false`.
+
+Reconcile the initial release key against in-flight feed requests and add this first-load ordering case.
+
+The reported failure/retry sequence is fixed. Independently verified **1,812/1,812 core checks**, the supplied regression and its guard-removal mutation, syntax and diff checks. No other changed-line findings. PostgreSQL tests were not rerun; no files changed. Migration-first ordering remains required.
+
+FIX
+
+Fix: the first overview always owes one full feed reload, so a feed request sent at boot before a hold is answered can never outlive it (admin.js loadOverview; test-core dashboardFeedFirstLoad). The round-five hold test was adjusted because the first overview now issues that reload itself, and async harnesses now register so a stalled one fails the run instead of silently dropping its checks.
