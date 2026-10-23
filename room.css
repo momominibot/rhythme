@@ -1380,7 +1380,7 @@ summary.c-lbl{cursor:pointer;list-style-position:inside}
 .meditator.onseat.faceright img.seated{transform:scaleX(-1)}
 .nb img{width:100%;display:block}
 .nb.flip img{transform:scaleX(-1)}
-.nbperson{pointer-events:auto;cursor:pointer}
+.nbperson{pointer-events:none;cursor:pointer}.nbperson img{pointer-events:auto} /* only her figure, clipped to its outline, takes a tap (22 Oct) */
 .nbperson img{animation:alive 4.4s ease-in-out infinite;transform-origin:50% 100%}
 .nbperson.flip img{animation:aliveflip 4.4s ease-in-out infinite}
 .nbperson.wave img{animation:joyhop .55s ease-out!important}
@@ -1823,11 +1823,12 @@ span.frchip{cursor:default}
  * contact shadow at its true base, sized to its footprint, with the pivot at that base: so every placed object (her,
  * room furniture and pets, shop stock, greenhouse plants, neighbours) gets a dark ellipse right where it meets the
  * surface, a hair of overlap into it, and only a tight 1 px edge shadow. --cs is the footprint as a share of the width. */
-.nb,.prop.owned,.avatar{isolation:isolate}
-.nb::before,.prop.owned::before,.avatar::before,.keeper::before{content:'';position:absolute;left:50%;bottom:0;width:calc(var(--cs,.7) * 100%);aspect-ratio:4/1;transform:translate(-50%,48%);border-radius:50%;
+.nb,.prop.owned,.avatar,.villager{isolation:isolate}
+.nb::before,.prop.owned::before,.avatar::before,.keeper::before,.villager::before{content:'';position:absolute;left:50%;bottom:0;width:calc(var(--cs,.7) * 100%);aspect-ratio:4/1;transform:translate(-50%,48%);border-radius:50%;
   background:radial-gradient(closest-side,rgba(52,26,72,.46),rgba(52,26,72,.2) 58%,rgba(52,26,72,0));z-index:-1;pointer-events:none;opacity:var(--co,1)}
 .avatar::before{--cs:.62}
 .keeper::before{--cs:.62} /* the same ground shadow under a keeper's feet as under hers: without it they read as hovering (Jamie, 22 Oct: "make sure the people dont float") */
+.villager{--cs:.62} /* her footprint; a wider canvas sets a smaller share inline (ovu-villagers.js), so his contact shadow is her size */
 .avatar.hidden::before,.avatar.walking.cycling::before{opacity:.85}
 /* footprints: narrow bases get small shadows, flat or wide pieces get wide thin ones */
 [data-id=lamp],[data-item=lamp]{--cs:.36}
@@ -1844,7 +1845,7 @@ span.frchip{cursor:default}
 .nb.nbperson,.nb.sitter{--cs:.6}
 /* lifted in arrange mode: the shadow stays on the floor, smaller and fainter */
 .prop.owned.lift::before{opacity:.35;width:calc(var(--cs,.7) * 80%)}
-@media (prefers-reduced-motion:reduce){.nb::before,.prop.owned::before,.avatar::before,.keeper::before{transition:none}}
+@media (prefers-reduced-motion:reduce){.nb::before,.prop.owned::before,.avatar::before,.keeper::before,.villager::before{transition:none}}
 /* the storybook map: a painted meadow, a clay drawing at every place, labels on white pills so they read on the painting */
 .worldmap{background:#e9f1ea url(assets/room/dream/map-bg.webp) center/cover no-repeat;border:0;box-shadow:inset 0 0 0 1px rgba(150,120,190,.18),0 6px 18px rgba(90,66,116,.12);overflow:hidden}
 .worldlines path{stroke:#fff;stroke-width:3.2;stroke-dasharray:1.2 3.2;stroke-linecap:round;filter:drop-shadow(0 1px 1px rgba(90,66,116,.35))}
@@ -2371,13 +2372,22 @@ html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.lo
 .dishpic{display:flex;justify-content:center;margin:2px 0 6px}.dishpic img{width:150px;height:150px;object-fit:contain;border-radius:22px;background:#fff;box-shadow:0 8px 22px rgba(120,90,150,.18)}
 .invlist img.invpic{width:30px;height:30px;object-fit:contain;border-radius:8px;background:#fff;margin-right:6px;vertical-align:middle}
 /* villagers (22 Oct, Harvest Moon phase 4) */
-.villager{position:absolute;transform:translate(-50%,-100%);z-index:2;border:0;background:none;padding:0;cursor:pointer}
-.villager img{width:100%;display:block;filter:drop-shadow(0 6px 5px rgba(70,50,100,.25));animation:animalidle 5s ease-in-out infinite;transform-origin:50% 100%}
+.villager{position:absolute;transform:translate(-50%,-100%);z-index:2;border:0;background:none;padding:0;cursor:pointer;pointer-events:none;filter:drop-shadow(0 1px 2px rgba(70,40,100,.2))} /* her drop shadow, as the keepers have; drawn on her canvas at her height, feet on the floor line as hers are (22 Oct); the button lets taps through */
+.villager img{width:100%;display:block;animation:animalidle 5s ease-in-out infinite;transform-origin:50% 100%;pointer-events:auto} /* only the picture, clipped to his outline, takes a tap */
+.villager:focus-visible{outline:2px solid #fff;outline-offset:2px;border-radius:12px}
+@media (prefers-reduced-motion:reduce){.villager img{animation:none}}
 .villager .vname{position:absolute;left:50%;top:-6%;transform:translateX(-50%);font:800 10px var(--sans);color:var(--rm-plum);background:rgba(255,255,255,.75);padding:2px 7px;border-radius:99px;white-space:nowrap}
 .vcard,.vevent{display:flex;gap:12px;align-items:center;margin-bottom:10px}
 .vcard img,.vevent img{width:78px;flex:none;filter:drop-shadow(0 4px 6px rgba(70,50,100,.2))}
 .vevent p{margin:0 0 6px;font:600 13.5px/1.5 var(--sans);color:var(--rm-ink-2)}
 .vline{margin:6px 0 0;font:600 13px/1.45 var(--sans);color:var(--rm-ink-2)}
+/* his talk (22 Oct): his question, her reply, his answer, his thanks for a gift; her replies as buttons */
+.vsay{margin-top:4px}.vsay:focus{outline:none} /* focused after a reply so a screen reader reads his answer; it is text, not a control */
+.vcard>div{flex:1;min-width:0}
+.vask{margin:6px 0 0;font:600 12px/1.4 var(--sans);color:var(--rm-ink-2)} /* 5.2:1 on the sheet (ink-3 was 2.8:1, Codex) */
+.vyou{margin:4px 0 0;font:600 12.5px/1.4 var(--sans);color:var(--rm-ink-2)}.vyou b{font-weight:800;color:var(--rm-plum);margin-right:4px}
+.vthanks{padding-top:6px;border-top:1px dashed rgba(150,120,190,.3)}
+.vreplies{display:flex;flex-direction:column;gap:8px;width:100%}.vreplies .btn{justify-content:flex-start;text-align:left;white-space:normal}
 .vhearts{display:flex;gap:1px}.vhearts .ms{font-size:17px}.vhearts .ms.off{color:rgba(150,120,190,.3)}
 /* scores and graphs in the Cycle tab (22 Oct) */
 .scorecard{background:rgba(255,255,255,.72);border-radius:22px;padding:14px 14px 12px;margin:0 0 14px;box-shadow:0 10px 26px rgba(122,92,150,.12);position:relative;overflow:hidden}.scorecard.dreamy{background:linear-gradient(160deg,rgba(255,255,255,.88),rgba(247,239,252,.9) 60%,rgba(236,246,242,.9))}.scorecard.dreamy:before{content:"";position:absolute;inset:-40% -20% auto auto;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(201,182,230,.35),rgba(201,182,230,0) 70%);pointer-events:none}.scorecard h3{display:flex;gap:6px;align-items:center;margin:0 0 4px;font:600 17px var(--serif);color:var(--rm-plum)}.schero{display:grid;grid-template-columns:112px 1fr 84px;gap:10px;align-items:center;position:relative}.scring{position:relative;width:112px;height:112px}.scring svg{width:112px;height:112px;display:block;background:none;border-radius:0;box-shadow:none}.scnum{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font:800 30px var(--serif);color:var(--rm-plum);line-height:1}.scnum small{font:700 10px var(--sans);color:var(--rm-ink-3);letter-spacing:.04em;margin-top:2px}.scdash{font-size:34px;color:var(--rm-lilac)}.scmood{margin:4px 0 0;font:600 12.5px/1.4 var(--sans);color:var(--rm-ink-2)}.sccloud{width:84px;height:84px;object-fit:contain;justify-self:end;filter:drop-shadow(0 6px 10px rgba(122,92,150,.18));animation:scfloat 4.5s ease-in-out infinite}.sc-sleep .sccloud{animation-delay:-2s}@keyframes scfloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}@media (prefers-reduced-motion:reduce){.sccloud{animation:none}}.scpills{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 4px}.scpill{background:rgba(255,255,255,.7);border-radius:14px;padding:8px 10px;box-shadow:inset 0 0 0 1px rgba(201,182,230,.35)}.scpill-top{display:flex;justify-content:space-between;align-items:baseline;gap:6px;font:700 12px var(--sans);color:var(--rm-ink-2)}.scpill-top b{font:800 15px var(--serif);color:var(--rm-plum)}.scpill.empty .scpill-top b{font:700 11px var(--sans);color:var(--rm-ink-3)}.scbar{height:8px;border-radius:99px;background:#efe7f7;margin:6px 0 4px;overflow:hidden}.scbar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#f6c9d6,#c9b6e6 55%,#bfe3d4);box-shadow:0 0 8px rgba(201,182,230,.6)}.scpill small{display:block;font:600 10.5px/1.35 var(--sans);color:var(--rm-ink-3)}.scneed{display:flex;gap:8px;align-items:flex-start;margin:8px 0 2px;padding:8px 10px;border-radius:14px;background:rgba(243,212,155,.22);font:600 12px/1.4 var(--sans);color:var(--rm-ink-2)}.scneed .ms{color:var(--rm-warn);font-size:18px}.schead{margin:12px 0 4px;font:800 11px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--rm-ink-3)}.scgraph{width:100%;height:auto;display:block;background:rgba(255,255,255,.55);border-radius:14px}.scgraph-empty{display:flex;gap:8px;align-items:center;padding:14px 12px;border-radius:14px;background:rgba(255,255,255,.55);font:600 12px var(--sans);color:var(--rm-ink-3)}.scgraph-empty .ms{color:var(--rm-lilac)}.scfoot{margin:10px 0 0}@media (max-width:360px){.schero{grid-template-columns:96px 1fr 64px}.scring,.scring svg{width:96px;height:96px}.sccloud{width:64px;height:64px}}.scparts{display:none}

@@ -3435,6 +3435,120 @@ async def main():
             check("fasting: no page errors in the fasting run", not ferr, ferr[:3])
             await ctxf.close()
 
+            # villagers (22 Oct): at her height on open floor, only the figure takes a tap, a Harvest Moon talk, a gift named, a heart scene after his answer
+            ctxV = await browser.new_context(viewport={"width": 390, "height": 844}); await ctxV.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB))); await ctxV.add_init_script(SESSION_SEED)
+            pv = await ctxV.new_page(); verr = []; pv.on("pageerror", lambda e: verr.append(str(e))); await pv.route("**/*", gate)
+            await pv.goto(BASE + "room.html", wait_until="networkidle"); await pv.wait_for_timeout(900)
+            await pv.evaluate("()=>{ if (OvuRoom.sheetOpen()) OvuRoom.closeSheet(); OvuRoom.isNight=function(){return false}; OvuRoom.asleep=function(){return false}; if (window.OvuPetWalk) OvuPetWalk.auto(false); OvuStore.setProfile({outfit: 'base'}); OvuRoom.restorePose(); OvuStore.setState({villagers: {lu: {points: 15}}}); window.__vspy = {add: 0, spend: 0}; var a = OvuStore.add, m = OvuStore.addMany, s = OvuRewards.spend; OvuStore.add = function(){ __vspy.add++; return a.apply(this, arguments); }; if (m) OvuStore.addMany = function(){ __vspy.add++; return m.apply(this, arguments); }; OvuRewards.spend = function(){ __vspy.spend++; return s.apply(this, arguments); }; OvuWalk.travel('plaza', {entry: {x: 20, y: 58, flip: false}}); }")  # she arrives by the arch, clear of him
+            try: await pv.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='plaza' && !document.querySelector('#scene').classList.contains('fading') && document.querySelector('#ownedProps .villager[data-id=shen] img').complete", timeout=12000)
+            except Exception: pass
+            await pv.evaluate("()=>{ document.querySelector('#ownedProps .villager[data-id=shen]').focus(); }"); await pv.wait_for_timeout(900)  # the follow camera brings him into view, as keyboard focus does
+            vfit = """(id)=>{ var el = document.querySelector('#ownedProps .villager[data-id=' + id + ']'), im = el && el.querySelector('img'), her = document.querySelector('#avatarImg');
+              /* where the shoes meet the ground (the canvas bottom less its 4 px air) against the floor line the sprite stands on (its top, in its parent's box), in screen px; and the contact shadow's width */
+              function feet(box, pic) { var p = box.offsetParent.getBoundingClientRect(), r = pic.getBoundingClientRect(), floor = p.top + p.height * parseFloat(box.style.top) / 100; return Math.round((r.bottom - r.height * 4 / 720 - floor) * 10) / 10; }
+              function shadowW(box) { var cs = getComputedStyle(box, '::before'); return cs.content === 'none' ? 0 : Math.round(parseFloat(cs.width) / box.getBoundingClientRect().width * box.offsetWidth * 10) / 10; }
+              if (!im) return null; var r = im.getBoundingClientRect(), hit = function (x, y) { var e = document.elementFromPoint(x, y); return !!(e && e.closest && e.closest('.villager[data-id=' + id + ']')); };
+              return { n: document.querySelectorAll('#ownedProps .villager').length, nat: [im.naturalWidth, im.naturalHeight], h: im.offsetHeight, herH: her.offsetHeight, herNat: [her.naturalWidth, her.naturalHeight], z: Number(el.style.zIndex), herZ: Number(document.querySelector('#avatar').style.zIndex),
+                chest: hit(r.left + r.width * 0.5, r.top + r.height * 0.42), corner: hit(r.left + r.width * 0.06, r.top + r.height * 0.04), tag: getComputedStyle(el).pointerEvents, imgPe: getComputedStyle(im).pointerEvents, solid: (OvuRoom.layout().solids || []).filter(function (b) { return b.id === 'villager-' + id; }).length,
+                feet: feet(el, im), herFeet: feet(document.querySelector('#avatar'), her), shadow: shadowW(el), herShadow: shadowW(document.querySelector('#avatar')) }; }"""
+            sh = await pv.evaluate(vfit, "shen")
+            mei = await pv.evaluate("()=>Number((document.querySelector('#ownedProps .nbperson[data-nb=mei]')||{style:{}}).style.zIndex)")
+            check("villagers: Shen stands in the plaza at her height (his picture within 1.5 px of hers, both on the 720 canvas), his floor block in the layout once", sh and sh["n"] == 1 and sh["nat"] == [318, 720] and sh["herNat"][1] == 720 and abs(sh["h"] - sh["herH"]) <= 1.5 and sh["solid"] == 1, sh)
+            check("villagers: nobody floats: Shen's shoes and hers sit on their floor lines (within 1.5 px), each with a contact shadow of her footprint", abs(sh["feet"]) <= 1.5 and abs(sh["herFeet"]) <= 1.5 and sh["shadow"] > 0 and abs(sh["shadow"] - sh["herShadow"]) <= 1.5, {k: sh[k] for k in ("feet", "herFeet", "shadow", "herShadow")})
+            check("villagers: only his figure takes a tap: his chest is his, the empty corner of his canvas is not; Mei in front of him draws in front", sh and sh["chest"] and not sh["corner"] and sh["tag"] == "none" and sh["imgPe"] == "auto" and mei > sh["z"] and sh["z"] != sh["herZ"], {"shen": sh, "meiZ": mei})
+            nbc = await pv.evaluate("""()=>{ var el = document.querySelector('#ownedProps .nbperson[data-nb=mei]'), r = el.querySelector('img').getBoundingClientRect(), at = function (x, y) { var e = document.elementFromPoint(r.left + r.width * x, r.top + r.height * y); return e && e.closest && e.closest('.nbperson') ? e.closest('.nbperson').dataset.nb : null; }; return {chest: at(0.5, 0.45), corner: at(0.03, 0.03), tag: getComputedStyle(el.querySelector('.nbtag')).pointerEvents, clip: !!el.querySelector('img').style.clipPath}; }""")
+            check("villagers: a neighbour takes taps only on her figure too (Mei's chest is hers, her canvas corner and name tag are not), so taps reach Shen behind her", nbc["chest"] == "mei" and nbc["corner"] is None and nbc["tag"] == "none" and nbc["clip"], nbc)
+            # a props render and a friends redraw (which clears every .nb) leave exactly one Shen
+            await pv.evaluate("()=>{ OvuRoom.renderProps(); OvuCommunity.redraw(); }"); await pv.wait_for_timeout(300)
+            one = await pv.evaluate("()=>({n: document.querySelectorAll('#ownedProps .villager').length, shenZ: Number(document.querySelector('#ownedProps .villager[data-id=shen]').style.zIndex), meiZ: Number(document.querySelector('#ownedProps .nbperson[data-nb=mei]').style.zIndex) || 0})")
+            check("villagers: a props render and a friends redraw leave exactly one Shen, and Mei (in front of him) is ranked in front again", one["n"] == 1 and one["meiZ"] > one["shenZ"], one)
+            # tap his chest: she walks to his side and his sheet opens with a greeting
+            box = await pv.evaluate("()=>{ var r = document.querySelector('#ownedProps .villager[data-id=shen] img').getBoundingClientRect(); return {x: r.left + r.width * 0.5, y: r.top + r.height * 0.42}; }")
+            await pv.mouse.click(box["x"], box["y"])
+            try: await pv.wait_for_function("()=>OvuRoom.sheetId()==='villager-shen' && document.querySelector('#vSay')", timeout=12000)
+            except Exception: pass
+            g = await pv.evaluate("()=>({id: OvuRoom.sheetId(), say: (document.querySelector('#vSay')||{}).textContent||'', talk: !!document.querySelector('#vActs [data-v=talk]:not([disabled])'), pos: OvuRoom.pos(), want: OvuVillagers.byId('shen').talkAt})")
+            check("villagers: a tap on Shen walks her to his side and opens his sheet with a greeting that knows the season", g["id"] == "villager-shen" and len(g["say"]) > 40 and g["talk"] and abs(g["pos"]["x"] - g["want"]["x"]) < 1.5 and abs(g["pos"]["y"] - g["want"]["y"]) < 1.5 and any(s in g["say"] for s in ["Spring", "Summer", "Autumn", "Winter"]), g)
+            await pv.click("#vActs [data-v=talk]")
+            try: await pv.wait_for_function("()=>document.querySelectorAll('#vActs [data-reply]').length >= 2", timeout=8000)
+            except Exception: pass
+            q = await pv.evaluate("()=>({n: document.querySelectorAll('#vActs [data-reply]').length, ask: document.querySelector('#vSay').textContent, pinned: (OvuStore.state().villagers.shen||{}).chat, pts: OvuStore.state().villagers.shen.points||0})")
+            check("villagers: Talk shows his question with two or three replies; the topic is pinned for the day and nothing is counted yet", 2 <= q["n"] <= 3 and q["pinned"] and q["pinned"]["reply"] is None and q["pts"] == 0 and "?" in q["ask"], q)
+            await pv.click("#vActs [data-reply] >> nth=1")
+            try: await pv.wait_for_function("()=>document.querySelector('#vSay .vyou')", timeout=8000)
+            except Exception: pass
+            a = await pv.evaluate("()=>{ var V = OvuVillagers, st = OvuStore.state().villagers.shen, t = V.topicById(V.byId('shen'), st.chat.topic), r = t.replies.filter(function(x){return x.id===st.chat.reply;})[0]; return {pts: st.points, said: document.querySelector('#vSay .vyou').textContent, ans: document.querySelector('#vSay .vline').textContent, want: r.back, mine: r.say, talked: (document.querySelector('#vActs [data-v=talk]')||{}).textContent, dis: document.querySelector('#vActs [data-v=talk]').disabled, focus: document.activeElement && document.activeElement.id}; }")
+            check("villagers: her reply is answered in character, counts once (3 points), Talk reads Talked today, and focus moves to his answer", a["pts"] == 3 and a["mine"] in a["said"] and a["ans"] == a["want"] and a["dis"] and "Talked today" in a["talked"] and a["focus"] == "vSay", a)
+            cr = await pv.evaluate("""()=>{ function rgb(c) { var m = c.match(/[0-9.]+/g).map(Number); return m; } function lum(c) { return [0, 1, 2].map(function (i) { var v = c[i] / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }).reduce(function (a, v, i) { return a + v * [0.2126, 0.7152, 0.0722][i]; }, 0); }
+              function bg(el) { while (el) { var c = rgb(getComputedStyle(el).backgroundColor); if (c.length < 4 || c[3] > 0.9) { if (c.length >= 3 && !(c.length === 4 && c[3] === 0)) return c; } el = el.parentElement; } return [255, 255, 255]; }
+              return ['.vask', '.vyou', '.vline'].map(function (sel) { var el = document.querySelector('#vSay ' + sel), a = lum(rgb(getComputedStyle(el).color)), b = lum(bg(el)); return Math.round((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05) * 100) / 100; }); }""")
+            check("villagers: his question, her reply and his answer all read at 4.5:1 or better on the sheet", all(x >= 4.5 for x in cr), cr)
+            await pv.evaluate("()=>OvuRoom.closeSheet()"); await pv.wait_for_timeout(300)
+            await pv.evaluate("()=>OvuVillagers.openVillager('shen')"); await pv.wait_for_timeout(300)
+            re_ = await pv.evaluate("()=>({recap: !!document.querySelector('#vSay .vyou'), dis: document.querySelector('#vActs [data-v=talk]').disabled, pts: OvuStore.state().villagers.shen.points})")
+            check("villagers: reopening the same day shows the exchange again and counts nothing more", re_["recap"] and re_["dis"] and re_["pts"] == 3, re_)
+            await pv.evaluate("()=>OvuRoom.closeSheet()"); await pv.wait_for_timeout(300)
+            # keyboard: Enter on his button opens his sheet
+            await pv.evaluate("()=>document.querySelector('#ownedProps .villager[data-id=shen]').focus()"); await pv.keyboard.press("Enter")
+            try: await pv.wait_for_function("()=>OvuRoom.sheetId()==='villager-shen'", timeout=10000)
+            except Exception: pass
+            kb = await pv.evaluate("()=>OvuRoom.sheetId()")
+            check("villagers: his button is a real button: Enter opens his sheet", kb == "villager-shen", kb)
+            await pv.evaluate("()=>OvuRoom.closeSheet()"); await pv.wait_for_timeout(300)
+            # the harbour: Lu at her height on his wider canvas; a loved dish named in his thanks; the 2-heart scene waits behind Continue
+            await pv.evaluate("()=>{ var f = OvuFarm.farmState(OvuStore); f.dishes = Object.assign({}, f.dishes || {}, {tomatoegg: 1}); OvuStore.setState({farm: f}); OvuWalk.travel('harbour', {entry: {x: 34, y: 73, flip: false}}); }")
+            try: await pv.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='harbour' && !document.querySelector('#scene').classList.contains('fading') && document.querySelector('#ownedProps .villager[data-id=lu] img').complete", timeout=12000)
+            except Exception: pass
+            await pv.evaluate("()=>{ document.querySelector('#ownedProps .villager[data-id=lu]').focus(); }"); await pv.wait_for_timeout(900)
+            lu = await pv.evaluate(vfit, "lu")
+            check("villagers: Lu stands at the harbour at her height on his wider canvas (364 wide, within 1.5 px of hers); only his figure takes a tap", lu and lu["nat"] == [364, 720] and abs(lu["h"] - lu["herH"]) <= 1.5 and lu["chest"] and not lu["corner"] and lu["solid"] == 1, lu)
+            check("villagers: nobody floats: Lu's shoes and hers sit on their floor lines (within 1.5 px), his contact shadow her footprint though his canvas is wider", abs(lu["feet"]) <= 1.5 and abs(lu["herFeet"]) <= 1.5 and lu["shadow"] > 0 and abs(lu["shadow"] - lu["herShadow"]) <= 1.5, {k: lu[k] for k in ("feet", "herFeet", "shadow", "herShadow")})
+            await pv.evaluate("()=>OvuVillagers.openVillager('lu')"); await pv.wait_for_timeout(300)
+            await pv.click("#vActs [data-v=talk]")
+            try: await pv.wait_for_function("()=>document.querySelectorAll('#vActs [data-reply]').length >= 2", timeout=8000)
+            except Exception: pass
+            await pv.click("#vActs [data-reply] >> nth=0")
+            try: await pv.wait_for_function("()=>document.querySelector('#vSay .vyou')", timeout=8000)
+            except Exception: pass
+            gift = await pv.evaluate("()=>{ var b = [...document.querySelectorAll('#vGifts [data-gift]')].filter(function(x){ return /Tomato and egg/.test(x.textContent); })[0]; if (!b) return null; b.click(); return true; }")
+            try: await pv.wait_for_function("()=>document.querySelector('#vSay .vthanks')", timeout=8000)
+            except Exception: pass
+            gv = await pv.evaluate("()=>({gift: true, thanks: (document.querySelector('#vSay .vthanks')||{}).textContent||'', id: OvuRoom.sheetId(), cont: !!document.querySelector('#vActs [data-v=scene]'), pts: OvuStore.state().villagers.lu.points, dish: (OvuFarm.farmState(OvuStore).dishes||{}).tomatoegg||0})")
+            check("villagers: a loved dish is named in Lu's thanks, leaves the bag in the same save, and the 2-heart scene waits behind Continue so his answer shows first", gift and "tomato and egg" in gv["thanks"].lower() and gv["id"] == "villager-lu" and gv["cont"] and gv["pts"] == 26 and gv["dish"] == 0, gv)
+            await pv.click("#vActs [data-v=scene]")
+            try: await pv.wait_for_function("()=>OvuRoom.sheetId()==='villager-event'", timeout=8000)
+            except Exception: pass
+            await pv.click("#vEvDone")
+            try: await pv.wait_for_function("()=>OvuRoom.sheetId()==='villager-lu'", timeout=8000)
+            except Exception: pass
+            ev = await pv.evaluate("()=>({seen: OvuStore.state().villagers.lu.seen, chat: !!OvuStore.state().villagers.lu.chat.reply, spy: window.__vspy})")
+            check("villagers: the heart scene is kept, today's exchange survives it, and nothing wrote a diary entry or spent hearts", ev["seen"] == [2] and ev["chat"] and ev["spy"]["add"] == 0 and ev["spy"]["spend"] == 0, ev)
+            # a change queued behind another tab's farm lock lands only if its sheet is still open: Talk, a reply and a gift, each closed before the lock frees
+            await pv.evaluate("()=>{ OvuRoom.closeSheet(); var f = OvuFarm.farmState(OvuStore); f.dishes = Object.assign({}, f.dishes || {}, {pandanrice: 1}); OvuStore.setState({farm: f, villagers: Object.assign({}, OvuStore.state().villagers, {shen: {points: 3, seen: []}})}); OvuWalk.travel('plaza', {entry: {x: 20, y: 58, flip: false}}); }")
+            await pv.wait_for_timeout(1500)
+            pl = await ctxV.new_page(); await pl.route("**/*", gate); await pl.goto(BASE + "404.html", wait_until="domcontentloaded")
+            BARRIER = "()=>navigator.locks.request('ovumind-farm', function () { return true; })"  # Web Locks grant in request order: this waits until the queued write has run (Codex round 2)
+            HOLD = "()=>{ window.__held = new Promise(function (got) { navigator.locks.request('ovumind-farm', function () { got(true); return new Promise(function (r) { window.__release = r; }); }); }); return window.__held; }"
+            async def queued(action):
+                await pl.evaluate(HOLD)
+                await pv.evaluate("()=>OvuVillagers.openVillager('shen')"); await pv.wait_for_timeout(300)
+                await pv.evaluate(action); await pv.wait_for_timeout(300)
+                await pv.evaluate("()=>OvuRoom.closeSheet()"); await pv.wait_for_timeout(200)
+                await pl.evaluate("()=>window.__release()"); await pv.evaluate(BARRIER)
+                return await pv.evaluate("()=>({shen: OvuStore.state().villagers.shen, dish: (OvuFarm.farmState(OvuStore).dishes || {}).pandanrice || 0, sheet: OvuRoom.sheetId()})")
+            q1 = await queued("()=>document.querySelector('#vActs [data-v=talk]').click()")
+            await pv.evaluate("()=>OvuVillagers.openVillager('shen')"); await pv.wait_for_timeout(300)
+            await pv.evaluate("()=>document.querySelector('#vActs [data-v=talk]').click()"); await pv.wait_for_timeout(700)  # offered with the lock free: the reply buttons show
+            await pl.evaluate(HOLD)
+            await pv.evaluate("()=>document.querySelector('#vActs [data-reply]').click()"); await pv.wait_for_timeout(300)
+            await pv.evaluate("()=>OvuRoom.closeSheet()"); await pv.wait_for_timeout(200)
+            await pl.evaluate("()=>window.__release()"); await pv.evaluate(BARRIER)
+            q2 = await pv.evaluate("()=>({shen: OvuStore.state().villagers.shen, sheet: OvuRoom.sheetId()})")
+            q3 = await queued("()=>[...document.querySelectorAll('#vGifts [data-gift]')].filter(function(x){ return /Pandan rice/.test(x.textContent); })[0].click()")
+            check("villagers: a Talk, a reply and a gift queued behind another tab's farm lock change nothing once she has closed the sheet (no topic pinned, no points, the dish still in her bag)", not (q1["shen"].get("chat")) and q1["shen"]["points"] == 3 and q1["sheet"] is None and q2["shen"]["chat"]["reply"] is None and q2["shen"]["points"] == 3 and q2["sheet"] is None and q3["dish"] == 1 and q3["shen"]["points"] == 3 and not q3["shen"].get("gifted"), {"talk": q1, "reply": q2, "gift": q3})
+            await pl.close()
+            check("villagers: no page errors", not verr, verr[:3])
+            await ctxV.close()
             await check_legacy_pages(browser)  # the older pages and the Settings sheet (22 Oct)
 
             # 1t. tidy up (23 Oct): clutter on the floor by the clock, "Tidy up your room" with the magical broom (ovu-tidy.js).
