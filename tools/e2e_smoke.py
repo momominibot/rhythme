@@ -2005,7 +2005,11 @@ async def main():
             except Exception: pass
             t1 = await page.evaluate("(t0)=>({playing: OvuTones.playing(), rem: OvuTones.remaining(), sitting: OvuTones.sitting(), stop: document.querySelector('#springStop') && document.querySelector('#springStop').textContent.trim(), sheet: OvuRoom.sheetOpen(), fx: OvuSeats.fxKind(), glints: document.querySelectorAll('#seatfx .glint').length, pill: !!document.querySelector('#tonePill'), hearts: OvuRewards.ledger().hearts - t0.hearts, e: OvuStamina.value() - t0.e, d: OvuStore.list().length - t0.d})", t0)
             await page.click('#springStop'); await page.wait_for_timeout(300)
-            t2 = await page.evaluate("()=>({playing: OvuTones.playing(), sitting: OvuTones.sitting(), stop: !!document.querySelector('#springStop'), fx: OvuSeats.fxKind()})")
+            t2 = await page.evaluate("()=>({playing: OvuTones.playing(), sitting: OvuTones.sitting(), stop: !!document.querySelector('#springStop'), fx: OvuSeats.fxKind(), live: OvuTones.liveNodes()})")
+            try: await page.wait_for_function("()=>OvuTones.liveNodes()===0", timeout=12000)
+            except Exception: pass
+            t2["liveAfter"] = await page.evaluate("()=>OvuTones.liveNodes()")
+            check("the sung-bowl voice (22 Oct) holds its nodes while it fades after Stop and lets every one go within a few seconds", t2["live"] > 0 and t2["liveAfter"] == 0, t2)
             check("the warm stone offers nine pitches and a length with no promises; Sit by the water hums at the chosen pitch for the chosen time with her seated and crystal glints; one Stop sound and stand up ends both; nothing is written, paid or spent", t0["sheet"] == "cavetones" and t0["chips"] == 9 and not t0["claim"] and t0["btn"].endswith("Sit by the water") and t1["playing"] == 396 and 590 <= t1["rem"] <= 600 and t1["sitting"] and t1["stop"].endswith("Stop sound and stand up") and not t1["sheet"] and t1["fx"] == "crystals" and t1["glints"] == 7 and not t1["pill"] and t1["hearts"] == 0 and t1["e"] >= 0 and t1["d"] == 0 and t2["playing"] is None and not t2["sitting"] and not t2["stop"] and t2["fx"] is None, {"t0": t0, "t1": t1, "t2": t2})
             await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('crystals'))")
             try: await page.wait_for_function("()=>OvuRoom.sheetOpen() && OvuRoom.sheetId && OvuRoom.sheetId()==='cavetones'", timeout=12000)
@@ -2018,6 +2022,22 @@ async def main():
             await go_to('barn'); await go_to('farm')
             ta = await page.evaluate("()=>({playing: OvuTones.playing(), sitting: OvuTones.sitting()})")
             check("a tone left humming stops, and she is up, as soon as she leaves the spring", tb == 396 and ta["playing"] is None and not ta["sitting"], {"before": tb, "after": ta})
+            # a timed quiet sit (no sound) stood up early must leave no timer behind (Codex round three, 23 Oct): back in, Just sit for ten minutes, Stand up, Just sit again untimed
+            await go_to('barn'); await go_to('cave')
+            await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('warmstone'))")
+            try: await page.wait_for_function("()=>OvuRoom.sheetOpen() && OvuRoom.sheetId && OvuRoom.sheetId()==='cavetones'", timeout=12000)
+            except Exception: pass
+            await page.click("#toneSnd .chipbtn[data-snd='none']"); await page.click("#toneMin .chipbtn[data-min='10']"); await page.click("#toneActs [data-tone=start]"); await page.wait_for_timeout(300)
+            q1 = await page.evaluate("()=>({sitting: OvuTones.sitting(), rem: OvuTones.remaining(), playing: OvuTones.playing()})")
+            await page.click('#springStop'); await page.wait_for_timeout(300)
+            await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('warmstone'))")
+            try: await page.wait_for_function("()=>OvuRoom.sheetOpen() && OvuRoom.sheetId && OvuRoom.sheetId()==='cavetones'", timeout=12000)
+            except Exception: pass
+            await page.click("#toneSnd .chipbtn[data-snd='none']"); await page.click("#toneMin .chipbtn[data-min='0']"); await page.click("#toneActs [data-tone=start]"); await page.wait_for_timeout(300)
+            q2 = await page.evaluate("()=>({sitting: OvuTones.sitting(), rem: OvuTones.remaining(), playing: OvuTones.playing()})")
+            await page.click('#springStop'); await page.wait_for_timeout(300)
+            check("a timed quiet sit stood up early leaves no timer: the next untimed sit has no remaining time", q1["sitting"] and q1["playing"] is None and q1["rem"] is not None and 590 <= q1["rem"] <= 600 and q2["sitting"] and q2["rem"] is None, {"q1": q1, "q2": q2})
+            await go_to('barn'); await go_to('farm')  # back where the block left her, for the farm gate check that follows
             await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('farmgate'))")
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout === 'garden'", timeout=12000)
             except Exception: pass
