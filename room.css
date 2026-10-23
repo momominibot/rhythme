@@ -2561,6 +2561,19 @@ button.rmgroup:focus-visible{outline:3px solid var(--rm-mauve);outline-offset:2p
 .rmreasons label{display:flex;gap:8px;align-items:center;font:600 13px var(--sans);color:var(--rm-ink)}
 .rmreasons input{accent-color:var(--rm-mauve)}
 
+/* Tideline Gym workouts (ovu-gym.js, 22 Oct): her strip on the machine, feet on the cell's bottom edge, clipped where the
+   plate stands in front of her; a flipped station mirrors the cell, not the strip, so the frame step still works */
+.nb.gymworker{transform:translate(-50%,-100%);pointer-events:none;--cs:.55}
+.nb.gymworker .gwcell{position:relative;width:100%;overflow:hidden}
+.nb.gymworker .gwcell img{position:absolute;left:0;top:0;height:100%;max-width:none;display:block;will-change:transform,opacity}
+.nb.gymworker .gwcell img.gwb{opacity:0}
+.nb.gymworker.flip .gwcell{transform:scaleX(-1)}
+.nb.gymworker.flip img{transform:none}
+.nb.gym-treadmill::before,.nb.gym-bike::before{display:none}
+.mvfrom{font-weight:700;color:var(--rm-plum)}
+@media (prefers-reduced-motion:reduce){.nb.gymworker .gwcell img{transition:none!important}}
+#scene.gymming .hotspot .pulse{opacity:0} /* no tap rings over her while she works out */
+
 /* ---------- tidy up (ovu-tidy.js, 23 Oct): a few things on the floor and the magical broom that sweeps them.
    #tidyLayer sits beside #ownedProps with no stacking context of its own, so the one depth sort ranks its children with
    her and the pets; every piece gets the same ground contact shadow as her (nothing floats) and no drop-shadow offset ---------- */

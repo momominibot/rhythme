@@ -266,7 +266,7 @@
    * already in the layout. A shopkeeper (.keeper) is ranked by its feet and is not a solid either: its block is in the layout; so is a
    * villager (.villager, ovu-villagers.js) */
   function sprites() {
-    return Array.prototype.slice.call(doc.querySelectorAll('#ownedProps .prop.owned, #ownedProps .nb, #ownedProps .plot, #ownedProps .keeper, #ownedProps .villager, #plateOcc .plate-occ, #tidyLayer .tidy')).map(function (el) { var occ = el.classList.contains('plate-occ'), x = parseFloat(el.style.left), w = parseFloat(el.style.width) || 8; return { el: el, id: el.dataset.id, x: x, cx: occ ? x + w / 2 : x, y: parseFloat(occ ? el.dataset.base : el.style.top), w: w, solid: !occ && !el.classList.contains('plot') && !el.classList.contains('keeper') && !el.classList.contains('villager') && !el.classList.contains('tidy') }; }).filter(function (p) { return isFinite(p.x) && isFinite(p.y); }); /* cx: a cutout is placed by its left edge, the rest by their centre */
+    return Array.prototype.slice.call(doc.querySelectorAll('#ownedProps .prop.owned, #ownedProps .nb, #ownedProps .plot, #ownedProps .keeper, #ownedProps .villager, #plateOcc .plate-occ, #tidyLayer .tidy')).map(function (el) { var occ = el.classList.contains('plate-occ'), x = parseFloat(el.style.left), w = parseFloat(el.style.width) || 8; return { el: el, id: el.dataset.id, x: x, cx: occ ? x + w / 2 : x, y: parseFloat(occ ? el.dataset.base : el.style.top), w: w, solid: !occ && !el.classList.contains('plot') && !el.classList.contains('keeper') && !el.classList.contains('villager') && !el.classList.contains('tidy') && !el.classList.contains('nosolid') }; }).filter(function (p) { return isFinite(p.x) && isFinite(p.y); }); /* cx: a cutout is placed by its left edge, the rest by their centre */
   }
   /* the layout's foreground cutouts (L.occluders; only the wide street has any). They live in #plateOcc, a layer of their own
    * beside #ownedProps with no stacking context, so the one depth sort covers them with her and the pets, while a props
@@ -358,7 +358,7 @@
   function outfitNow() { var m = /avatar-([a-z0-9-]+?)(?:-blink)?\.webp/.exec(avatar.querySelector('#avatarImg').getAttribute('src') || ''); return m && m[1].indexOf('act-') !== 0 && m[1] !== 'meditate' && m[1] !== 'sleeping' ? m[1] : null; }
   /* the outfits with walk strips drawn (tools/art/walkcycle.py). An outfit missing here, or a missing direction, falls back
      without a request, so a drop without strips yet (the gown, the kebayas, the tudung) does not log a 404 per direction */
-  var STRIPS = { base: 'side away towards', cozy: 'side away towards', pajamas: 'side away towards', party: 'side away', sundress: 'side away towards', yoga: 'side away towards' };
+  var STRIPS = { base: 'side away towards', cozy: 'side away towards', pajamas: 'side away towards', party: 'side away', sundress: 'side away towards', yoga: 'side away towards', 'gym-tudung': 'side' }; /* the gym's covered-head kit walks on the treadmill (ovu-gym.js) */
   function sheet(outfit, dir) {
     var k = outfit + '-' + dir, e = cyc.sheets[k];
     if (!e && (!STRIPS[outfit] || STRIPS[outfit].indexOf(dir) < 0)) return (cyc.sheets[k] = { ok: false, img: { src: '' } });

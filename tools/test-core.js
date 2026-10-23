@@ -2783,7 +2783,7 @@ function scenes(todayIso) {
   var mine = function () { return Object.keys(L._m).filter(function (k) { return /^(ovumind_|ovuluna_|ov_|rhythme_)/.test(k); }).sort(); }, before = mine();
   S.clearAll();
   var left = mine();
-  check('Delete everything removes the diary and every older copy by an explicit list (meal and sleep mirrors, cycle mirror, earlier pages\' logs and scores, podcast listening), keeping the sign-in, backup bookkeeping and Plus access, and never another project\'s key on the shared origin', before.indexOf('ovumind_food_journal') > -1 && before.indexOf('ovuluna_sleep_logs') > -1 && left.join() === 'ov_unrelated_site,ovumind_auth_v1,ovumind_db_v1,ovumind_sync_v1,rhythme_plus_v1' && S.list(null).length === 0 && L.getItem('other_site_key') === 'keep', JSON.stringify({ before: before, left: left }));
+  check('Delete everything removes the diary and every older copy by an explicit list (meal and sleep mirrors, cycle mirror, earlier pages\' logs and scores, podcast listening), keeping the sign-in, backup bookkeeping and Plus access (plus a fresh diary token, which is not diary data), and never another project\'s key on the shared origin', before.indexOf('ovumind_food_journal') > -1 && before.indexOf('ovuluna_sleep_logs') > -1 && left.join() === 'ov_unrelated_site,ovumind_auth_v1,ovumind_db_epoch_v1,ovumind_db_v1,ovumind_sync_v1,rhythme_plus_v1' && S.list(null).length === 0 && L.getItem('other_site_key') === 'keep', JSON.stringify({ before: before, left: left }));
   var w3 = fresh('2026-10-20'), S3 = w3.OvuStore, L3 = w3.localStorage;
   var pe = S3.add('period', '2026-10-18', { flow: 'medium' }); var hadCycle = !!L3.getItem('ovumind_cycle'); S3.remove(pe.id);
   S3.add('food', '2026-10-20', { meal: 'lunch', foods: 'laksa', items: [] }); S3.add('sleep', '2026-10-20', { bedTime: '23:00', wakeTime: '07:00', quality: 4 });
@@ -4402,6 +4402,189 @@ var summarised = false;
   check('Back inside the drawn lane closes the counter, and the lane\u2019s sheet lists the places without carrying her between them; the map inside a room pins the room\u2019s own doors and starts the way with leaving it (Codex, 21 Oct)', /if \(standing\(\)\) R\.closeSheet\(\); else openLane\(\);/.test(lsrc) && /if \(box && !walkable\(\)\) box\.addEventListener/.test(lsrc) && /concat\(L\.mapExits \|\| \[\]\)/.test(msrc) && /routeHTML\(g, here, first, lead\)/.test(msrc));
   check('each handler answers only in its own place', HH.lanegrocer('lanegrocer', Lof('harbour')) === false && HH.grocercounter('grocercounter', Lof('lane')) === false && HH.gymdoor('gymdoor', Lof('lane-boutique')) === false);
   check('room.html loads the lane’s places right after the lane, and the service worker has a new version', (function () { var h = fs.readFileSync(path.join(root, 'room.html'), 'utf8'); return h.indexOf('<script src="ovu-lanescene.js"></script>') === h.indexOf('<script src="ovu-lane.js"></script>') + '<script src="ovu-lane.js"></script>\n'.length; })() && /var VERSION = 'ovumind-2026-1[01]-(2[1-9]|3[01])-[a-z0-9-]+';/.test(fs.readFileSync(path.join(root, 'sw.js'), 'utf8')));
+})();
+
+(function gymWorkouts() {
+  console.log('2k7c2. Tideline Gym workouts (22 Oct): each station is a workout she does on the machine in her workout clothes, a picture only; the movement log is offered only after a minute; one activity at a time; she is never left half dressed or invisible');
+  var read = function (f) { return fs.readFileSync(path.join(root, f), 'utf8'); };
+  var w = scenes('2026-10-22'); w.OvuRoom = null; w.OvuZones = null;
+  ['ovu-farm.js', 'ovu-stamina.js', 'ovu-harbour.js', 'ovu-lane.js', 'ovu-lanescene.js', 'ovu-gym.js'].forEach(function (f) { vm.runInContext(read(f), w, { filename: f }); });
+  var GY = w.OvuGym, LS = w.OvuLaneScene, LN = w.OvuLane, gsrc = read('ovu-gym.js'), rsrc = read('room.js'), wsrc = read('ovu-walk.js'), lsrc = read('ovu-lanescene.js');
+  var ART = path.join(root, 'assets/room/dream');
+  function webpSize(file) {
+    var b = fs.readFileSync(file), kind = b.toString('ascii', 12, 16);
+    if (kind === 'VP8X') return { w: 1 + b.readUIntLE(24, 3), h: 1 + b.readUIntLE(27, 3) };
+    if (kind === 'VP8L') { var v = b.readUInt32LE(21); return { w: 1 + (v & 0x3fff), h: 1 + ((v >> 14) & 0x3fff) }; }
+    return { w: b.readUInt16LE(26) & 0x3fff, h: b.readUInt16LE(28) & 0x3fff };
+  }
+  check('four workouts, one per station, in the gym\'s order, each the activity its station already logs', GY.ORDER.join() === LS.GYMSPOTS.map(function (g) { return g.id; }).join() && GY.ORDER.join() === LN.STATIONS.map(function (s) { return s.id; }).join() && LN.STATIONS.every(function (s) { return GY.STATIONS[s.id] && GY.STATIONS[s.id].act === s.act; }));
+  check('her gym kit: the covered-head kit for a tudung wearer, the yoga set for everyone else', GY.kitFor('tudung') === 'gym-tudung' && ['base', 'yoga', 'gown', 'pajamas', 'kebaya-blue', undefined].every(function (o) { return GY.kitFor(o) === 'yoga'; }) && GY.KITS.join() === 'yoga,gym-tudung');
+  var missing = [];
+  GY.KITS.forEach(function (kit) { GY.ORDER.forEach(function (id) {
+    var m = GY.strip(kit, id); if (!m) { missing.push(kit + '/' + id + ' none'); return; }
+    var f = path.join(ART, m.file); if (!fs.existsSync(f)) { missing.push(m.file + ' missing'); return; }
+    var sz = webpSize(f), side = path.join(ART, m.file.replace(/\.webp$/, '.json')), meta = fs.existsSync(side) ? JSON.parse(fs.readFileSync(side, 'utf8')) : null;
+    if (sz.w !== m.frames * m.w || sz.h !== m.h) missing.push(m.file + ' is ' + sz.w + 'x' + sz.h);
+    if (!meta || meta.frames !== m.frames || meta.w !== m.w || meta.h !== m.h || meta.standW !== m.standW) missing.push(m.file + ' sidecar ' + JSON.stringify(meta && [meta.frames, meta.w, meta.h, meta.standW]));
+    if (m.frames < 2) missing.push(m.file + ' has one frame');
+  }); });
+  check('every station has its strip in both kits, on disk at frames times the cell, matching its sidecar, with something to animate', missing.length === 0, missing.join(' | '));
+  check('the covered-head kit has its standing picture, its blink and its fit, and walks with a side strip (never a sprite that shows her hair)', fs.existsSync(path.join(ART, 'avatar-gym-tudung.webp')) && fs.existsSync(path.join(ART, 'avatar-gym-tudung-blink.webp')) && /'gym-tudung':\[1(\.0)?,0\.\d+\]/.test(rsrc) && /'gym-tudung': 'side'/.test(wsrc) && fs.existsSync(path.join(ART, 'avatar-walk-gym-tudung-side.webp')));
+  var loop = { kind: 'loop', fps: 8 }, fade = { kind: 'fade', hold: 2000, fade: 900 };
+  check('frames: a loop steps at its rate and wraps; a fade holds each frame; reduced motion keeps the still frame', GY.frameAt(loop, 8, 0) === 0 && GY.frameAt(loop, 8, 125) === 1 && GY.frameAt(loop, 8, 999) === 7 && GY.frameAt(loop, 8, 1000) === 0 && GY.frameAt(fade, 2, 1999) === 0 && GY.frameAt(fade, 2, 2000) === 1 && GY.frameAt(fade, 2, 4000) === 0 && GY.frameAt(loop, 8, 625, true) === 0 && GY.frameAt(fade, 4, 99999, true) === 0);
+  check('minutes for the log: nothing under a minute of active time (59.9 s is not a minute), then rounded, never zero', GY.minutesFor(59999) === 0 && GY.minutesFor(59900) === 0 && GY.minutesFor(60000) === 1 && GY.minutesFor(89999) === 1 && GY.minutesFor(90000) === 2 && GY.minutesFor(600000) === 10 && GY.minutesFor(-5) === 0 && GY.minutesFor(NaN) === 0);
+  var b = GY.box({ x: 50, y: 50 }, 10, 20), cp = GY.clipLocal([[50, 40], [45, 30], [55, 50]], b);
+  check('the clip: a plate polygon in the strip\'s own percent (feet at the bottom centre)', b.left === 45 && b.top === 30 && cp === 'polygon(50.00% 50.00%, 0.00% 0.00%, 100.00% 100.00%)' && GY.clipLocal(null, b) === '', cp);
+  var t = 0, ck = GY.makeClock(function () { return t; }); ck.run(); t = 1000; ck.hold(); t = 5000; var held = ck.ms(); ck.run(); t = 6000; ck.hold(5500);
+  check('the clock counts only while running; a hold can end at the last moment it was seen, never later than now', held === 1000 && ck.ms() === 1500 && !ck.running());
+  (function () {
+    var w1 = fresh('2026-10-23'), S1 = w1.OvuStore, b0 = S1.born();
+    S1.add('reflection', '2026-10-23', { text: 'a walk' }, 'room'); var b1 = S1.born(), backup = S1.exportJSON();
+    var w2 = fresh('2026-10-23'); /* a second tab on the same storage */
+    w2.localStorage = w1.localStorage; vm.runInContext(fs.readFileSync(path.join(root, 'ovu-store.js'), 'utf8'), w2, { filename: 'ovu-store.js' });
+    w2.OvuStore.importJSON(backup, 'merge'); var b2 = S1.born();
+    w2.OvuStore.importJSON(backup, 'replace'); var b3 = S1.born();
+    w2.OvuStore.clearAll(); var b4 = S1.born();
+    check('the store says which diary this is: an ordinary save or a merging restore keeps it; another tab\'s restore that replaces the diary (even a backup of this same diary, same createdAt) or Delete everything changes it, read here at once', !!b0 && b0 === b1 && b2 === b1 && b3 !== b2 && b4 !== b3 && JSON.parse(backup).createdAt && w1.localStorage.getItem('ovumind_db_epoch_v1'), JSON.stringify([b0, b1, b2, b3, b4]));
+  })();
+  var spots = GY.ORDER.map(function (id) { return [LS.GYMSPOTS.filter(function (g) { return g.id === id; })[0].wp, GY.STATIONS[id].on]; });
+  check('no stand point and no machine spot is where the coach stands (feet 40.5, 53.2; x 38.5 to 42.5, y 51.8 to 54.6)', spots.every(function (p) { return !GY.inCoach(p[0]) && !GY.inCoach(p[1]); }) && GY.inCoach({ x: 40.5, y: 53.2 }));
+  check('the gym writes nothing by itself: no diary entry, state, profile, hearts or energy; only her Save in the movement log does', !/\bS\.add\(|setState\(|setProfile\(|\.commit\(|\.award\(|\.grant\(|\.spend\(|OvuRewards|OvuStamina|addMany\(/.test(gsrc));
+  check('its words: the world-wide emergency line, no country number, no em dash, no emoji', /local emergency number/.test(gsrc) && !/\b995\b|\b911\b|\b999\b/.test(gsrc) && gsrc.indexOf('—') < 0 && !/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(gsrc));
+  check('the stations open the workout when the gym module is there, else the movement log as before; the strip never blocks a walk; room.html loads it after the lane\'s places', /root\.OvuGym && root\.OvuGym\.open && root\.OvuGym\.open\(g\.id\)/.test(lsrc) && /R\.openExercise\(st\.act\); if \(R\.moment\)/.test(lsrc) && /!el\.classList\.contains\('nosolid'\)/.test(wsrc) && /'nb nosolid gymworker gym-'/.test(gsrc) && (function () { var h = read('room.html'), g = h.indexOf('<script src="ovu-gym.js"></script>'); return g > h.indexOf('<script src="ovu-lanescene.js"></script>') && g > h.indexOf('<script src="ovu-boutique.js"></script>') && h.indexOf('<script src="ovu-gym.js"></script>', g + 1) < 0; })());
+  check('room.js: the workout clothes are a picture only, worn through wearing(), dropped on leaving the room they began in and at bedtime; a wardrobe pick meanwhile is saved and waits', /function wearing\(\) \{ return trying \? trying\.outfit : costume \? costume\.outfit : savedOutfit\(\); \}/.test(rsrc) && /if \(!costume\) showOutfit\(id, silent\);/.test(rsrc) && /if \(costume && \(!L2 \|\| L2\.id !== costume\.at\)\) undress\(true\);/.test(rsrc) && /OvuGym\.cancel\(\); \} catch \(e\) \{ \} \/\* and a gym workout[^\n]*\n    try \{ undress\(true\); \}/.test(rsrc) && !/costume[^\n]*setProfile|setProfile[^\n]*costume/.test(rsrc));
+  check('room.js: a workout is an activity (its panel comes back when refused), keeps her off every walk, idle return and idle moment, and the bed ends it before the journey home', /kind: 'gym', name: gs && gs\.title/.test(rsrc) && /a\.kind === 'gym' && OvuGym\.reveal/.test(rsrc) && /OvuSeats\.active\(\)\) \|\| \(window\.OvuGym && OvuGym\.active && OvuGym\.active\(\)\) \|\| arranging/.test(rsrc) && /if \(\(window\.OvuGym && OvuGym\.active && OvuGym\.active\(\)\)\) return; \/\* on a gym machine/.test(rsrc) && /!\(window\.OvuGym && OvuGym\.active && OvuGym\.active\(\)\) && !\(hooks\.moving && hooks\.moving\(\)\)\) walkTo\(HOME\)/.test(rsrc) && /if \(h\.id === 'bed'\) \{ OvuGym\.cancel\(\);/.test(rsrc) && /'#gpanel'/.test(rsrc));
+  check('the movement log takes the gym\'s minutes, day and words, leaves a strength day for her to tick (even if she taps Strength again, until she ticks it herself), and saves exactly as before', /function openExercise\(pre, opt\)/.test(rsrc) && /noTick: opt\.strengthTick === false/.test(rsrc) && /str\.checked = st\.tick !== null \? st\.tick : !!a\.strength && !st\.noTick;/.test(rsrc) && /\$\('#mvStr'\)\.addEventListener\('change', function \(\) \{ st\.tick = this\.checked; preview\(\); \}\);/.test(rsrc) && /var ev = S\.add\('exercise', \$\('#mvDate'\)\.value \|\| today, data, 'room'\);/.test(rsrc));
+  check('room.js: going back to her own clothes falls back to the picture she wore before the workout if her own will not load, never the workout clothes; the camera follows her strip while her standing picture is hidden', /turnInto\(own, function \(ok\) \{ rec\.pending = false; if \(!ok\) wearOwn\(own, back\);/.test(rsrc) && /var from = leftOn\(\) \? lastCostume\.back : k && k\.indexOf\('act-'\) !== 0 \? ART \+ 'avatar-' \+ k \+ '\.webp' : '';/.test(rsrc) && /if \(!leftOn\(\)\) \{ lastCostume\.pending = false; return false; \}/.test(rsrc) && /if \(!leftOn\(\)\) \{ rec\.pending = false; return; \}/.test(rsrc) && /\(rec\.waits = \(rec\.waits \|\| 0\) \+ 1\) < 5\) \{ watchRestore\(rec\); return; \}[^\n]*\n      rec\.pending = false;/.test(rsrc) && !/R\.meditating && R\.meditating\(\)\) return;/.test(gsrc) && /if \(R\.restoring && R\.restoring\(\)\) return;/.test(gsrc) && /function wearOwn\(own, back\)/.test(rsrc) && /root\.OvuGym && root\.OvuGym\.focus && root\.OvuGym\.focus\(\)/.test(read('ovu-camera.js')));
+
+  /* the runner, with stand-ins: a tiny page, the room, the walk, the store and a clock we move by hand */
+  function harness(o) {
+    o = o || {};
+    var T = { now: 1000, timers: [], seq: 0 }, calls = [], hooks = {}, subs = [], images = [], els = {}, docH = {};
+    function timer(fn, ms, rep) { var id = ++T.seq; T.timers.push({ id: id, at: T.now + (ms || 0), fn: fn, rep: rep ? Math.max(1, ms || 1) : 0 }); return id; }
+    function clear(id) { T.timers = T.timers.filter(function (x) { return x.id !== id; }); }
+    function advance(ms) { var end = T.now + ms; for (var g = 0; g < 100000; g++) { var due = T.timers.filter(function (x) { return x.at <= end; }).sort(function (a, b) { return a.at - b.at || a.id - b.id; })[0]; if (!due) break; T.now = Math.max(T.now, due.at); if (due.rep) due.at += due.rep; else clear(due.id); due.fn(); } T.now = end; }
+    function El(tag) {
+      var cls = {}, e = { tagName: tag, style: {}, dataset: {}, children: [], parentNode: null, isConnected: false, hidden: false, disabled: false, textContent: '', _h: {}, _q: {},
+        classList: { add: function () { for (var i = 0; i < arguments.length; i++) cls[arguments[i]] = 1; }, remove: function () { for (var i = 0; i < arguments.length; i++) delete cls[arguments[i]]; }, contains: function (c) { return !!cls[c]; }, toggle: function (c, on) { if (on === undefined ? !cls[c] : on) cls[c] = 1; else delete cls[c]; } },
+        setAttribute: function () { }, addEventListener: function (ev, fn) { (e._h[ev] = e._h[ev] || []).push(fn); }, focus: function () { },
+        appendChild: function (c) { if (c.parentNode) c.remove(); c.parentNode = e; c.isConnected = true; e.children.push(c); return c; },
+        insertBefore: function (c) { return e.appendChild(c); },
+        remove: function () { var p = e.parentNode; if (p) p.children = p.children.filter(function (x) { return x !== e; }); e.parentNode = null; e.isConnected = false; },
+        querySelector: function (s) { return e._q[s] || (e._q[s] = El('img')); }, querySelectorAll: function () { return []; },
+        click: function (ev) { (e._h.click || []).forEach(function (f) { f.call(e, ev || { target: { closest: function () { return null; } } }); }); } };
+      Object.defineProperty(e, 'offsetWidth', { get: function () { return 1; } });
+      return e;
+    }
+    var doc = { hidden: false, body: El('body'), createElement: El, getElementById: function (id) { return els[id] || (els[id] = El('div')); }, addEventListener: function (ev, f) { (docH[ev] = docH[ev] || []).push(f); } };
+    var st = { layout: 'lane-gym', asleep: false, saved: o.saved || 'base', other: null, open: true, sheet: null, reduced: !!o.reduced, meditating: false, state: { sleeping: false }, born: '2026-10-01T00:00:00Z' };
+    var props = El('div'), avatar = El('div'), scene = El('div'); props.isConnected = true;
+    var R = { ART: 'assets/room/dream/', esc: function (s) { return String(s); }, reduced: function () { return st.reduced; }, layout: function () { return { id: st.layout, avatarW: 9, w: 1024, h: 1280 }; },
+      asleep: function () { return st.asleep; }, meditating: function () { return st.meditating; }, sessionOn: function () { return false; }, practiceOn: function () { return false; },
+      activityNow: function () { return st.other || (hw.OvuGym.active() ? { kind: 'gym', name: 'x', icon: 'fitness_center' } : null); }, busyLine: function (a) { return a.name + ' is running.'; },
+      refuseBusy: function () { if (st.other) { calls.push('refused'); return true; } if (hw.OvuGym.active()) { calls.push('reveal'); hw.OvuGym.reveal(); return true; } return false; },
+      toast: function (t) { calls.push('toast:' + t); }, chime: function () { }, openSheet: function (id) { st.sheet = id; calls.push('sheet:' + id); Object.keys(els).forEach(function (k) { if (/^gym/.test(k)) delete els[k]; }); },
+      hideSheet: function () { st.sheet = null; }, sheetOpen: function () { return !!st.sheet; },
+      emit: function (n, a, b) { calls.push('emit:' + n + ':' + a + ':' + b); (hooks[n] || []).forEach(function (f) { f(a, b); }); }, on: function (n, f) { if (n === 'boot') { f(); return; } (hooks[n] = hooks[n] || []).push(f); },
+      savedOutfit: function () { return st.saved; }, dressFor: function (k, done) { calls.push('dress:' + k); R._dressed = done; return true; }, undress: function (silent) { calls.push('undress:' + (silent ? 'silent' : 'turn')); },
+      placeAvatar: function (p) { calls.push('place:' + p.x + ',' + p.y); }, freezeWalk: function () { }, cancelIdle: function () { }, endMoment: function () { },
+      openExercise: function (a, opt) { calls.push('exercise:' + a + ':' + JSON.stringify(opt || null)); }, moment: function () { calls.push('moment'); },
+      els: { props: props, avatar: avatar, scene: scene } };
+    var hw = vm.createContext({ console: console, Date: Date, Math: Math, JSON: JSON, String: String, Number: Number, Object: Object, Array: Array, Promise: Promise });
+    hw.window = hw; hw.document = doc; hw.performance = { now: function () { return T.now; } };
+    hw.setTimeout = function (f, ms) { return timer(f, ms, false); }; hw.setInterval = function (f, ms) { return timer(f, ms, true); }; hw.clearTimeout = clear; hw.clearInterval = clear;
+    hw.Image = function () { var im = this; images.push(im); im.decode = function () { return { then: function (ok) { ok(); } }; }; };
+    hw.OvuStore = { today: function () { return '2026-10-22'; }, state: function () { return st.state; }, subscribe: function (f) { subs.push(f); }, born: function () { return st.born; } };
+    hw.OvuRoom = R; hw.OvuWalk = { walking: function () { return false; }, stop: function () { }, sortDepth: function () { } };
+    hw.OvuLane = { STATIONS: LN.STATIONS, openNow: function () { return st.open; }, openPlace: function (id) { calls.push('place:' + id); } };
+    hw.OvuLaneScene = { GYMSPOTS: LS.GYMSPOTS };
+    vm.runInContext(gsrc, hw, { filename: 'ovu-gym.js' });
+    var G = hw.OvuGym;
+    return { G: G, st: st, calls: calls, advance: advance, T: T, images: images, els: els, doc: doc, avatar: avatar, props: props, R: R,
+      fire: function (n, a, b) { (hooks[n] || []).forEach(function (f) { f(a, b); }); }, store: function (reason) { subs.forEach(function (f) { f(reason); }); }, vis: function () { (docH.visibilitychange || []).forEach(function (f) { f(); }); },
+      begin: function (id, len) { G.open(id); if (len) els.gymLen.click({ target: { closest: function () { return { dataset: { len: String(len) } }; } } }); els.gymBegin.click(); },
+      ready: function () { if (R._dressed) R._dressed(true); images.forEach(function (im) { if (im.onload) im.onload(); }); },
+      log: function () { return calls.filter(function (c) { return c.indexOf('exercise:') === 0; }); } };
+  }
+  var h = harness();
+  h.st.other = { kind: 'session', name: 'Just breathe', icon: 'x' }; var refusedOpen = h.G.open('treadmill'); h.st.other = null;
+  h.st.asleep = true; h.G.open('treadmill'); h.st.asleep = false;
+  check('a station\'s sheet never opens over another activity (its own controls come back) or while she sleeps', refusedOpen === true && h.calls.indexOf('refused') > -1 && h.calls.indexOf('toast:She is asleep. Tap the bed to wake her first.') > -1 && !h.calls.some(function (c) { return /^sheet:/.test(c); }));
+  h.calls.length = 0; h.begin('treadmill', 5);
+  var s0 = h.G.state();
+  check('Begin: the sheet (its own, open) is no obstacle; everything else is asked to step aside first, she stands at the stand point and turns into the yoga set; nothing is shown on the machine yet', h.calls[0] === 'sheet:gym-treadmill' && h.calls.indexOf('emit:activity:gym:treadmill') > -1 && h.calls.indexOf('dress:yoga') > h.calls.indexOf('emit:activity:gym:treadmill') && h.calls.indexOf('place:33,58') > -1 && s0.phase === 'dress' && !s0.mounted && s0.minutes === 5 && !h.avatar.classList.contains('hidden') && h.st.sheet === null, h.calls.join(' | '));
+  h.ready();
+  var s1 = h.G.state(), el = h.props.children[0];
+  check('once dressed and the strip is decoded she steps on: her standing picture hides and the strip plays on the belt, her size from her walk strip, clipped behind the window\'s arch', s1.phase === 'move' && s1.mounted && h.avatar.classList.contains('hidden') && el && /gymworker gym-treadmill flip/.test(el.className) && el.style.left === '33.8%' && el.style.top === '64.6%' && Math.abs(parseFloat(el.style.width) - 9 * 380 / 318) < 0.01 && /^polygon\(/.test(el.style.clipPath), JSON.stringify([s1, el && el.className, el && el.style]));
+  var seen = {}; for (var q = 0; q < 10; q++) { h.advance(125); seen[h.G.state().frame] = 1; } h.advance(30000 - 1250); var s2 = h.G.state();
+  check('on the belt the walk steps through its frames (at least six different ones in a second and a quarter) and after 30 s the clock reads 30 s', Object.keys(seen).length >= 6 && Math.abs(s2.ms - 30000) <= 100, JSON.stringify([Object.keys(seen), s2]));
+  h.calls.length = 0; h.els.gpStop.click(); h.advance(3000);
+  check('Stop under a minute: off the machine, she turns back into her own clothes, is seen again at the stand point, and nothing is offered or written', !h.G.active() && h.calls.indexOf('undress:turn') > -1 && h.calls.indexOf('toast:Stopped. Nothing under a minute is recorded.') > -1 && h.log().length === 0 && !h.avatar.classList.contains('hidden') && h.props.children.length === 0 && h.calls.indexOf('place:33,58') > -1, h.calls.join(' | '));
+  h.calls.length = 0; h.begin('weights', 10); h.ready(); h.advance(61000); h.els.gpStop.click(); h.advance(1200);
+  var lg = h.log();
+  check('Stop after a minute: the movement log opens with strength work chosen, 1 minute from the clock, today, her words, and the strength day left for her to tick', lg.length === 1 && lg[0].indexOf('exercise:strength:') === 0 && /"minutes":1/.test(lg[0]) && /"date":"2026-10-22"/.test(lg[0]) && /"strengthTick":false/.test(lg[0]) && /About 1 minute on the weights\. Save it if you really moved too\./.test(lg[0]), lg.join());
+  h.calls.length = 0; h.begin('mat', 5); h.ready(); h.advance(5 * 60000 + 1500);
+  lg = h.log();
+  check('the length she chose ends it by itself: the log opens with yoga and exactly 5 minutes, never more', !h.G.active() && lg.length === 1 && lg[0].indexOf('exercise:yoga:') === 0 && /"minutes":5/.test(lg[0]) && /That is 5 minutes on the mat\./.test(lg[0]), lg.join());
+  h.calls.length = 0; h.begin('bike', 10); h.ready(); h.advance(20000); h.els.gpPause.click(); var p1 = h.G.state(); h.advance(60000); var p2 = h.G.state(); h.els.gpPause.click(); h.advance(20000); var p3 = h.G.state();
+  check('Pause holds the clock and the frame; Resume carries on from there', p1.paused && Math.abs(p2.ms - p1.ms) < 1 && p2.frame === p1.frame && !p3.paused && Math.abs(p3.ms - 40000) <= 200, JSON.stringify([p1, p2, p3]));
+  h.doc.hidden = true; h.vis(); var hd = h.G.state(); h.advance(120000); var hd2 = h.G.state(); h.doc.hidden = false;
+  check('a hidden page pauses it: time away is never counted, and the panel says so on return', hd.paused && Math.abs(hd2.ms - hd.ms) < 1 && /that time is not counted/.test(h.els.gpText.textContent), JSON.stringify([hd, hd2, h.els.gpText.textContent]));
+  h.els.gpPause.click(); var f0 = h.G.state().ms; h.T.now += 15000; h.advance(150); var f1 = h.G.state();
+  check('a page that froze without saying so adds nothing: the clock stops where it was last seen running', f1.paused && f1.ms - f0 < 400 && /that time is not counted/.test(h.els.gpText.textContent), JSON.stringify([f0, f1, h.els.gpText.textContent]));
+  h.calls.length = 0; h.fire('activity', 'practice', 'teeth');
+  check('another activity starting ends the workout at once: her own clothes back without a turn, nothing asked', !h.G.active() && h.calls.indexOf('undress:silent') > -1 && h.log().length === 0 && !h.calls.some(function (c) { return /^toast:/.test(c); }) && !h.avatar.classList.contains('hidden'), h.calls.join(' | '));
+  h.calls.length = 0; h.begin('treadmill', 10); h.ready(); h.advance(90000); h.st.layout = 'lane'; h.calls.length = 0; h.fire('layout', { id: 'lane' }); h.advance(3000);
+  check('leaving the gym ends it with nothing asked; she is shown in the new scene where it put her, not walked back to the gym\'s spot', !h.G.active() && h.calls.indexOf('undress:silent') > -1 && !h.calls.some(function (c) { return /^place:/.test(c); }) && h.log().length === 0 && !h.avatar.classList.contains('hidden') && h.props.children.length === 0, h.calls.join(' | '));
+  h.st.layout = 'lane-gym'; h.begin('treadmill', 10); h.ready(); h.advance(90000); h.calls.length = 0; h.st.asleep = true; h.st.state.sleeping = true; h.store('state'); h.advance(3000);
+  check('bedtime from another tab ends it with nothing asked and shows her again (this tab draws no sleeper, so she must not vanish)', !h.G.active() && h.calls.indexOf('undress:silent') > -1 && h.log().length === 0 && !h.avatar.classList.contains('hidden'), h.calls.join(' | '));
+  h.st.asleep = false; h.st.state.sleeping = false; h.begin('treadmill', 10); h.ready(); h.advance(5000); h.R.els.scene.classList.add('is-night'); h.st.asleep = true; h.st.state.sleeping = true; h.store('state');
+  check('bedtime in this tab: its night hides her itself, so the gym leaves her hidden', !h.G.active() && h.avatar.classList.contains('hidden'));
+  h.R.els.scene.classList.remove('is-night');
+  h.st.asleep = false; h.st.state.sleeping = false; h.avatar.classList.remove('hidden');
+  h.begin('treadmill', 10); h.ready(); h.advance(90000); h.calls.length = 0; h.store('clear'); h.advance(3000);
+  check('clearing her data ends it with nothing asked', !h.G.active() && h.calls.indexOf('undress:silent') > -1 && h.log().length === 0);
+  h.begin('treadmill', 10); h.ready(); h.advance(90000); h.calls.length = 0; h.store('sync'); h.store('profile'); var gone = h.props.children[0]; gone.remove(); var elx = h.G.state(); h.fire('props'); h.advance(1000);
+  check('a cloud pull or a props rebuild changes nothing she is doing: the workout runs on, back on the machine', h.G.active() && h.G.state().ms > elx.ms && h.props.children.length === 1 && h.log().length === 0, JSON.stringify(h.G.state()));
+  h.st.sheet = 'calendar'; h.calls.length = 0; h.els.gpStop.click(); h.advance(5000);
+  var waited = h.log().length; h.st.sheet = null; h.advance(500);
+  check('the log never replaces another open sheet: it waits for it to close, then opens', waited === 0 && h.log().length === 1 && h.calls.some(function (c) { return /^toast:Well done/.test(c); }), h.calls.join(' | '));
+  h.begin('treadmill', 10); h.ready(); h.advance(90000); h.st.sheet = 'calendar'; h.calls.length = 0; h.els.gpStop.click(); h.advance(2000); h.fire('activity', 'session', 'erin'); h.st.sheet = null; h.advance(2000);
+  check('a waiting log offer is dropped when anything else starts, so it never opens over a newer activity', h.G.pendingAsk() === false && h.log().length === 0, h.calls.join(' | '));
+  h.begin('treadmill', 10); h.ready(); h.advance(90000); h.calls.length = 0; h.fire('beforeWalk'); h.advance(100);
+  check('a walk that starts anyway finishes the workout early: clothes back without a turn, the log offered for what she did', !h.G.active() && h.calls.indexOf('undress:silent') > -1 && h.log().length === 1 && /"minutes":2/.test(h.log()[0]), h.calls.join(' | '));
+  var hx = harness(); hx.begin('treadmill', 10); hx.doc.hidden = true; hx.vis(); hx.ready(); hx.advance(30000); var hz = hx.G.state(); hx.doc.hidden = false;
+  check('locked while she was changing: she waits on the machine paused, with nothing counted, and the panel says time away is not counted', hz.phase === 'move' && hz.paused && hz.away && hz.ms === 0 && /that time is not counted/.test(hx.els.gpText.textContent), JSON.stringify(hz));
+  hx.els.gpPause.click(); hx.advance(59900); hx.calls.length = 0; hx.els.gpStop.click(); hx.advance(2000);
+  check('then 59.9 s of visible time is still under a minute: nothing is offered', hx.log().length === 0 && hx.calls.indexOf('toast:Stopped. Nothing under a minute is recorded.') > -1, hx.calls.join(' | '));
+  var hv = harness(); hv.begin('treadmill', 10); hv.ready(); hv.advance(10000); hv.T.now += 120000; hv.doc.hidden = true; hv.vis(); var v1 = hv.G.state(); hv.doc.hidden = false;
+  var hp = harness(); hp.begin('treadmill', 10); hp.ready(); hp.advance(10000); hp.T.now += 120000; hp.els.gpPause.click(); var v2 = hp.G.state(); hp.calls.length = 0; hp.els.gpStop.click(); hp.advance(2000);
+  check('a page that froze, then went hidden or was paused before the next tick, still counts only the time seen running', v1.paused && v1.ms < 10200 && v2.paused && v2.ms < 10200 && hp.log().length === 0, JSON.stringify([v1, v2]));
+  var hr = harness(); hr.begin('treadmill', 10); hr.ready(); hr.advance(90000); hr.store('external'); var r1 = hr.G.active(); hr.st.born = '2026-10-23T00:00:00Z'; hr.calls.length = 0; hr.store('external'); hr.advance(2000);
+  check('another tab saving keeps the workout; another tab deleting or restoring the diary (a new diary) ends it with nothing asked', r1 && !hr.G.active() && hr.calls.indexOf('undress:silent') > -1 && hr.log().length === 0, hr.calls.join(' | '));
+  var hf = harness(); var f0x = hf.G.focus(); hf.begin('bike', 5); hf.ready(); var fz = hf.G.focus();
+  check('the camera follows the middle of her on the machine (the bike\'s feet are behind the low wall), and nothing when no workout runs', f0x === null && fz && fz.x === 36 && fz.y < 75.5 && fz.y > 60, JSON.stringify(fz));
+  var hd = harness(); hd.begin('weights', 5); hd.ready(); hd.advance(2050); hd.els.gpPause.click(); var ga = hd.props.children[0].querySelector('.gwa'), gb = hd.props.children[0].querySelector('.gwb');
+  check('Pause freezes a cross-fade on the current frame, fully drawn', ga.style.transition === 'none' && ga.style.opacity === '1' && gb.style.transition === 'none' && gb.style.opacity === '0');
+  var hm = harness(); hm.begin('mat', 10); hm.ready(); hm.advance(70000); hm.calls.length = 0; hm.fire('meditate'); hm.advance(100);
+  check('the meditate hook (any path that seats her on the mat; the Mind tab itself is refused during a workout, a browser check) brings her off the machine first, clothes back without a turn, and the log is offered for what she did', !hm.G.active() && hm.calls.indexOf('undress:silent') > -1 && hm.log().length === 1 && /"minutes":1/.test(hm.log()[0]), hm.calls.join(' | '));
+  var hp = harness(); hp.begin('weights', 5); hp.ready(); hp.advance(70000); hp.st.sheet = 'calendar'; hp.els.gpStop.click(); hp.advance(3000);
+  var waited = hp.G.pendingAsk(); hp.st.sheet = null; hp.doc.body.classList.add('btap-open'); hp.advance(2000); hp.doc.body.classList.remove('btap-open'); hp.advance(3000);
+  check('a log offer waiting behind a sheet is dropped when Light Flower or Koi Pond opens over the room, and never opens under it or after it', waited && !hp.G.pendingAsk() && hp.log().length === 0, hp.calls.join(' | '));
+  var hq = harness(); hq.begin('weights', 5); hq.ready(); hq.advance(70000); hq.st.meditating = true; hq.els.gpStop.click(); hq.advance(3000);
+  check('her still being seated with no sheet open (a child sheet of Mind, Everyday or You, closed) never holds a waiting offer: it opens (Codex diff review 4)', hq.log().length === 1 && !hq.G.pendingAsk(), hq.calls.join(' | '));
+  var t2 = harness({ saved: 'tudung' }); t2.begin('weights', 5);
+  check('a tudung wearer turns into the covered-head kit', t2.calls.indexOf('dress:gym-tudung') > -1 && t2.G.state().kit === 'gym-tudung');
+  t2.images.forEach(function (im) { im.onerror && im.onerror(); }); if (t2.R._dressed) t2.R._dressed(true); t2.advance(5000);
+  check('a strip that will not load leaves her standing at the machine in her workout clothes, seen, with the clock running', t2.G.state().phase === 'move' && !t2.G.state().mounted && !t2.avatar.classList.contains('hidden') && t2.props.children.length === 0 && t2.G.state().ms > 0, JSON.stringify(t2.G.state()));
+  var t3 = harness({ reduced: true }); t3.begin('weights', 5); t3.ready(); t3.advance(10000); var rf = t3.G.state();
+  check('reduced motion: one still frame, the clock still counts', rf.frame === 0 && rf.ms >= 9000 && t3.props.children.length === 1, JSON.stringify(rf));
+  var t4 = harness(); t4.begin('treadmill', 5); t4.advance(4500); var dz = t4.G.state();
+  check('a turn cut short and a strip that never answers hold her off the machine for a few seconds at most: then she works out standing beside it, seen', dz.phase === 'move' && !dz.mounted && !t4.avatar.classList.contains('hidden'), JSON.stringify(dz));
+  var t6 = harness(); t6.begin('bike', 5); t6.advance(500); t6.calls.length = 0; t6.els.gpStop.click(); t6.advance(2000);
+  check('Stop while she is still changing: her own clothes back, nothing written, and it says so', !t6.G.active() && t6.log().length === 0 && t6.calls.indexOf('undress:turn') > -1 && t6.calls.indexOf('toast:Stopped before starting. That is fine.') > -1, t6.calls.join(' | '));
+  var t5 = harness(); t5.begin('treadmill', 5); t5.ready(); t5.calls.length = 0; t5.G.open('bike');
+  check('while a workout runs, another station\'s sheet does not open: the running one\'s panel comes back', !t5.calls.some(function (c) { return /^sheet:/.test(c); }) && t5.G.state().id === 'treadmill');
 })();
 
 (function boutiqueTryOn() {
