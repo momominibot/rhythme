@@ -28,8 +28,9 @@ Until both are true, Refresh does exactly what Run now did: the deterministic ru
    stops. If a review is already claimed by the worker, nothing is queued and the answer says so. If one is queued but not
    yet claimed, it is dropped (`superseded`) and the new run is queued instead.
 3. A queued job expires after 10 minutes unclaimed (`expired`), so a sleeping Mac never wakes up to review old numbers.
-4. The LaunchAgent `com.rhythme.review-worker` (StartInterval 15 s) runs `tools/worker/review_worker.py --once`: one
-   `worker_claim` call. No job: it exits. No audit row is written for an empty poll.
+4. The LaunchAgent `com.rhythme.review-worker` (StartInterval 20 s) runs `tools/worker/review_worker.py --once`: a local
+   preflight of the pinned CLI (no network), then one `worker_claim` call. No job: it exits. No audit row is written for
+   an empty poll.
 5. With a job it runs five stages in a fixed order: `cycle`, `sleep`, `food`, `mind`, `orchestrator` (Bloom, Dozy,
    Pudding, Misty, Nimbus). For each stage it first calls `worker_stage_begin`, which re-checks every switch, block, key
    and run validity **at that moment** under the worker lock and only then returns that stage's payload. One `codex exec`
@@ -47,30 +48,42 @@ diary rows, no consent rows, no free text. The agent's capability lines come fro
 descriptions, and the prompt forbids inferring anything not measured. Nimbus's payload is the four accepted reports of
 this job.
 
-Codex runtime, for every call:
-- `codex exec --ephemeral --ignore-user-config --ignore-rules --skip-git-repo-check -s read-only --json
-  --output-schema <schema> -o <out> -m gpt-6-astra -C <fresh empty temp dir> -`
-- every tool feature off: `--disable shell_tool --disable unified_exec --disable apps --disable browser_use --disable
-  browser_use_external --disable computer_use --disable memories --disable plugins --disable multi_agent --disable hooks
-  --disable skill_search --disable tool_suggest --disable sleep_tool --disable goals --disable code_mode_host`, so the
-  model has no tool with which to read anything;
-- `-c model_providers.openai.request_max_retries=0 -c model_providers.openai.stream_max_retries=0`;
-- a scrubbed environment (`HOME`, `PATH`, `CODEX_HOME`, `LANG` only). The worker key is never in the child's environment
-  or files.
-What is proven locally and what is not: the wrapper's behaviour (event parsing, stop rules, process-group kill, crash
-receipts) is tested with a fake `codex`; the CLI's own isolation and retry suppression are not proven without a real
-call. That proof is one guarded live run, part of the enable step in section 1, never run by me on my own.
+Codex runtime, for every call (revised after the round-1 diff review, `docs/design/reviews/2026-10-23-review-worker-diff-r1.md`):
+- a throwaway 0700 folder per call: its own `HOME`, its own `CODEX_HOME` holding only the worker's config and a symlink to
+  the real `auth.json` (so a token refresh lands in the real file), an empty working folder. No AGENTS.md, rules,
+  memories, plugins or skills exist there;
+- the config: a provider `rhythme` (`requires_openai_auth = true`, `request_max_retries = 0`, `stream_max_retries = 0`,
+  `supports_websockets = false`, so no transport fallback), every feature 0.160.0 lists set false (including
+  `unbounded_connection_retries`, which otherwise retries a dropped connection without limit), `[agents] enabled = false`,
+  skills instructions and bundled skills off, and `model_catalog_json` pointing at a copy of the model's own cache entry
+  with `tool_mode = direct`, `shell_type = disabled` and the search tool off;
+- `codex exec --strict-config --ephemeral --ignore-rules --skip-git-repo-check -s read-only --json --output-schema
+  <strict schema> -o <out> -m gpt-6-astra -C <empty folder> -`, with `PATH`, `LANG`, `TMPDIR`, `HOME` and `CODEX_HOME`
+  only in its environment. The worker key is never in the child's environment or files;
+- preflight before any claim: the CLI at an absolute path, version exactly `codex-cli 0.160.0`, and no feature reported
+  on except stages marked removed and `unified_exec` (0.160.0 prints it on regardless; no shell tool is offered).
+What is proven, offline and without a model call: `tools/worker/test_codex_offline.py` runs the real pinned CLI through
+the worker's own code against a local stand-in provider: one request each for 500, 429, 401 and a dropped connection,
+each with the right code; a clean answer parses; the request offers no usable tool (only Plan-mode `request_user_input`,
+and any tool event is refused anyway) and carries none of this Mac's instructions. What is still not proven: the real
+service's behaviour; that is one guarded live run at the enable step, never run by me on my own.
 
 ## 4. House rules for the model calls
 
-- One job lock on the Mac. Before spawning, the worker writes an attempt record (job, stage, started). On start, an
-  attempt record with no outcome means the last run died mid-call: that is treated as a failure (`uncertain`), reported
-  to the server, and nothing is called.
+- One job lock on the Mac (`flock`, released by the kernel if the pass dies). Before spawning, the worker writes an
+  attempt record (job, stage, started, then the child's process group and start time). On start, an attempt record with
+  no outcome means the last run died mid-call: the recorded child is killed if it still runs with the same start time,
+  the attempt is treated as a failure (`uncertain`), reported to the server, and nothing is called. A failure receipt is
+  written before the attempt record is removed.
 - One attempt. No retry, no other model or account. Every `--json` event is parsed as it arrives. The first `error`,
   `turn.failed`, retry or reconnect event, a usage/rate/credit/auth phrase on stderr, a non-zero exit, a missing
   `turn.completed`, an output over 64 KB or invalid output stops the whole job.
-- Per-stage timeout 240 s, total deadline 25 minutes, lease 30 minutes renewed by every heartbeat; heartbeats continue
-  during a call (a timer thread). On timeout the owned process group gets TERM, then KILL after 5 s, then a wait.
+- Per-stage timeout 240 s, total deadline 25 minutes, lease 30 minutes renewed by every heartbeat. Heartbeats run on
+  their own thread and the prompt is written on another, so a slow network or a child that never reads cannot stall
+  supervision. Events must be of known types (anything else, an error item, a tool item, a limit phrase in any message or
+  in the answer, any stderr line) stops the job; reads are bounded per line and per stream. A failure seen together with
+  a server stop is still recorded as a block. On a stop the whole process group gets TERM, then KILL after 5 s, until no
+  member is left.
 - On a failure the worker writes `~/.local/state/rhythme-worker/BLOCKED.json` and a pending failure receipt, then calls
   `worker_fail`, which accepts the exact claim even after its lease and opens a provider block (source `codex-worker`,
   fixed code). If that call fails, the receipt stays pending and the next `--once` sends it before anything else. A
