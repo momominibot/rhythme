@@ -2005,7 +2005,11 @@ async def main():
             except Exception: pass
             t1 = await page.evaluate("(t0)=>({playing: OvuTones.playing(), rem: OvuTones.remaining(), sitting: OvuTones.sitting(), stop: document.querySelector('#springStop') && document.querySelector('#springStop').textContent.trim(), sheet: OvuRoom.sheetOpen(), fx: OvuSeats.fxKind(), glints: document.querySelectorAll('#seatfx .glint').length, pill: !!document.querySelector('#tonePill'), hearts: OvuRewards.ledger().hearts - t0.hearts, e: OvuStamina.value() - t0.e, d: OvuStore.list().length - t0.d})", t0)
             await page.click('#springStop'); await page.wait_for_timeout(300)
-            t2 = await page.evaluate("()=>({playing: OvuTones.playing(), sitting: OvuTones.sitting(), stop: !!document.querySelector('#springStop'), fx: OvuSeats.fxKind()})")
+            t2 = await page.evaluate("()=>({playing: OvuTones.playing(), sitting: OvuTones.sitting(), stop: !!document.querySelector('#springStop'), fx: OvuSeats.fxKind(), live: OvuTones.liveNodes()})")
+            try: await page.wait_for_function("()=>OvuTones.liveNodes()===0", timeout=12000)
+            except Exception: pass
+            t2["liveAfter"] = await page.evaluate("()=>OvuTones.liveNodes()")
+            check("the sung-bowl voice (22 Oct) holds its nodes while it fades after Stop and lets every one go within a few seconds", t2["live"] > 0 and t2["liveAfter"] == 0, t2)
             check("the warm stone offers nine pitches and a length with no promises; Sit by the water hums at the chosen pitch for the chosen time with her seated and crystal glints; one Stop sound and stand up ends both; nothing is written, paid or spent", t0["sheet"] == "cavetones" and t0["chips"] == 9 and not t0["claim"] and t0["btn"].endswith("Sit by the water") and t1["playing"] == 396 and 590 <= t1["rem"] <= 600 and t1["sitting"] and t1["stop"].endswith("Stop sound and stand up") and not t1["sheet"] and t1["fx"] == "crystals" and t1["glints"] == 7 and not t1["pill"] and t1["hearts"] == 0 and t1["e"] >= 0 and t1["d"] == 0 and t2["playing"] is None and not t2["sitting"] and not t2["stop"] and t2["fx"] is None, {"t0": t0, "t1": t1, "t2": t2})
             await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('crystals'))")
             try: await page.wait_for_function("()=>OvuRoom.sheetOpen() && OvuRoom.sheetId && OvuRoom.sheetId()==='cavetones'", timeout=12000)

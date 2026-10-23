@@ -1,0 +1,79 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Rhythme tones render fixture</title>
+<p>Renders a version of ovu-tones.js into an OfflineAudioContext for tools/tones_render.py and measures it. Nothing plays here.</p>
+<script>
+/* Load a module source into a fake root whose AudioContext returns the offline context (lesson of 20 Oct), start one pitch or
+   bed, Stop it at stopAt through OfflineAudioContext.suspend, render, and measure the steady part and both ends. */
+function fft(re, im) {
+  var N = re.length;
+  for (var i = 1, j = 0; i < N; i++) { var bit = N >> 1; for (; j & bit; bit >>= 1) j ^= bit; j ^= bit; if (i < j) { var t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; } }
+  for (var len = 2; len <= N; len <<= 1) { var ang = -2 * Math.PI / len, wr = Math.cos(ang), wi = Math.sin(ang); for (var i2 = 0; i2 < N; i2 += len) { var cr = 1, ci = 0; for (var k = 0; k < len / 2; k++) { var ur = re[i2 + k], ui = im[i2 + k], vr = re[i2 + k + len / 2] * cr - im[i2 + k + len / 2] * ci, vi = re[i2 + k + len / 2] * ci + im[i2 + k + len / 2] * cr; re[i2 + k] = ur + vr; im[i2 + k] = ui + vi; re[i2 + k + len / 2] = ur - vr; im[i2 + k + len / 2] = ui - vi; var nr = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = nr; } } }
+}
+/* ITU-R BS.1770 K-weighting at any sample rate: the two biquads from their analogue prototypes (a +4 dB high shelf at 1681.97 Hz,
+   Q 0.7071752, then a high-pass at 38.13547 Hz, Q 0.5003270) by the RBJ cookbook; at 48 kHz this reproduces the published tables */
+function kCoeffs(sr) {
+  function shelf(f0, G, Q) { var A = Math.pow(10, G / 40), w = 2 * Math.PI * f0 / sr, c = Math.cos(w), s = Math.sin(w), al = s / (2 * Q), sq = 2 * Math.sqrt(A) * al;
+    var b0 = A * ((A + 1) + (A - 1) * c + sq), b1 = -2 * A * ((A - 1) + (A + 1) * c), b2 = A * ((A + 1) + (A - 1) * c - sq), a0 = (A + 1) - (A - 1) * c + sq, a1 = 2 * ((A - 1) - (A + 1) * c), a2 = (A + 1) - (A - 1) * c - sq;
+    return [b0 / a0, b1 / a0, b2 / a0, a1 / a0, a2 / a0]; }
+  function hp(f0, Q) { var w = 2 * Math.PI * f0 / sr, c = Math.cos(w), s = Math.sin(w), al = s / (2 * Q), a0 = 1 + al;
+    return [(1 + c) / 2 / a0, -(1 + c) / a0, (1 + c) / 2 / a0, -2 * c / a0, (1 - al) / a0]; }
+  return [shelf(1681.974450955533, 3.999843853973347, 0.7071752369554196), hp(38.13547087602444, 0.5003270373238773)];
+}
+function biquadRun(a, co, from, to) { var x1 = 0, x2 = 0, y1 = 0, y2 = 0, acc = 0; for (var i = from; i < to; i++) { var x = a[i], y = co[0] * x + co[1] * x1 + co[2] * x2 - co[3] * y1 - co[4] * y2; x2 = x1; x1 = x; y2 = y1; y1 = y; acc += y * y; } return acc / (to - from); }
+function kMeanSquare(a, sr, from, to) { var co = kCoeffs(sr), tmp = new Float32Array(to - from), x1 = 0, x2 = 0, y1 = 0, y2 = 0, c = co[0]; for (var i = from; i < to; i++) { var x = a[i], y = c[0] * x + c[1] * x1 + c[2] * x2 - c[3] * y1 - c[4] * y2; x2 = x1; x1 = x; y2 = y1; y1 = y; tmp[i - from] = y; } return biquadRun(tmp, co[1], 0, tmp.length); }
+/* a 4x true-peak estimate: windowed-sinc interpolation (12 taps) at the three points between samples, over a range */
+var TP = (function () { var ks = []; for (var q = 1; q < 4; q++) { var frac = q / 4, k = []; for (var t = -6; t < 6; t++) { var x = t + frac, s = x === 0 ? 1 : Math.sin(Math.PI * x) / (Math.PI * x), w = Math.abs(x) < 6 ? Math.sin(Math.PI * x / 6) / (Math.PI * x / 6) : 0; k.push(s * (x === 0 ? 1 : w)); } ks.push(k); } return ks; })();
+function truePeak(a, from, to) { var p = 0; for (var i = Math.max(6, from); i < Math.min(a.length - 6, to); i++) { var x = Math.abs(a[i]); if (x > p) p = x; for (var q = 0; q < 3; q++) { var k = TP[q], v = 0; for (var t = -6; t < 6; t++) v += a[i + t] * k[t + 6]; if (Math.abs(v) > p) p = Math.abs(v); } } return p; }
+window.renderTone = async function (opts) {
+  var sr = opts.sampleRate || 48000, secs = opts.seconds, ctx = new OfflineAudioContext(2, Math.ceil(sr * secs), sr), byMe = false;
+  var realResume = ctx.resume.bind(ctx); ctx.resume = function () { return byMe ? realResume() : Promise.resolve(); }; /* the module resumes a 'suspended' context; offline is suspended until it renders */
+  var root = { AudioContext: function () { return ctx; }, OvuSound: { volume: function () { return opts.volume == null ? 0.25 : opts.volume; }, enabled: function () { return opts.soundOn == null ? true : !!opts.soundOn; } } };
+  new Function('window', opts.src + '\n//# sourceURL=' + (opts.label || 'tones') + '.js')(root);
+  var T = root.OvuTones; if (!T) throw new Error('module did not export OvuTones');
+  var ok = opts.bed ? T.startBed(opts.bed, null) : T.start(opts.hz, null);
+  if (!ok) return { refused: true, live: T.liveNodes ? T.liveNodes() : null };
+  var stopAt = opts.stopAt || (secs - 8);
+  var sus = ctx.suspend(stopAt).then(function () { byMe = true; T.stop(); byMe = false; return realResume(); });
+  var buf = await ctx.startRendering(); await sus;
+  var L = buf.getChannelData(0), R = buf.getChannelData(1), n = L.length;
+  function peakOf(f, t) { var p = 0; for (var i = Math.max(0, f); i < Math.min(n, t); i++) { var x = Math.max(Math.abs(L[i]), Math.abs(R[i])); if (x > p) p = x; } return p; }
+  function monoPeak(f, t) { var p = 0; for (var i = Math.max(0, f); i < Math.min(n, t); i++) { var x = Math.abs((L[i] + R[i]) / 2); if (x > p) p = x; } return p; }
+  function maxStep(f, t) { var m = 0; for (var i = Math.max(1, f); i < Math.min(n, t); i++) { var d = Math.max(Math.abs(L[i] - L[i - 1]), Math.abs(R[i] - R[i - 1])); if (d > m) m = d; } return m; }
+  var s0 = Math.round((opts.steadyFrom || 10) * sr), s1 = Math.round(stopAt * sr), stopEnd = Math.min(n, Math.round((stopAt + 6) * sr));
+  /* RMS per channel and of the mono average (L+R)/2, and a K-weighted (ITU-R BS.1770) ungated loudness of the steady part */
+  var sl = 0, srr = 0, sm = 0; for (var i = s0; i < s1; i++) { sl += L[i] * L[i]; srr += R[i] * R[i]; var m = (L[i] + R[i]) / 2; sm += m * m; }
+  var kw = kMeanSquare(L, sr, s0, s1) + kMeanSquare(R, sr, s0, s1);
+  /* spectrum of the mono average over the steady part: Hann windows of 8192, averaged power; centroid and the share above 2 kHz */
+  var N = 8192, re = new Float64Array(N), im = new Float64Array(N), pow = new Float64Array(N / 2), wins = 0;
+  for (var st = s0; st + N <= s1; st += N) { for (var q = 0; q < N; q++) { var w = 0.5 - 0.5 * Math.cos(2 * Math.PI * q / (N - 1)); re[q] = w * (L[st + q] + R[st + q]) / 2; im[q] = 0; } fft(re, im); for (var b = 0; b < N / 2; b++) pow[b] += re[b] * re[b] + im[b] * im[b]; wins++; }
+  var num = 0, den = 0, hi = 0, peakBin = 0, peakVal = 0;
+  for (var b2 = 1; b2 < N / 2; b2++) { var f = b2 * sr / N; num += f * pow[b2]; den += pow[b2]; if (f >= 2000) hi += pow[b2]; if (pow[b2] > peakVal) { peakVal = pow[b2]; peakBin = b2; } }
+  /* amplitude modulation of the steady part: RMS over 100 ms windows every 50 ms (17 cycles of 174 Hz per window, so no carrier
+     ripple), its depth, and its spectrum: the dominant rate, and the share of modulation power that is a wobble (1.5 to 8 Hz)
+     against a swell (0.05 to 1.5 Hz) */
+  var hop = Math.round(sr * 0.05), win = Math.round(sr * 0.1), env = [];
+  for (var e = s0; e + win <= s1; e += hop) { var acc2 = 0; for (var k2 = e; k2 < e + win; k2++) { var mm = (L[k2] + R[k2]) / 2; acc2 += mm * mm; } env.push(Math.sqrt(acc2 / win)); }
+  var emax = Math.max.apply(null, env), emin = Math.min.apply(null, env), mean = env.reduce(function (a, b) { return a + b; }, 0) / env.length;
+  var M = 1; while (M < env.length) M <<= 1; var er = new Float64Array(M), ei = new Float64Array(M);
+  for (var z = 0; z < env.length; z++) er[z] = env[z] - mean;
+  fft(er, ei);
+  var fs = sr / hop, slow = 0, wob = 0, domF = 0, domV = 0, modRms = 0;
+  for (var z2 = 0; z2 < env.length; z2++) modRms += (env[z2] - mean) * (env[z2] - mean); modRms = Math.sqrt(modRms / env.length) / (mean || 1);
+  for (var bb = 1; bb < M / 2; bb++) { var ff = bb * fs / M, pv = er[bb] * er[bb] + ei[bb] * ei[bb]; if (ff >= 0.05 && ff < 1.5) slow += pv; if (ff >= 1.5 && ff < 8) wob += pv; if (ff >= 0.05 && ff < 8 && pv > domV) { domV = pv; domF = ff; } }
+  if (modRms < 0.005) { domF = 0; slow = 1; wob = 0; } /* under half a per cent of movement there is no modulation to speak of: rate and share would be noise (the self-test's plain sine) */
+  var head = Math.min(n, Math.round(sr * (opts.previewSeconds || 0))), pcm = new Int16Array(head * 2);
+  for (var q2 = 0; q2 < head; q2++) { pcm[q2 * 2] = Math.max(-32768, Math.min(32767, Math.round(L[q2] * 32767))); pcm[q2 * 2 + 1] = Math.max(-32768, Math.min(32767, Math.round(R[q2] * 32767))); }
+  var bytes = new Uint8Array(pcm.buffer), chunks = []; for (var c = 0; c < bytes.length; c += 0x8000) chunks.push(String.fromCharCode.apply(null, bytes.subarray(c, c + 0x8000)));
+  var db = function (x) { return 20 * Math.log10(x || 1e-9); };
+  return {
+    sampleRate: sr, seconds: secs, stopAt: stopAt, steady: [s0 / sr, s1 / sr], gainFor: T.gainFor(opts.volume == null ? 0.25 : opts.volume), live: T.liveNodes ? T.liveNodes() : null,
+    peakDb: db(peakOf(0, n)), truePeakDb: db(Math.max(truePeak(L, 0, n), truePeak(R, 0, n))), monoPeakDb: db(monoPeak(0, n)), steadyPeakDb: db(peakOf(s0, s1)),
+    rmsLDb: db(Math.sqrt(sl / (s1 - s0))), rmsRDb: db(Math.sqrt(srr / (s1 - s0))), rmsMonoDb: db(Math.sqrt(sm / (s1 - s0))), lufs: -0.691 + 10 * Math.log10(kw || 1e-12),
+    centroidHz: den ? num / den : 0, hiShare: den ? hi / den : 0, peakHz: peakBin * sr / N, windows: wins,
+    modDepthDb: db(emax) - db(emin), modRms: modRms, modRateHz: domF, wobbleShare: (slow + wob) ? wob / (slow + wob) : 0,
+    firstSample: Math.max(Math.abs(L[0]), Math.abs(R[0])), startStep: maxStep(0, Math.round(sr * 0.5)), steadyStep: maxStep(s0, s1), stopStep: maxStep(s1 - 10, stopEnd), tailDb: db(peakOf(stopEnd, n)), endDb: db(peakOf(n - Math.round(sr * 0.5), n)),
+    pcm: head ? btoa(chunks.join('')) : null
+  };
+};
+</script>
