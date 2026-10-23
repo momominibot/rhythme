@@ -768,7 +768,7 @@
     if (id === 'wardrobe') return openWardrobe();
     if (id === 'diary') return openDiary();
     if (id === 'mat') return openMindfulness();
-    if (id === 'coach') return openEveryday();
+    if (id === 'coach') return openEveryday(null, true); /* the M in her room: mindfulness, so Erin reads it aloud (Jamie, 23 Oct) */
   }
 
   /* ---------- sleep flows ---------- */
@@ -886,7 +886,7 @@
       var bt = $('#bedTimeNow').value; if (!S.validTime(bt)) return message($('#sleepMsg'), 'Enter a bedtime.', false);
       var prev = S.profile().outfit;
       S.setState({ sleeping: { startedAt: new Date().toISOString(), bedTime: bt, prevOutfit: prev, pj: $('#pjToggle').classList.contains('on') } });
-      enterNight(true); closeSheet(); chime('sleep'); if (soundOn()) new Audio(ERIN + 'night_sweet_dreams.mp3').play().catch(function () { });
+      enterNight(true); closeSheet(); chime('sleep'); /* no spoken good night: Erin speaks only in mindfulness (Jamie, 23 Oct) */
       toast('Sweet dreams. Tap the bed when you wake up.', 'dark_mode');
     });
   }
@@ -900,7 +900,6 @@
       '<div class="row"><button class="btn primary" id="saveWake"><span class="ms">wb_sunny</span>Save my sleep</button><button class="btn ghost" id="cancelSleep">I did not sleep</button></div>' +
       '<div class="msg" id="sleepMsg"></div>');
     wireMoons(body); wireSleepDetails(body);
-    if (soundOn()) new Audio(ERIN + 'morning_how.mp3').play().catch(function () { });
     $('#cancelSleep').addEventListener('click', function () { exitNight(); S.setState({ sleeping: null }); closeSheet(); toast('No worries. Nothing was recorded.', 'wb_sunny'); });
     $('#saveWake').addEventListener('click', function () {
       /* the night is the one still open now: another tab may have saved it already (Codex review, 20 Oct) */
@@ -1213,7 +1212,8 @@
         '<div class="field flushrow" id="flushRow"' + ((sd.symptoms || []).indexOf('hot flushes') > -1 ? '' : ' hidden') + '><span class="lbl">Hot flushes</span><div class="chips"><label class="flushn">How many today <input class="input" id="flushN" type="number" min="0" max="60" inputmode="numeric" placeholder="optional" value="' + (typeof sd.flushes === 'number' ? sd.flushes : '') + '"></label><button type="button" class="chipbtn' + (sd.flushNight ? ' on' : '') + '" id="flushNight"><span class="ms">bedtime</span>Woke me at night</button></div></div>' +
         '<div class="field"><div class="lbl-row"><label for="pain" class="lbl" style="margin:0">Pain · <span id="painVal">' + (sd.pain || 0) + '</span>/10</label>' + infoBtn('pain') + '</div><input class="range" type="range" id="pain" min="0" max="10" step="1" value="' + (sd.pain || 0) + '">' + guideHTML('pain') + '</div>' +
         '<div class="field"><span class="lbl">Mood</span><div class="faces" id="moodFaces">' + [['great', 'sentiment_very_satisfied'], ['good', 'sentiment_satisfied'], ['ok', 'sentiment_neutral'], ['low', 'sentiment_dissatisfied'], ['bad', 'sentiment_very_dissatisfied']].map(function (m) { return '<button type="button" data-mood="' + m[0] + '" class="' + (sd.mood === m[0] ? 'on' : '') + '"><span class="ms">' + m[1] + '</span>' + cap(m[0]) + '</button>'; }).join('') + '</div></div>' +
-        '<p class="moodcare" id="moodCare"' + (sd.mood === 'low' || sd.mood === 'bad' ? '' : ' hidden') + '><span class="ms">favorite</span><span>If a low mood is weighing on you, you deserve support now, not after more logging. mindline 1771 is open 24 hours, or talk to your GP or clinic.</span></p>' +
+        '<p class="moodcare" id="moodCare"' + (sd.mood === 'low' || sd.mood === 'bad' ? '' : ' hidden') + '><span class="ms">favorite</span><span>If a low mood is weighing on you, you deserve support now, not after more logging. Talk to someone you trust or your doctor, or find a helpline near you at findahelpline.com.</span></p>' +
+        bodyLogHTML(sd, date) +
         '<div class="field"><label for="symNotes">Notes</label><textarea class="input" id="symNotes" placeholder="Anything else you noticed...">' + esc(sd.notes || '') + '</textarea></div>' +
         '<div class="row"><button class="btn primary" id="saveSym"><span class="ms">check</span>Save day</button>' + (cs ? '<button class="btn ghost" id="clearSym">Clear</button>' : '') + '<button class="btn soft" id="acuFromSym"><span class="ms">spa</span>Cramp relief points</button></div><div class="msg" id="calMsg"></div>';
       /* None (Jamie, 19 Oct) is its own answer: it clears the symptoms, and ticking a symptom clears it */
@@ -1223,19 +1223,58 @@
       $('#pain').addEventListener('input', function () { painTouched = true; $('#painVal').textContent = this.value; });
       $('#moodFaces').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; $$('button', $('#moodFaces')).forEach(function (x) { x.classList.toggle('on', x === b && !x.classList.contains('on')); }); var on = $('#moodFaces .on'); $('#moodCare').hidden = !(on && (on.dataset.mood === 'low' || on.dataset.mood === 'bad')); });
       $('#acuFromSym').addEventListener('click', openAcupressure);
+      var bl = wireBodyLog();
       $('#saveSym').addEventListener('click', function () {
         try {
           var list = $$('#symChips .on').map(function (b) { return b.dataset.sym; }).filter(Boolean), mood = ($('#moodFaces .on') || {}).dataset ? $('#moodFaces .on').dataset.mood : '';
           var none = !list.length && !!$('#symChips [data-none].on'), data = { symptoms: list, pain: painTouched || typeof sd.pain === 'number' ? Number($('#pain').value) : null, mood: mood, notes: $('#symNotes').value.trim() };
           if (none) data.none = true;
+          if (window.OvuBodyLog) Object.assign(data, OvuBodyLog.clean(bl.values())); /* discharge, sex, drive and pregnancy test (23 Oct) */
+          var basalIn = $('#basalT'), basalTxt = basalIn ? basalIn.value.trim() : '', basal = window.OvuBodyLog ? OvuBodyLog.basalC(basalTxt) : null;
+          if (basalTxt && basal === null) { message($('#calMsg'), 'A basal temperature is between 35 and 38.5 °C (or 95 and 101.3 °F).', false); return; }
           if (list.indexOf('hot flushes') > -1) { var fn = $('#flushN').value.trim(); if (fn !== '' && isFinite(Number(fn))) data.flushes = Math.max(0, Math.min(60, Math.round(Number(fn)))); if ($('#flushNight').classList.contains('on')) data.flushNight = true; }
           /* None replaces the day's symptoms rather than joining them; everything else keeps the usual same-day merge */
           var ev = none && cs ? S.update(cs.id, { data: Object.assign({}, data, { notes: data.notes || '' }) }) : S.add('symptom', date, data);
+          if (basal !== null) S.add('temperature', date, { basal: basal }, 'room', { merge: true });
           message($('#calMsg'), 'Saved for ' + prettyDate(date) + '.', true); renderCal(); afterSave(ev);
         } catch (e) { message($('#calMsg'), e.message, false); }
       });
       if (cs) $('#clearSym').addEventListener('click', function () { S.remove(cs.id); renderCal(); renderEditor(); renderDeck(); });
     }
+  }
+
+  /* ---------- the symptom day's body log (ovu-bodylog.js; Jamie, 23 Oct): discharge with Ovaria's reference photos, sex and
+   * sex drive, a pregnancy test and a basal temperature. One choice per row, tap again to clear; the care lines show the
+   * moment an answer needs one (a positive test's urgent signs, discharge worth a clinician's look). */
+  function bodyLogHTML(sd, date) {
+    var B = window.OvuBodyLog; if (!B) return '';
+    var tp = S.list('temperature', { from: date, to: date })[0], basal = tp && typeof tp.data.basal === 'number' ? tp.data.basal : '';
+    var chips = function (id, list, cur) { return '<div class="chips" id="' + id + '">' + list.map(function (o) { return '<button type="button" class="chipbtn' + (cur === o.id ? ' on' : '') + '" data-v="' + o.id + '" aria-pressed="' + (cur === o.id) + '">' + esc(o.label) + '</button>'; }).join('') + '</div>'; };
+    return '<div class="field"><span class="lbl">Discharge</span><div class="dcgrid" id="dcGrid">' + B.DISCHARGE.map(function (d) { return '<button type="button" class="dctile' + (sd.discharge === d.id ? ' on' : '') + '" data-v="' + d.id + '" aria-pressed="' + (sd.discharge === d.id) + '"><img src="assets/room/discharge/' + d.id + '.webp" alt="" width="64" height="64" loading="lazy"><span>' + esc(d.label) + '</span></button>'; }).join('') + '</div><p class="help bnote" id="dcNote" aria-live="polite"></p></div>' +
+      '<div class="field"><span class="lbl">Sex and sex drive</span>' + chips('sexChips', B.SEX, sd.sex) + '<span class="lbl sublbl">Sex drive</span>' + chips('driveChips', B.DRIVE, sd.drive) + '<p class="help">' + esc(B.COPY.sexPrivate) + '</p></div>' +
+      '<div class="field"><span class="lbl">Pregnancy test</span>' + chips('ptChips', B.PREG, sd.pregTest) + '<div id="ptNote" aria-live="polite"></div></div>' +
+      '<div class="field"><label for="basalT">Basal body temperature, °C</label><input class="input" id="basalT" type="number" inputmode="decimal" step="0.01" min="35" max="38.5" placeholder="optional, like 36.45" value="' + esc(basal) + '"><p class="help">' + esc(B.COPY.basal) + '</p></div>';
+  }
+  function wireBodyLog() {
+    var B = window.OvuBodyLog, pick = function (id) { var on = document.querySelector('#' + id + ' .on'); return on ? on.dataset.v : null; };
+    if (!B || !$('#dcGrid')) return { values: function () { return {}; } };
+    function paint() {
+      var v = { discharge: pick('dcGrid'), pregTest: pick('ptChips') }, d = B.discharge(v.discharge), dn = $('#dcNote'), pn = $('#ptNote');
+      dn.textContent = d ? d.note : ''; dn.classList.toggle('flag', !!(d && d.flag));
+      var ns = B.notes(v).filter(function (n) { return n.text.indexOf(B.COPY.negative) === 0 || n.text.indexOf(B.COPY.faint) === 0 || n.text.indexOf(B.COPY.positive) === 0; });
+      pn.innerHTML = ns.map(function (n) { return '<div class="flag ' + (n.level === 'urgent' ? 'high' : 'info') + '"><span class="ms">' + (n.level === 'urgent' ? 'emergency' : 'info') + '</span><div><span>' + esc(n.text) + '</span></div></div>'; }).join('');
+      if (d && d.flag) dn.textContent = d.note + ' ' + B.DISCHARGE_CARE;
+    }
+    ['dcGrid', 'sexChips', 'driveChips', 'ptChips'].forEach(function (id) {
+      $('#' + id).addEventListener('click', function (e) {
+        var b = e.target.closest('[data-v]'); if (!b) return; var was = b.classList.contains('on');
+        $$('[data-v]', this).forEach(function (x) { x.classList.remove('on'); x.setAttribute('aria-pressed', 'false'); });
+        if (!was) { b.classList.add('on'); b.setAttribute('aria-pressed', 'true'); }
+        chime('tap'); paint();
+      });
+    });
+    paint();
+    return { values: function () { return { discharge: pick('dcGrid'), sex: pick('sexChips'), drive: pick('driveChips'), pregTest: pick('ptChips') }; } };
   }
 
   /* ---------- diary: camera-assisted food journal ---------- */
@@ -1772,40 +1811,22 @@
   }
   /* Settings (You tab), 22 Oct: the old settings.html moved here so it looks and works like the rest of the room. Every
      setting it had is kept, stored where it always was: the life-stage look in localStorage 'ovuluna_persona' (the older
-     reading pages and the privacy list read it), and sleep from a CSV file as OvuStore sleep entries with source 'import'.
+     reading pages and the privacy list read it). The export-file import and the sleep CSV went on 23 Oct (Jamie: "connect and
+     remove the export file under settings"): health data comes from Apple Health or Health Connect in the phone app.
      Its links go to the same places, each opening in the room or its page viewer. */
   var PERSONAS = [['grow', 'eco', 'Grow', 'Trying to conceive'], ['nurture', 'spa', 'Nurture', 'After pregnancy'], ['peri', 'eco', 'Changing seasons', 'Perimenopause'], ['wisdom', 'bedtime', 'Your next chapter', 'After menopause']]; /* the chapter names of the reading pages (journey-*.html) */
   function personaNow() { try { var p = localStorage.getItem('ovuluna_persona'); return PERSONAS.some(function (x) { return x[0] === p; }) ? p : ''; } catch (e) { return ''; } } /* none chosen: nothing is marked */
-  function sleepCsv(text) {
-    var ok = 0, bad = 0;
-    String(text).split(/\r?\n/).forEach(function (line) {
-      var c = line.split(',').map(function (x) { return x.trim(); });
-      if (c.length < 3 || !S.validDate(c[0]) || !S.validTime(c[1]) || !S.validTime(c[2])) { if (line.trim() && !/^date/i.test(line)) bad++; return; }
-      var data = { bedTime: c[1], wakeTime: c[2], quality: c[3] && Number(c[3]) >= 1 && Number(c[3]) <= 5 ? Number(c[3]) : null, notes: 'Imported from CSV', mode: 'import' };
-      /* a night an earlier sleep file brought in is updated, never added twice; nights she wrote herself are left as they are */
-      var mine = S.list('sleep').filter(function (e) { return e.date === c[0] && e.source === 'import' && e.data && e.data.notes === 'Imported from CSV'; })[0];
-      try { if (mine) S.update(mine.id, { data: data, source: 'import' }); else S.add('sleep', c[0], data, 'import'); ok++; } catch (e) { bad++; }
-    });
-    return { ok: ok, bad: bad };
-  }
-  function openSettings(note) {
+  function openSettings() {
     var row = function (icon, title, sub, act, href) { return (href ? '<a class="yrow" href="' + href + '"' : '<button type="button" class="yrow" data-sact="' + act + '"') + '><span class="ms">' + icon + '</span><span><b>' + esc(title) + '</b><small>' + esc(sub) + '</small></span><span class="ms go">chevron_right</span>' + (href ? '</a>' : '</button>'); };
     var conn = function (icon, title, sub, status) { return '<div class="stat"><span class="ms">' + icon + '</span><div><b>' + esc(title) + ' <span class="spill">' + esc(status) + '</span></b><span>' + esc(sub) + '</span></div></div>'; };
     var cur = personaNow();
-    openSheet('settings', 'Settings', 'Your look, your files, your connections', 'settings',
+    openSheet('settings', 'Settings', 'Your life chapter, your connections, your records', 'settings',
       '<div class="ygroup"><span class="lbl">Your life chapter</span><div class="chips" role="group" aria-label="Your life chapter">' + PERSONAS.map(function (p) { return '<button type="button" class="chipbtn' + (p[0] === cur ? ' on' : '') + '" data-persona="' + p[0] + '" aria-pressed="' + (p[0] === cur) + '"><span class="ms">' + p[1] + '</span>' + esc(p[2]) + ' · ' + esc(p[3]) + '</button>'; }).join('') + '</div>' +
       '<p class="help">Marks your chapter on the Your life journey reading pages, so it is easy to find. It changes nothing else: it does not measure your cycle or change any check.</p><div class="msg" id="setPersonaMsg" role="status" aria-live="polite"></div></div>' +
-      '<div class="ygroup"><span class="lbl">Bring in from files</span>' + row('move_to_inbox', 'Apple Health and Google', 'Choose an export file: sleep, cycle, weight and more', 'import') +
-      conn('phone_iphone', 'Apple Health', 'In the Health app, tap your picture, then Export All Health Data. Then tap Apple Health and Google above and choose export.zip. Nothing is uploaded.', 'File') +
-      conn('android', 'Google Fit', 'Make a Google Takeout with Fit ticked. Then tap Apple Health and Google above and choose the Takeout zip. Health Connect has no export file yet.', 'File') +
-      conn('radio_button_checked', 'Smart rings', 'Bring a ring’s sleep export in with Sleep from a file, below.', 'File') +
-      '<label class="yrow" for="setSleepCsv" style="cursor:pointer"><span class="ms">bedtime</span><span><b>Sleep from a file</b><small>A CSV file, one night per line. Nothing is uploaded.</small></span><span class="ms go">upload_file</span></label><input type="file" id="setSleepCsv" accept=".csv,text/csv" hidden>' +
-      '<details class="help"><summary style="cursor:pointer">The file’s format</summary>Each line is date, bedtime, wake time and an optional quality from 1 to 5, separated by commas: 2026-10-17,23:10,06:45,4. A header line is skipped. Bringing the same nights in again updates them instead of adding them twice; nights you wrote yourself are kept.</details><div class="msg" id="setSleepMsg" role="status" aria-live="polite"></div></div>' +
-      '<div class="ygroup"><span class="lbl">Live links</span>' + (window.OvuHealthNative && OvuHealthNative.available() ? (function (P) { return row(P.origin === 'healthkit' ? 'ios' : 'android', 'Connect ' + P.name, 'Read sleep, cycle days and more from ' + P.name + ' on ' + P.device + '; you choose what comes in', 'healthkit'); })(OvuHealthNative.info()) : conn('sync_disabled', 'Not here yet', 'A live link to Apple Health, Health Connect or a ring needs the phone app. Until then, files bring your data in.', 'Planned')) + '</div>' +
+      '<div class="ygroup"><span class="lbl">Apple Health and Health Connect</span>' + (window.OvuHealthNative && OvuHealthNative.available() ? (function (P) { return row(P.origin === 'healthkit' ? 'ios' : 'android', 'Connect ' + P.name, 'Read sleep, cycle days and more from ' + P.name + ' on ' + P.device + '; you choose what comes in', 'healthkit'); })(OvuHealthNative.info()) : conn('phone_iphone', 'In the Rhythme app', 'Apple Health on an iPhone and Health Connect on Android connect from the Rhythme app on your phone; a web page cannot reach them. You choose what comes in, and nothing is written back.', 'App only')) + '</div>' +
       '<div class="ygroup"><span class="lbl">Your records</span>' + row('medical_information', 'Your health notes', 'A short guide to keeping medicines, supplements and treatment notes for your care team', '', 'health-profile.html') + row('science', 'Lab records', 'Enter, review and export dated results', '', 'labs.html') + row('edit_note', 'Cycle observations', 'Dated signs on your wall calendar', 'calendar') + '</div>' +
       '<div class="ygroup"><span class="lbl">Your data and account</span>' + row('delete_sweep', 'Choose what to delete', 'Pick local records, export a copy, then confirm', '', 'privacy.html#privacy-local-title') + row('person_remove', 'Your account', 'Sign in, account status and deleting your account', 'you') + row('shield', 'Privacy and local data', 'What is kept on this phone and why', '', 'privacy.html') + '</div>' +
       '<p class="help" style="text-align:center">Rhythme offers wellness notes, not a medical diagnosis.</p>');
-    if (note) message($('#setSleepMsg'), note.text, note.ok);
     body.addEventListener('click', function (e) {
       var pb = e.target.closest('[data-persona]');
       if (pb) {
@@ -1816,27 +1837,14 @@
       }
       var b = e.target.closest('[data-sact]'); if (!b) return; chime('tap');
       var act = b.dataset.sact;
-      if (act === 'import') return openImport();
       if (act === 'healthkit') return openHealthKit();
       if (act === 'calendar') return openCalendar();
       if (act === 'you') { openYou(); setTab('you'); var ya = $('#youAccount'); if (ya) ya.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
-    });
-    $('#setSleepCsv').addEventListener('change', function () {
-      var f = this.files && this.files[0], input = this; if (!f) return;
-      var r = new FileReader();
-      r.onload = function () {
-        var n = sleepCsv(r.result), text = 'Brought in ' + n.ok + ' night' + (n.ok === 1 ? '' : 's') + (n.bad ? ', skipped ' + n.bad + ' unreadable line' + (n.bad === 1 ? '' : 's') : '') + '.'; input.value = '';
-        if (n.ok) { chime('save'); renderDeck(); }
-        if (current === 'settings') openSettings({ ok: n.ok > 0, text: text }); else toast(text, 'bedtime'); /* she may have closed Settings while the file was read: never reopen it over what she is doing */
-      };
-      r.onerror = function () { input.value = ''; if (current === 'settings') message($('#setSleepMsg'), 'This file could not be read.', false); else toast('This file could not be read.', 'error'); };
-      r.readAsText(f);
     });
   }
   /* Jamie, 22 Oct: "some may not want the mindfulness part and we shouldn't force". A choice on the You tab: slow mindful
      steps and gentle cues (the default), or quick steps with no cues. Practices she opens on purpose are unchanged. */
   function mindfulQuick() { return (S.profile() || {}).mindfulPace === 'quick'; }
-  function erinCuesOn() { return !!(window.OvuVoice && !OvuVoice.muted()); } /* Erin's voice is one switch, off until she turns it on (You tab) */
   function applyMindful() { document.documentElement.dataset.mindful = mindfulQuick() ? 'quick' : 'slow'; }
   function openYou(confirmDelete) {
     var P = S.profile(), l = RW.ledger(), dates = {};
@@ -1848,9 +1856,9 @@
       '<div class="field"><label for="youName">What should I call you?</label><div class="row" style="margin-top:0"><input class="input" id="youName" maxlength="24" placeholder="Your name" value="' + esc(P.name || '') + '"><button type="button" class="btn soft" id="youNameSave" style="flex:0 0 auto;min-width:0"><span class="ms">check</span>Save</button></div></div>' +
       '<div id="youBirthday"></div>' +
       '<div id="youAccount"></div>' +
-      '<div class="ygroup"><span class="lbl">Your room</span>' + row('waving_hand', 'Getting to know you', 'Update your answers any time', 'intro') + row('checkroom', 'Wardrobe', 'Change your outfit', 'wardrobe') + row('format_size', 'Text size', 'Bigger words and buttons', 'text') + row('self_improvement', 'Mindful pace', mindfulQuick() ? 'Quick steps, no cues. Tap to bring the slow steps back' : 'Slow steps and gentle cues. Tap for quick steps instead', 'mindful') + row('record_voice_over', 'Erin\'s voice', erinCuesOn() ? 'On: she speaks in her practices and sessions. Tap to keep her quiet' : 'Off. Her words show as text; tap to hear her voice', 'erinvoice') + row('storefront', 'Dream Street', 'Pet shop, furniture store, property showroom', 'shop') + row('diversity_1', 'Plaza friends', (window.OvuFriends && OvuFriends.summaryNow ? OvuFriends.summaryNow() : 'Friends you meet in the plaza groups'), 'friends') + (RW.tester && RW.tester() ? row('science', 'Tester mode is on', 'Unlimited hearts for trying things out. Tap to turn off', 'testeroff') : '') + row('alarm', 'Reminders', 'Gentle nudges, set by you', 'clock') + '</div>' +
+      '<div class="ygroup"><span class="lbl">Your room</span>' + row('waving_hand', 'Getting to know you', 'Update your answers any time', 'intro') + row('checkroom', 'Wardrobe', 'Change your outfit', 'wardrobe') + row('format_size', 'Text size', 'Bigger words and buttons', 'text') + row('self_improvement', 'Mindful pace', mindfulQuick() ? 'Quick steps, no cues. Tap to bring the slow steps back' : 'Slow steps and gentle cues. Tap for quick steps instead', 'mindful') + (RW.tester && RW.tester() ? row('science', 'Tester mode is on', 'Unlimited hearts for trying things out. Tap to turn off', 'testeroff') : '') + row('alarm', 'Reminders', 'Gentle nudges, set by you', 'clock') + '</div>' +
       '<div class="ygroup"><span class="lbl">Your records</span>' + row('auto_stories', 'My journal', 'Daily logs and Luna’s readings', '', 'journal.html') + row('medical_services', 'Share with my doctor', 'A 4-week summary card', '', 'journal.html#share') + row('menu_book', 'Evidence', 'Every source behind the guides, by number', '', 'evidence.html') + '</div>' +
-      '<div class="ygroup"><span class="lbl">Your data</span>' + row('settings', 'Settings', 'Your life chapter, files from health apps, a sleep file', 'settings') + row('auto_awesome', 'Rhythme Plus', (window.OvuPodcast && OvuPodcast.plusActive() ? 'On for this phone' : 'Erin’s full library · preview'), 'plus') + row('fact_check', 'Your choices', 'Each use of your data, on or off, and your receipt', 'choices') + row('dark_mode', 'Luna’s settings', 'Reading, food photos and readings', 'luna') + row('move_to_inbox', 'Apple Health and Google', (window.OvuHealth ? OvuHealth.importedCount(S) : 0) ? OvuHealth.importedCount(S).toLocaleString() + ' entries brought in · see them or bring in more' : 'Choose what comes in: sleep, cycle, weight and more', 'import') + (window.OvuHealthNative && OvuHealthNative.available() ? (function (P) { return row(P.origin === 'healthkit' ? 'ios' : 'android', 'Connect ' + P.name, 'Read sleep, cycle days and more from ' + P.name + ' on ' + P.device + '; you choose what comes in', 'healthkit'); })(OvuHealthNative.info()) : '') + row('download', 'Export my data', 'A copy of everything, as a file', 'export') + row('delete', 'Delete everything', 'Start fresh on this phone', 'delete') + '</div>' +
+      '<div class="ygroup"><span class="lbl">Your data</span>' + row('settings', 'Settings', 'Your life chapter, Apple Health and Health Connect, your records', 'settings') + row('auto_awesome', 'Rhythme Plus', (window.OvuPodcast && OvuPodcast.plusActive() ? 'On for this phone' : 'Erin’s full library · preview'), 'plus') + row('fact_check', 'Your choices', 'Each use of your data, on or off, and your receipt', 'choices') + row('dark_mode', 'Luna’s settings', 'Reading, food photos and readings', 'luna') + row('move_to_inbox', 'Apple Health and Health Connect', (window.OvuHealth ? OvuHealth.importedCount(S) : 0) ? OvuHealth.importedCount(S).toLocaleString() + ' entries brought in · see or remove them' : (window.OvuHealthNative && OvuHealthNative.available() ? 'Nothing brought in yet' : 'Connects from the Rhythme app on your phone'), 'import') + (window.OvuHealthNative && OvuHealthNative.available() ? (function (P) { return row(P.origin === 'healthkit' ? 'ios' : 'android', 'Connect ' + P.name, 'Read sleep, cycle days and more from ' + P.name + ' on ' + P.device + '; you choose what comes in', 'healthkit'); })(OvuHealthNative.info()) : '') + row('download', 'Export my data', 'A copy of everything, as a file', 'export') + row('delete', 'Delete everything', 'Start fresh on this phone', 'delete') + '</div>' +
       (confirmDelete ? '<div class="flag high" id="yDel"><span class="ms">warning</span><div><b>Delete everything on this phone?</b><span>Every entry, answer, photo thumbnail and heart is removed, and this cannot be undone. Your sign-in, cloud backup and Rhythme Plus access stay. Export a copy first if you want to keep it.' + (function () { var h = window.OvuSync && OvuSync.status ? OvuSync.status().held || 0 : 0; return h ? ' ' + h + ' Movement ' + (h === 1 ? 'entry is' : 'entries are') + ' not in your cloud backup yet, so ' + (h === 1 ? 'it' : 'they') + ' would be lost.' : ''; })() + '</span><div class="row"><button type="button" class="btn danger" data-yact="delete-yes"><span class="ms">delete</span>Delete everything</button><button type="button" class="btn ghost" data-yact="delete-no">Keep my data</button></div></div></div>' : '') +
       '<p class="help" style="text-align:center"><a href="privacy.html">Privacy notes</a> · <a href="terms.html">Terms</a> · Rhythme is a diary, not a diagnosis, and never replaces care.</p>');
     $('#youNameSave').addEventListener('click', function () { S.setProfile({ name: $('#youName').value.trim() }); updateGreeting(); chime('save'); toast('Nice to meet you' + (S.profile().name ? ', ' + S.profile().name : '') + '.', 'favorite'); openYou(); });
@@ -1861,7 +1869,6 @@
       var b = e.target.closest('[data-yact]'); if (!b) return; var act = b.dataset.yact; chime('tap');
       if (act === 'intro') { openOnboarding(0, introAnswers()); return; } /* her answers as they are now, not as they were when You opened (Codex, 21 Oct) */
       if (act === 'text') return window.OvuTextSize && OvuTextSize.open ? OvuTextSize.open() : undefined;
-      if (act === 'erinvoice') { if (window.OvuVoice) OvuVoice.set(erinCuesOn()); chime('tap'); toast(erinCuesOn() ? 'Erin will speak in her practices and sessions. Each practice still has its own Voice button.' : 'Erin stays quiet. Her words show as text; any practice can turn her voice on for that run.', 'record_voice_over'); openYou(); return; }
       if (act === 'mindful') { S.setProfile({ mindfulPace: mindfulQuick() ? 'slow' : 'quick' }); applyMindful(); chime('tap'); toast(mindfulQuick() ? 'Quick steps from now on. The practices you open on purpose are unchanged.' : 'Slow steps and gentle cues are back.', 'self_improvement'); openYou(); return; }
       if (act === 'wardrobe') return openWardrobe();
       if (act === 'shop') return openShop();
@@ -1903,34 +1910,19 @@
     renderImportHome(H);
   }
   function renderImportHome(H) {
-    var have = H.imported(S), total = have.reduce(function (n, k) { return n + k.count; }, 0);
-    var steps = function (which) {
-      return which === 'apple'
-        ? '<ol class="imp-steps"><li>Open the Health app and tap your picture or initials at the top right.</li><li>Scroll down, tap <b>Export All Health Data</b>, then <b>Export</b>. It takes a minute or two.</li><li>Save <b>export.zip</b> to Files, then choose it here. Big files are fine.</li></ol>'
-        : '<ol class="imp-steps"><li>Go to <b>takeout.google.com</b>, tap <b>Deselect all</b>, then tick <b>Fit</b> only.</li><li>Tap <b>Next step</b>, keep <b>Export once</b> and the zip format, then <b>Create export</b>.</li><li>Download the zip when Google emails you, then choose it here, or pick the files from its Fit folder.</li></ol><p class="help">Health Connect has no file export yet; it only backs up to cloud storage for moving to another phone.</p>';
-    };
-    var source = function (which) {
-      var apple = which === 'apple';
-      return '<div class="imp-card"><div class="imp-head"><span class="ms">' + (apple ? 'ios' : 'android') + '</span><div><b>' + (apple ? 'Apple Health' : 'Google') + '</b><small>' + (apple ? 'From an iPhone' : 'Fit data through Google Takeout') + '</small></div></div>' +
-        (total ? '<details class="imp-how"><summary>How to export</summary>' + steps(which) + '</details>' : steps(which)) +
-        '<label class="btn ' + (total ? 'soft' : 'primary') + ' imp-pick"><span class="ms">folder_open</span>' + (apple ? 'Choose export.zip' : 'Choose Takeout zip or Fit files') + '<input type="file" id="' + (apple ? 'impApple' : 'impGoogle') + '" accept="' + (apple ? '.zip,.xml,application/zip,text/xml,application/xml' : '.zip,.json,.csv,application/zip,application/json,text/csv') + '"' + (apple ? '' : ' multiple') + ' hidden></label></div>';
-    };
+    var have = H.imported(S), total = have.reduce(function (n, k) { return n + k.count; }, 0), native = window.OvuHealthNative && OvuHealthNative.available() ? OvuHealthNative.info() : null;
     var html = (imp.last ? importSummaryHTML(H, imp.last) : '') +
       (have.length ? '<div class="ygroup"><span class="lbl">Brought in so far</span>' + have.map(function (k) { return importedCardHTML(H, k); }).join('') + '</div>'
-        : '<p class="help" style="margin-top:6px">Bring in the sleep, cycle, weight, mindful minutes, steps, workouts, resting heart rate and temperature you already have. Rhythme reads the file here on your phone, shows you what is in it, and you choose what comes in. Nothing is ticked until you tick it.</p>') +
-      '<div class="ygroup"><span class="lbl">' + (have.length ? 'Bring in more' : 'Choose a file') + '</span>' + source('apple') + source('google') + '</div>' +
-      '<div id="impProgress"' + (importing ? '' : ' hidden') + '><div class="ibar"><i id="impBar" style="width:' + (importing ? '30%' : '0') + '"></i></div><p class="help" id="impStatus" role="status" aria-live="polite">' + (importing ? 'Still reading your file…' : '') + '</p></div>' +
-      '<div id="impError"></div>' +
-      (total ? (imp.confirm === 'all' ? impConfirmHTML('all', 'Remove everything brought in (' + total.toLocaleString() + ')?', 'Only entries from Apple Health or Google go. Everything you logged yourself, or changed by hand, stays as it is.') : '<div class="row"><button type="button" class="btn ghost" data-impact="remove" data-kind="all"><span class="ms">delete_sweep</span>Remove everything brought in (' + total.toLocaleString() + ')</button></div>') : '') +
-      '<p class="help">A day you logged yourself always wins, and an imported day you change by hand becomes yours. Brought-in entries join your diary on this phone' + (S.profile().cloud && S.profile().cloud.v >= 1 ? ' and are backed up with it, since cloud backup is on' : '') + '; the file itself is never uploaded.</p>';
-    openSheet('import', 'Your health data', 'Apple Health and Google, read on this phone', 'move_to_inbox', html);
+        : '<p class="help" style="margin-top:6px">Bring in the sleep, cycle days, steps, workouts, resting heart rate and temperature you already keep in Apple Health or Health Connect. Rhythme shows you what it found, and you choose what comes in. Nothing is ticked until you tick it.</p>') +
+      (native ? '<div class="row"><button type="button" class="btn primary" data-impact="connect"><span class="ms">' + (native.origin === 'healthkit' ? 'ios' : 'android') + '</span>' + (have.length ? 'Bring in more from ' : 'Connect ') + esc(native.name) + '</button></div>'
+        : '<div class="flag watch"><span class="ms">phone_iphone</span><div><b>Connect in the Rhythme app</b><span>Apple Health on an iPhone and Health Connect on Android connect from the Rhythme app on your phone. A web page cannot reach them.</span></div></div>') +
+      (total ? (imp.confirm === 'all' ? impConfirmHTML('all', 'Remove everything brought in (' + total.toLocaleString() + ')?', 'Only entries from Apple Health, Health Connect or Google go. Everything you logged yourself, or changed by hand, stays as it is.') : '<div class="row"><button type="button" class="btn ghost" data-impact="remove" data-kind="all"><span class="ms">delete_sweep</span>Remove everything brought in (' + total.toLocaleString() + ')</button></div>') : '') +
+      '<p class="help">A day you logged yourself always wins, and an imported day you change by hand becomes yours. Brought-in entries join your diary on this phone' + (S.profile().cloud && S.profile().cloud.v >= 1 ? ' and are backed up with it, since cloud backup is on' : '') + '.</p>';
+    openSheet('import', 'Your health data', 'Apple Health and Health Connect, read on this phone', 'move_to_inbox', html);
     if (imp.confirm) { var cf = $('#impConfirm'); if (cf) setTimeout(function () { cf.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 60); }
-    ['impApple', 'impGoogle'].forEach(function (id) {
-      var inp = $('#' + id); if (!inp) return;
-      inp.addEventListener('change', function () { var files = Array.prototype.slice.call(inp.files || []); inp.value = ''; if (files.length) runImport(files); });
-    });
     body.addEventListener('click', function (e) {
       var b = e.target.closest('[data-impact]'); if (!b) return; var act = b.dataset.impact, kind = b.dataset.kind; chime('tap');
+      if (act === 'connect') return openHealthKit();
       if (act === 'remove') { imp.confirm = kind; imp.last = null; return renderImportHome(H); }
       if (act === 'keep') { imp.confirm = null; return renderImportHome(H); }
       if (act === 'remove-yes') {
@@ -2012,7 +2004,7 @@
     var html = '<div class="imp-card"><div class="imp-head"><span class="ms">' + (imp.scan.source === H.SOURCE.google ? 'android' : 'ios') + '</span><div><b>Found in ' + (direct ? esc(imp.scan.sourceLabel) : 'your ' + (google ? 'Google Takeout' : 'Apple Health export')) + '</b><small>' + esc(imp.file) + '</small></div></div>' +
       '<p class="help" style="margin-top:8px">Tick what you want in your diary. Nothing is saved until you tap Bring in.</p>' +
       '<div class="chips imp-range" role="radiogroup" aria-label="Which dates">' + IMP_RANGES.map(function (r) { return '<button type="button" class="chipbtn' + (imp.range === r.id ? ' on' : '') + '" role="radio" aria-checked="' + (imp.range === r.id) + '" data-range="' + r.id + '">' + r.label + '</button>'; }).join('') + '</div>' +
-      (ready.length ? '<div class="imp-kinds">' + rows + '</div>' : '<div class="flag watch"><span class="ms">info</span><div><b>Nothing Rhythme can use</b><span>This file has no sleep, cycle, weight, mindful minutes, steps, workouts, resting heart rate or temperature in it.</span></div></div>') +
+      (ready.length ? '<div class="imp-kinds">' + rows + '</div>' : '<div class="flag watch"><span class="ms">info</span><div><b>Nothing Rhythme can use</b><span>Nothing came back with sleep, cycle days, steps, workouts, resting heart rate or temperature in it.</span></div></div>') +
       laterHTML + '</div>' +
       '<div class="row"><button type="button" class="btn primary" id="impGo"' + (ticked.length ? '' : ' disabled') + '><span class="ms">move_to_inbox</span>' + (ticked.length ? 'Bring in ' + impPlural(ticked.length, 'kind', 'kinds') : 'Tick what to bring in') + '</button><button type="button" class="btn ghost" id="impCancel" style="flex:0 0 auto">Cancel</button></div>' +
       '<p class="help">' + (direct ? 'Read from ' + esc(imp.scan.sourceLabel) + ' on this phone and never uploaded. Cancel forgets it; ' + esc(imp.scan.sourceLabel) + ' keeps everything as it was.' : 'The file was read on this phone and never uploaded. Cancel forgets it.') + '</p>';
@@ -2075,23 +2067,11 @@
       }
       var seen = res.seenDays || res.window.days;
       imp.scan = res; imp.file = P.name + ' on ' + P.device + ' · last ' + seen + ' days' + (res.granted && res.granted.length < N.readsFor().length ? ' · ' + res.granted.length + ' of ' + N.readsFor().length + ' kinds allowed' : ''); imp.pick = {}; imp.range = 'all';
-      if (current === 'import') renderImportPicker(H); else toast(P.name + ' is read. Open You, then Apple Health and Google, to choose what comes in.', 'move_to_inbox');
+      if (current === 'import') renderImportPicker(H); else toast(P.name + ' is read. Open You, then Apple Health and Health Connect, to choose what comes in.', 'move_to_inbox');
     }, function (err) {
       importing = false; var g2 = ui('hkGo'); if (g2) g2.disabled = false; var p = ui('impProgress'); if (p) p.hidden = true;
       var e2 = ui('impError'); if (e2) e2.innerHTML = '<div class="flag watch"><span class="ms">info</span><div><b>' + esc(P.name) + ' did not answer</b><span>' + esc(err && err.message ? err.message : String(err)) + '</span></div></div>';
     });
-  }
-  /* The sheet body is rebuilt on every render, so progress writes look the elements up fresh and simply miss when another sheet is showing. */
-  function runImport(files) {
-    var H = window.OvuHealth; if (!H || importing) return; importing = true; imp.last = null; imp.confirm = null;
-    var ui = function (id) { return current === 'import' ? $('#' + id) : null; }, last = 0;
-    var show = function (frac, label) { var p = ui('impProgress'), b = ui('impBar'), st = ui('impStatus'); if (p) p.hidden = false; if (b) b.style.width = Math.max(2, Math.min(100, Math.round(frac * 100))) + '%'; if (st) st.textContent = label; };
-    var busy = function (on) { $$('.imp-pick').forEach(function (l) { l.classList.toggle('busy', on); }); };
-    busy(true); var er = ui('impError'); if (er) er.innerHTML = ''; show(0.02, 'Opening ' + files[0].name + '…');
-    H.importFiles(files, { onProgress: function (f, label) { var now = Date.now(); if (f < 1 && now - last < 120) return; last = now; show(f, label + ' · ' + Math.round(f * 100) + '%'); } })
-      .then(function (res) { importing = false; imp.scan = res; imp.file = files.length > 1 ? impPlural(files.length, 'file', 'files') : files[0].name; imp.pick = {}; imp.range = 'all'; if (current === 'import') renderImportPicker(H); else toast('Your file is read. Open You, then Apple Health and Google, to choose what comes in.', 'move_to_inbox'); })
-      .catch(function (err) { importing = false; show(0, ''); var p = ui('impProgress'); if (p) p.hidden = true; var e2 = ui('impError'); if (e2) e2.innerHTML = '<div class="flag watch"><span class="ms">info</span><div><b>That file did not go through</b><span>' + esc(err && err.message ? err.message : String(err)) + '</span></div></div>'; })
-      .then(function () { busy(false); });
   }
 
   /* ---------- Luna's look: pick the friend who sits in the corner ---------- */
@@ -2519,18 +2499,21 @@
    * re-show of a running session leaves it counting (Codex clock reviews, 20 Oct: an observer guessed wrong on hide/show) */
   function hudClockStart(totalMs) { clearInterval(hudClock.id); hudClock.t0 = Date.now(); hudClock.total = Number(totalMs) || 0; hudClock.id = setInterval(hudTick, 1000); hudTick(); }
   function hudClockStop() { clearInterval(hudClock.id); hudClock.id = null; hudClock.total = 0; var el = $('#hudTime'); if (el) el.textContent = ''; }
+  /* the bar's mute shows only while Erin is speaking: With Erin and the practices begun from the M or Mind (Jamie, 23 Oct) */
+  function hudVoice(on) { var m = $('#hudMute'); if (m) m.hidden = !on; }
   var fadeTimer = null; /* the fade after a saved session; a new activity cancels it so it can never hide the new one */
-  function runSession(kind, minutes) {
+  function runSession(kind, minutes, guided) {
     if (session) { hud.classList.add('on'); return; }
     if (refuseBusy()) return; /* never over a practice, a bench practice or Morning start */
     if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; }
     if (window.OvuPodcast) OvuPodcast.pause();
     if (kind !== 'erin') erin('just-breathe'); /* Erin's own session speaks for itself */
     var run = session = { kind: kind, minutes: minutes, startedAt: Date.now(), stopped: false, audio: kind === 'erin' ? new Audio() : null, timer: null };
+    var heard = !!(run.audio && guided); if (heard && window.OvuVoice) OvuVoice.allow(run.audio, true); /* With Erin begun from Mind is heard; begun on a bench out in the world its lines stay captions, the clips playing silently for their timing (Jamie, 23 Oct) */
     emit('activity', 'session', kind); /* anything else using the HUD (a greenhouse minute) hands it over before this claims it */
     if (!sessionCurrent(run)) return;
     clearTimeout(fadeTimer); fadeTimer = null;
-    hideSheet(); holo.classList.toggle('on', kind === 'erin'); hud.classList.add('on'); $('#hudTitle').textContent = kind === 'erin' ? 'With Erin' : 'Just breathe'; hudClockStart(minutes * 60000);
+    hideSheet(); holo.classList.toggle('on', kind === 'erin'); hudVoice(heard); hud.classList.add('on'); $('#hudTitle').textContent = kind === 'erin' ? 'With Erin' : 'Just breathe'; hudClockStart(minutes * 60000);
     var total = minutes * 60000, cycleMs = kind === 'erin' ? 8500 : 10000, hour = new Date().getHours(); /* in and a longer out, no hold */
     var today = S.today(), cramps = S.list('symptom', { from: today, to: today }).some(function (e) { return (e.data.symptoms || []).indexOf('cramps') > -1; }) || S.list('period', { from: today, to: today }).length > 0;
     var guides = ['guide_soften', 'guide_feet', 'guide_wander', 'guide_nothing_to_fix', 'guide_quiet_work'].concat(cramps ? ['guide_cramps'] : []);
@@ -2711,7 +2694,7 @@
       : { t: 'This afternoon: a reset', s: 'Breathe with the ring at the koi pond.', kind: 'koi', min: 0, icon: 'water_drop' };
     var last = S.list('mindfulness', { from: S.addDays(today, -30), to: today }).slice(-3).reverse();
     function label(e) { var k = e.data.kind; return k === 'erin' ? 'With Erin' : k === 'breathe' ? 'Just breathe' : k === 'breathtap' ? 'Koi Pond' : k === 'garden' ? 'Garden watering' : k === 'informal' ? 'Everyday practice' : 'Practice'; }
-    openSheet('mind', 'Your mat', 'Erin appears beside you while you practise', 'self_improvement',
+    openSheet('mind', 'Your mat', 'Mindfulness with Erin: the one place she speaks', 'self_improvement',
       '<div class="podshelf" id="podShelf"></div>' +
       '<div class="matnow"><span class="ms">' + sug.icon + '</span><div><b>' + esc(sug.t) + '</b><small>' + esc(sug.s) + '</small></div>' + (sug.kind === 'morning' ? '<button type="button" class="btn primary" id="matMorning">Start</button>' : sug.kind === 'koi' || sug.kind === 'flower' ? '<button type="button" class="btn primary" data-open="' + (sug.kind === 'koi' ? 'mindTap' : 'mindFlower') + '">Start</button>' : '<button type="button" class="btn primary" data-kind="' + sug.kind + '" data-min="' + sug.min + '">Start</button>') + '</div>' +
       '<div class="mattiles">' +
@@ -2727,10 +2710,10 @@
       (last.length ? '<ul class="matlast">' + last.map(function (e) { return '<li><span>' + esc(label(e)) + '</span><small>' + esc(e.date === today ? 'Today' : S.fmtDate ? S.fmtDate(e.date) : e.date) + ' · ' + (Math.round((Number(e.data.minutes) || 0) * 10) / 10) + ' min</small></li>'; }).join('') + '</ul>' : '') +
       '<div class="erin small"><img src="assets/avatars/erin/erin-chibi-face.webp" alt="Erin Lee"><div><b>Erin Lee · certified MBSR teacher</b><small>Her projection sits beside you on the mat and speaks in her own voice, pre-recorded with her consent, so it works offline.</small></div></div>' +
       '<p class="help">Sessions of a minute or more are saved to your journal.</p>');
-    body.addEventListener('click', function (e) { var b = e.target.closest('[data-kind][data-min]'); if (!b || session) return; chime('tap'); runSession(b.dataset.kind, Number(b.dataset.min)); });
+    body.addEventListener('click', function (e) { var b = e.target.closest('[data-kind][data-min]'); if (!b || session) return; chime('tap'); runSession(b.dataset.kind, Number(b.dataset.min), true); });
     $('#mindAcu').addEventListener('click', openAcupressure);
     $('#mindMove').addEventListener('click', function () { if (session) return; chime('tap'); openExercise(); });
-    $('#mindEveryday').addEventListener('click', function () { openEveryday(); });
+    $('#mindEveryday').addEventListener('click', function () { openEveryday(null, true); });
     var openBtn = body.querySelector('[data-open]'); if (openBtn) openBtn.addEventListener('click', function () { var t = $('#' + openBtn.dataset.open); if (t) t.click(); }); /* breathing lives in the koi pond and the Light Flower (Jamie, 22 Oct) */
     if ($('#matMorning')) $('#matMorning').addEventListener('click', function () { chime('tap'); OvuMorning.open(); });
     var flowerSaved = false;
@@ -3283,10 +3266,12 @@
     img.src = want;
   }
   function restorePose() { lastPose = null; showOutfit(wearing(), true); } /* the picture only, never a save (try-on, Codex design review) */
-  function openEveryday(selId) {
+  var everydayGuided = false; /* the everyday list was opened from the M in her room or the Mind tab: its practices are read in Erin's voice */
+  function openEveryday(selId, guided) {
+    everydayGuided = !!guided;
     var ex = MF.explored();
     openSheet('everyday', 'Everyday mindfulness', 'Guides for things you are really doing', 'self_improvement',
-      '<div class="erin small"><img src="assets/avatars/erin/erin-chibi-face.webp" alt="Erin Lee"><div><b>Informal practice, with Erin</b><small>Pick what you are about to do for real, press Begin as you start, and let the guide walk alongside you. Most guides are spoken in Erin’s voice from interim scripts, and a new one may start as written text; her own scripts replace them one by one.</small></div></div>' +
+      '<div class="erin small"><img src="assets/avatars/erin/erin-chibi-face.webp" alt="Erin Lee"><div><b>Informal practice, with Erin</b><small>Pick what you are about to do for real, press Begin as you start, and let the guide walk alongside you. Begun from the M or from Mind, most guides are spoken in Erin’s voice from interim scripts, and a new one may start as written text; her own scripts replace them one by one. Begun anywhere else in your room, a guide is written words and soft bells.</small></div></div>' +
       (window.OvuMorning ? '<button type="button" class="act morningact" id="evMorning"><img src="' + ART + 'avatar-act-teeth.webp" alt=""><span><b>Morning start</b><small>Just after you wake · wake, brush, sip, in Erin’s voice</small></span><em><span class="ms">wb_twilight</span></em></button>' : '') +
       '<div class="acts" id="acts">' + MF.ACTIVITIES.map(function (a) { var n = ex[a.id] || 0; return '<button type="button" class="act' + (selId === a.id ? ' on' : '') + '" data-act="' + a.id + '"><img src="' + ART + MF.cardImg(a) + '" alt=""><span><b>' + esc(a.name) + '</b><small>' + esc(a.when) + ' · ' + a.minutes + ' min' + (a.audio === false ? ' · text guide' : '') + '</small></span><em>' + (n ? '<span class="ms">check_circle</span>' + n : '<span class="ms fill">favorite</span>2') + '</em></button>'; }).join('') + '</div>' +
       '<div class="actdetail" id="actDetail"></div>' +
@@ -3299,18 +3284,18 @@
         '<div class="row"><button type="button" class="btn primary" id="actStart" data-act="' + id + '" data-v="' + vi + '"><span class="ms">play_arrow</span>Begin as you begin</button></div></div>';
       $('#actDetail').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
-    body.addEventListener('click', function (e) { if (e.target.closest('#evMorning')) { chime('tap'); OvuMorning.open(); return; } var st = e.target.closest('#actStart'); if (st) { runPractice(st.dataset.act, Number(st.dataset.v)); return; } var b = e.target.closest('[data-act]'); if (b) { chime('tap'); detail(b.dataset.act); } });
+    body.addEventListener('click', function (e) { if (e.target.closest('#evMorning')) { chime('tap'); OvuMorning.open(); return; } var st = e.target.closest('#actStart'); if (st) { runPractice(st.dataset.act, Number(st.dataset.v), everydayGuided); return; } var b = e.target.closest('[data-act]'); if (b) { chime('tap'); detail(b.dataset.act); } });
     if (selId) detail(selId);
   }
-  function runPractice(id, vi) {
+  function runPractice(id, vi, guided) {
     if (practice) { hud.classList.add('on'); return; }
     if (refuseBusy()) return; /* never over a session, a bench practice or Morning start */
     if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; }
     var a = MF.byId(id); if (!a || practice) return; var v = a.variations[vi] || a.variations[0]; vi = a.variations.indexOf(v);
     if (window.OvuPodcast) OvuPodcast.pause();
-    var voiced = a.audio !== false; /* a practice with no clips yet (tidy up) is captions and bells only: nothing is requested that is not there */
+    var voiced = a.audio !== false && !!guided; /* Erin reads it only when begun from the M or the Mind tab (Jamie, 23 Oct); begun anywhere else, or with no clips yet (tidy up), it is captions and bells only */
     var run = practice = { a: a, vi: vi, v: v, startedAt: Date.now(), stopped: false, audio: voiced ? new Audio() : null, timer: null, total: MF.totalSecs(v), pre: null, hiddenMs: 0, hiddenAt: null };
-    if (voiced) try { var first = GUIDE + id + '-' + vi + '-0.mp3'; run.audio.src = first; run.pre = first; var pr0 = run.audio.play(); if (pr0 && pr0.catch) pr0.catch(function () { }); } catch (e) { } /* the first line starts inside the tap, which unlocks the element for the rest */
+    if (voiced) try { if (window.OvuVoice) OvuVoice.allow(run.audio, true); var first = GUIDE + id + '-' + vi + '-0.mp3'; run.audio.src = first; run.pre = first; var pr0 = run.audio.play(); if (pr0 && pr0.catch) pr0.catch(function () { }); } catch (e) { } /* the first line starts inside the tap, which unlocks the element for the rest */
     /* from the Mind hub she was on the mat, hidden: bring her back before the pose, or the practice plays to an empty room
      * (four-persona review, 20 Oct, all four Codex walkthroughs) */
     endMoment();
@@ -3318,7 +3303,7 @@
     emit('activity', 'practice', id); /* as for a session: the HUD is handed over first */
     if (!practiceCurrent(run)) return;
     clearTimeout(fadeTimer); fadeTimer = null;
-    hideSheet(); hud.classList.add('on'); $('#hudTitle').textContent = a.name; if (a.pose) setPose(a.pose); else restorePose(); /* no pose (tidy up): she stands and watches in her own clothes, and a moment's pose still loading is overtaken (Codex design review, 23 Oct) */ avatar.classList.add('acting'); hudClockStart((run.total || 0) * 1000);
+    hideSheet(); hudVoice(voiced); hud.classList.add('on'); $('#hudTitle').textContent = a.name; if (a.pose) setPose(a.pose); else restorePose(); /* no pose (tidy up): she stands and watches in her own clothes, and a moment's pose still loading is overtaken (Codex design review, 23 Oct) */ avatar.classList.add('acting'); hudClockStart((run.total || 0) * 1000);
     var chain = Promise.resolve();
     v.steps.forEach(function (s, si) {
       chain = chain.then(function () {
@@ -3643,7 +3628,7 @@
         (soundOn() && window.OvuSound ? '<label class="volrow"><span class="ms">volume_down</span><input type="range" id="winVol" min="0" max="100" step="5" value="' + Math.round(OvuSound.volume() * 100) + '" aria-label="Sound volume"><span class="ms">volume_up</span></label>' : '') +
       '<div class="row"><a class="btn ghost" href="room.html#settings"><span class="ms">settings</span>Settings & health connections</a></div>' +
       '<div class="row"><button type="button" class="btn ghost" id="winIntro"><span class="ms">favorite</span>' + (S.profile().onboarded ? 'Update my intro' : 'Tell me about you') + '</button></div>' +
-      '<p class="help">Sounds are tiny chimes plus Erin’s good-night and good-morning lines; they stay off unless you turn them on. Guided sessions always play when you start one. Music is a soft tune drawn in the browser for each place, off until you turn it on; it shares the Sounds volume, pauses while she sleeps and never plays over Erin’s voice. The note in the top bar stops it any time.</p>');
+      '<p class="help">Sounds are tiny chimes; they stay off unless you turn them on. Erin speaks only in the mindfulness you begin from the M in your room or from Mind, and the mute on the practice bar quiets her. Music is a cheerful tune of its own for each place, off until you turn it on; it shares the Sounds volume, pauses while she sleeps and never plays over Erin’s voice. The note in the top bar stops it any time.</p>' + (window.OvuMusic && OvuMusic.CREDITS ? '<details class="help"><summary style="cursor:pointer">Music credits</summary>' + Object.keys(OvuMusic.CREDITS).map(function (k) { var c = OvuMusic.CREDITS[k]; return esc(c.title) + ' by ' + esc(c.by) + ' (' + esc(c.licence) + ', OpenGameArt)'; }).join('; ') + '. The secret spring’s drone is drawn in the browser.</details>' : ''));
     $('#winSleep').addEventListener('click', function () { if (act.id === 'log') { openSleepRecord(); return; } closeSheet(); tap(hotspot(act.id)); });
     $('#winSound').addEventListener('click', function () { S.setState({ sound: !soundOn() }); if (window.OvuSound) OvuSound.sync(); chime('tap'); openWindow(); });
     var wm = $('#winMusic'); if (wm) wm.addEventListener('click', function () { if (window.OvuMusic) OvuMusic.toggle(); else S.setState({ music: S.state().music !== true }); chime('tap'); var again = $('#winMusic'); if (again) again.setAttribute('aria-pressed', S.state().music === true ? 'true' : 'false'); var ic = again && again.querySelector('.ms'); if (ic) ic.textContent = S.state().music === true ? 'music_note' : 'music_off'; var lb = again && again.querySelector('.mlabel'); if (lb) lb.textContent = 'Music ' + (S.state().music === true ? 'on' : 'off'); }); /* repainted in place, so focus stays on the button */
@@ -3823,7 +3808,7 @@
   hooks.on.activity = (hooks.on.activity || []).concat([function () { endTryOn(true); }]);
   hooks.on.layout = (hooks.on.layout || []).concat([function (L2) { if (trying && (!L2 || L2.id !== trying.at)) endTryOn(true); if (costume && (!L2 || L2.id !== costume.at)) undress(true); }]);
   function emit(name, a, b) { if (name === 'activity' || name === 'beforeWalk' || name === 'layout' || name === 'meditate') activityGen++; /* meditate too: a saved session's pending fade must not close a reopened Mind (Codex, 22 Oct) */ (hooks.on[name] || []).forEach(function (f) { try { f(a, b); } catch (e) { console.error('room hook ' + name, e); } }); }
-  window.OvuRoom = { openCalendar: openCalendar, openScores: openScores, mindfulQuick: mindfulQuick, erinCuesOn: erinCuesOn,
+  window.OvuRoom = { openCalendar: openCalendar, openScores: openScores, mindfulQuick: mindfulQuick,
     erin: erin, /* a no-op since 23 Oct: no voice lines for everyday actions */
     LAYOUTS: LAYOUTS, ART: ART, OUTFITS: OUTFITS, hotspotHandlers: hooks.hotspotHandlers,
     on: function (name, f) { (hooks.on[name] = hooks.on[name] || []).push(f); if (name === 'boot' && booted) f(); },
@@ -3843,7 +3828,7 @@
     activityNow: activityNow, busyLine: busyLine, refuseBusy: refuseBusy,
     asleep: asleep, stopEverything: stopEverything, poseSrc: poseSrc, shopOpenNow: shopOpenNow,
     blinking: function (on) { blinkOn = !!on; if (blinkOn) scheduleBlink(); else clearTimeout(blinkT); return blinkOn; },
-    setPose: setPose, restorePose: restorePose, caption: caption, showThought: showThought, hideThought: hideThought, joy: joy, isNight: isNight, renderProps: renderProps, propPosFor: propPosFor, hudOn: function (on, title) { if (on && title) { activityGen++; clearTimeout(fadeTimer); fadeTimer = null; } /* a new activity from the garden or greenhouse cancels a saved session's fade, as runSession does */ hud.classList.toggle('on', !!on); if (title) $('#hudTitle').textContent = title; if (on && title) hudClockStart(0); else if (!on) hudClockStop(); }
+    setPose: setPose, restorePose: restorePose, caption: caption, showThought: showThought, hideThought: hideThought, joy: joy, isNight: isNight, renderProps: renderProps, propPosFor: propPosFor, hudOn: function (on, title) { if (on) hudVoice(false); if (on && title) { activityGen++; clearTimeout(fadeTimer); fadeTimer = null; } /* a new activity from the garden or greenhouse cancels a saved session's fade, as runSession does */ hud.classList.toggle('on', !!on); if (title) $('#hudTitle').textContent = title; if (on && title) hudClockStart(0); else if (!on) hudClockStop(); }
   };
 
   /* ---------- boot ---------- */

@@ -4,7 +4,11 @@
  * Opt in only: S.state().music === true, set from the Music chip in the top bar or the window sheet. One pure decide()
  * ranks every reason for silence (off, hidden, asleep, an activity that needs the ear, a scene with no theme, a voice
  * playing) ahead of playing. One 32-bar form in D major for every scene; themes differ by voice, accompaniment, tempo and
- * which phrases they choose. Pure parts first (tested in node), then the engine. */
+ * which phrases they choose. Pure parts first (tested in node), then the engine.
+ * Livelier tracks (Jamie, 23 Oct 2026: "change it to something a bit more lively... when they enter a different scene, there
+ * will be a different melody... no copyright"): six scenes now play a recorded CC0 track from OpenGameArt, each its own
+ * (CREDITS below, docs/music-credits.md), looped through the same gate, fades and duck as the drawn tune; the cave keeps its
+ * drawn drone. Two reusable players are readied inside a tap, so a phone lets a later scene change start the next track. */
 (function (root) {
   'use strict';
   /* ---------- pitches and harmony ---------- */
@@ -58,16 +62,26 @@
   var SLOT_GROUPS = ['A1', 'A2', 'A1', 'A2', 'B1', 'B2', 'A1', 'A2'];
 
   /* ---------- themes: voice, accompaniment, tempo per band, and the phrases for each slot (first choice, second choice) ---------- */
+  var MUSIC_DIR = 'assets/music/', TRACK_LEVEL = 0.6;
+  /* every recorded track, its source page and its licence (each page checked on 23 Oct 2026: CC0 only) */
+  var CREDITS = {
+    home: { title: 'Apple Cider', by: 'Zane Little Music', page: 'https://opengameart.org/content/apple-cider', licence: 'CC0' },
+    garden: { title: 'Quaint Town', by: 'neonarkade', page: 'https://opengameart.org/content/quaint-town', licence: 'CC0' },
+    farm: { title: 'Joy Ride', by: 'Pro Sensory', page: 'https://opengameart.org/content/joy-ride', licence: 'CC0' },
+    street: { title: 'Bossa Town', by: 'KarateStudios', page: 'https://opengameart.org/content/bossa-town', licence: 'CC0' },
+    plaza: { title: 'Hot Springs Town', by: 'Kistol', page: 'https://opengameart.org/content/hot-springs-town', licence: 'CC0' },
+    harbour: { title: 'Seaside Village', by: 'KarateStudios', page: 'https://opengameart.org/content/seaside-village', licence: 'CC0' }
+  };
   var THEMES = {
-    home: { name: 'Music box', voice: 'pluck', acc: 'broken', tempo: { morning: 61, day: 61, evening: 56, night: 49 }, slots: [['A1a', 'A1d'], ['A2a', 'A2b'], ['A1b', 'A1a'], ['A2b', 'A2a'], ['B1a', 'B1b'], ['B2a', 'B2b'], ['A1a', 'A1b'], ['A2d']] },
-    garden: { name: 'Garden', voice: 'soft', acc: 'pad', tempo: { morning: 65, day: 65, evening: 60, night: 51 }, grace: true, slots: [['A1c', 'A1a'], ['A2c', 'A2a'], ['A1a', 'A1c'], ['A2a', 'A2c'], ['B1b', 'B1a'], ['B2b', 'B2a'], ['A1c', 'A1a'], ['A2d']] },
-    farm: { name: 'Farm', voice: 'warm', acc: 'broken', tempo: { morning: 60, day: 60, evening: 54, night: 49 }, slots: [['A1d', 'A1a'], ['A2a', 'A2c'], ['A1a', 'A1d'], ['A2c', 'A2a'], ['B1a', 'B1b'], ['B2a', 'B2b'], ['A1d', 'A1a'], ['A2d']] },
-    street: { name: 'Street', voice: 'pluck', acc: 'light', tempo: { morning: 68, day: 68, evening: 61, night: 51 }, slots: [['A1d', 'A1b'], ['A2b', 'A2a'], ['A1b', 'A1d'], ['A2a', 'A2b'], ['B1b', 'B1a'], ['B2b', 'B2a'], ['A1d', 'A1b'], ['A2d']] },
-    plaza: { name: 'Plaza', voice: 'bell', acc: 'pad', tempo: { morning: 71, day: 71, evening: 65, night: 53 }, slots: [['A1b', 'A1a'], ['A2b', 'A2a'], ['A1a', 'A1b'], ['A2a', 'A2b'], ['B1a', 'B1b'], ['B2a', 'B2b'], ['A1b', 'A1a'], ['A2d']] },
+    home: { track: 'home.mp3', name: 'Music box', voice: 'pluck', acc: 'broken', tempo: { morning: 61, day: 61, evening: 56, night: 49 }, slots: [['A1a', 'A1d'], ['A2a', 'A2b'], ['A1b', 'A1a'], ['A2b', 'A2a'], ['B1a', 'B1b'], ['B2a', 'B2b'], ['A1a', 'A1b'], ['A2d']] },
+    garden: { track: 'garden.mp3', name: 'Garden', voice: 'soft', acc: 'pad', tempo: { morning: 65, day: 65, evening: 60, night: 51 }, grace: true, slots: [['A1c', 'A1a'], ['A2c', 'A2a'], ['A1a', 'A1c'], ['A2a', 'A2c'], ['B1b', 'B1a'], ['B2b', 'B2a'], ['A1c', 'A1a'], ['A2d']] },
+    farm: { track: 'farm.mp3', name: 'Farm', voice: 'warm', acc: 'broken', tempo: { morning: 60, day: 60, evening: 54, night: 49 }, slots: [['A1d', 'A1a'], ['A2a', 'A2c'], ['A1a', 'A1d'], ['A2c', 'A2a'], ['B1a', 'B1b'], ['B2a', 'B2b'], ['A1d', 'A1a'], ['A2d']] },
+    street: { track: 'street.mp3', name: 'Street', voice: 'pluck', acc: 'light', tempo: { morning: 68, day: 68, evening: 61, night: 51 }, slots: [['A1d', 'A1b'], ['A2b', 'A2a'], ['A1b', 'A1d'], ['A2a', 'A2b'], ['B1b', 'B1a'], ['B2b', 'B2a'], ['A1d', 'A1b'], ['A2d']] },
+    plaza: { track: 'plaza.mp3', name: 'Plaza', voice: 'bell', acc: 'pad', tempo: { morning: 71, day: 71, evening: 65, night: 53 }, slots: [['A1b', 'A1a'], ['A2b', 'A2a'], ['A1a', 'A1b'], ['A2a', 'A2b'], ['B1a', 'B1b'], ['B2a', 'B2b'], ['A1b', 'A1a'], ['A2d']] },
     /* the secret cave and its hot spring (Jamie, 22 Oct: "mystical background music that is extremely therapeutic"): no tune at all,
      * a D drone, singing-bowl strikes and slow water drops in a deep hall; built by caveEvents, not the phrase bank */
     cave: { name: 'Spring', voice: 'bowl', acc: 'drone', ambient: true, tempo: { morning: 48, day: 48, evening: 46, night: 44 }, slots: [['A1a']] },
-    harbour: { name: 'Harbour', voice: 'soft', acc: 'pad', sparse: true, tempo: { morning: 54, day: 54, evening: 51, night: 48 }, slots: [['A1c', 'A1a'], ['A2c', 'A2a'], ['A1c', 'A1a'], ['A2c', 'A2a'], ['B1b', 'B1a'], ['B2b', 'B2a'], ['A1c', 'A1a'], ['A2d']] }
+    harbour: { track: 'harbour.mp3', name: 'Harbour', voice: 'soft', acc: 'pad', sparse: true, tempo: { morning: 54, day: 54, evening: 51, night: 48 }, slots: [['A1c', 'A1a'], ['A2c', 'A2a'], ['A1c', 'A1a'], ['A2c', 'A2a'], ['B1b', 'B1a'], ['B2b', 'B2a'], ['A1c', 'A1a'], ['A2d']] }
   };
   var SCENE_THEME = { room: 'home', house: 'home', bathhouse: 'home', familyhome: 'home', garden: 'garden', greenhouse: 'garden', farm: 'farm', barn: 'farm', barninside: 'farm', heninside: 'farm', street: 'street', plaza: 'plaza', harbour: 'harbour', lane: 'harbour', cave: 'cave' };
   /* the theme for a layout: by id, else by its scene, else the home tune; the cave has none */
@@ -169,7 +183,7 @@
   /* ---------- media tracking: one wrapper, listeners on each element, nothing inferred from the call ---------- */
   var live = [], mediaTimer = 0;
   function audible(el) {
-    if (!el || (el.tagName !== 'AUDIO' && el.tagName !== 'VIDEO')) return false;
+    if (!el || (el.tagName !== 'AUDIO' && el.tagName !== 'VIDEO') || el.__ovuMusic) return false; /* the music's own players never duck the music */
     if (el.paused || el.ended || el.muted || !(el.volume > 0) || el.srcObject) return false;
     var src = el.currentSrc || el.src || ''; if (/^data:/i.test(src)) return false; /* Morning start's silent unlock clip */
     return true;
@@ -289,14 +303,49 @@
       if (T.running) return;
       var startPos = T.origin === null ? 0 : Math.ceil(T.pausedPos / BEATS) * BEATS; /* back in at the next bar */
       T.origin = ctx.currentTime + 0.05 - startPos * T.beatDur; T.running = true;
-      layers.forEach(function (l) { l.cursorTo(startPos); });
+      layers.forEach(function (l) { if (l.track) { if (!l.ending) l.play(); } else l.cursorTo(startPos); });
       T.timer = root.setInterval(tick, 30);
     };
-    T.pause = function () { if (!T.running) return; T.pausedPos = T.pos(); T.running = false; root.clearInterval(T.timer); T.timer = 0; };
+    T.pause = function () { if (!T.running) return; T.pausedPos = T.pos(); T.running = false; root.clearInterval(T.timer); T.timer = 0; layers.forEach(function (l) { if (l.track) l.pause(); }); };
     return T;
+  }
+  /* two reusable players for the recorded tracks, each wired once into the graph; a phone lets an element play later only
+   * after a tap has played it, so unlock() plays each muted for a moment inside the Music tap or the first tap after load */
+  var decks = [];
+  function newDeck() {
+    if (typeof Audio === 'undefined' || !graph) return null;
+    try { var el = new Audio(); el.__ovuMusic = true; el.loop = true; el.preload = 'auto'; var src = graph.ctx.createMediaElementSource(el); var d = { el: el, src: src, owner: null, unlocked: false }; decks.push(d); return d; } catch (e) { return null; }
+  }
+  function unlock() {
+    if (!ensureGraph()) return;
+    while (decks.length < 2) if (!newDeck()) return;
+    var t = THEMES[themeNow()] || THEMES.home, url = MUSIC_DIR + (t.track || THEMES.home.track);
+    decks.forEach(function (d) {
+      if (d.unlocked || d.owner) return;
+      try { if (!d.el.src) d.el.src = url; d.el.muted = true; var p = d.el.play(); if (p && p.then) p.then(function () { if (!d.owner) d.el.pause(); d.el.muted = false; d.unlocked = true; }, function () { d.el.muted = false; }); else { d.el.pause(); d.el.muted = false; d.unlocked = true; } } catch (e) { d.el.muted = false; }
+    });
+  }
+  function takeDeck() {
+    var d = decks.filter(function (x) { return !x.owner; })[0] || newDeck();
+    if (!d) { var old = layers.filter(function (l) { return l.track && l.ending; })[0]; if (old) { release(old); d = old.deck; } } /* both busy: the one fading out gives its player up early */
+    return d || null;
+  }
+  function release(l) { var d = l.deck; if (!d || d.owner !== l) return; try { d.el.pause(); d.src.disconnect(); } catch (e) { } d.owner = null; l.voices = 0; }
+  function makeTrackLayer(themeId, band) {
+    var ctx = graph.ctx, g = ctx.createGain(); g.gain.value = 0; g.connect(gate); /* a recording carries its own room: no added reverb */
+    var l = { theme: themeId, band: band, gain: g, voices: 0, ending: false, track: true, deck: null };
+    var d = takeDeck(); if (!d) return l;
+    d.owner = l; l.deck = d; try { d.src.disconnect(); } catch (e) { } d.src.connect(g);
+    var url = MUSIC_DIR + THEMES[themeId].track; if ((d.el.getAttribute('src') || '') !== url) d.el.src = url; d.el.loop = true;
+    try { d.el.currentTime = 0; } catch (e) { }
+    l.play = function () { if (!l.deck || l.deck.owner !== l) return; try { var p = l.deck.el.play(); l.voices = 1; if (p && p.catch) p.catch(function () { l.voices = 0; }); } catch (e) { l.voices = 0; } };
+    l.pause = function () { if (l.deck && l.deck.owner === l) { try { l.deck.el.pause(); } catch (e) { } } l.voices = 0; };
+    l.cursorTo = function () { };
+    return l;
   }
   /* a layer plays one theme on the shared clock, with its own fade gain and event cursor */
   function makeLayer(themeId, band) {
+    if (THEMES[themeId] && THEMES[themeId].track) return makeTrackLayer(themeId, band);
     var ctx = graph.ctx, g = ctx.createGain(); g.gain.value = 0; g.connect(ret.dry); g.connect(ret.wet); /* every note of the layer passes its fade gain, then the return's dry and wet sends */
     var l = { theme: themeId, band: band, gain: g, voices: 0, made: 0, ending: false, loop: 0, evs: null, i: 0, dry: g, wet: g };
     l.load = function (loop) { l.loop = loop; l.evs = events(l.theme, l.band, loop); l.i = 0; };
@@ -308,7 +357,7 @@
     var ctx = graph.ctx, now = ctx.currentTime, horizon = now + 0.18, T = transport;
     if (ctx.state !== 'running') return;
     layers.forEach(function (l) {
-      if (l.ending) return;
+      if (l.ending || l.track) return;
       if (!l.evs) l.cursorTo(Math.max(0, T.pos()));
       var guard = 0;
       while (guard++ < 400) {
@@ -326,17 +375,17 @@
   }
   function retire(l, secs) {
     if (l.ending) return; l.ending = true; ramp(l.gain.gain, graph.ctx, 0, secs);
-    root.setTimeout(function () { var i = layers.indexOf(l); if (i > -1) layers.splice(i, 1); try { l.gain.disconnect(); } catch (e) { } }, Math.round((secs + 2.2) * 1000));
+    root.setTimeout(function () { var i = layers.indexOf(l); if (i > -1) layers.splice(i, 1); if (l.track) release(l); try { l.gain.disconnect(); } catch (e) { } }, Math.round((secs + 2.2) * 1000));
   }
   function setTheme(themeId, band) {
     var cur = layers.filter(function (l) { return !l.ending; })[0];
     if (cur && cur.theme === themeId) { if (cur.band !== band) pendingBand = band; return cur; }
     layers.filter(function (l) { return !l.ending; }).forEach(function (l) { retire(l, 1.5); });
-    while (layers.filter(function (l) { return l.ending; }).length > 1) { var oldest = layers.filter(function (l) { return l.ending; })[0]; ramp(oldest.gain.gain, graph.ctx, 0, 0.4); layers.splice(layers.indexOf(oldest), 1); try { oldest.gain.disconnect(); } catch (e) { } }
+    while (layers.filter(function (l) { return l.ending; }).length > 1) { var oldest = layers.filter(function (l) { return l.ending; })[0]; ramp(oldest.gain.gain, graph.ctx, 0, 0.4); layers.splice(layers.indexOf(oldest), 1); if (oldest.track) release(oldest); try { oldest.gain.disconnect(); } catch (e) { } }
     var l = makeLayer(themeId, band); layers.push(l);
     transport.setTempo(tempoFor(themeId, band));
-    if (transport.running) l.cursorTo(Math.max(0, transport.pos()));
-    ramp(l.gain.gain, graph.ctx, 1, 2.5);
+    if (transport.running) { if (l.track) l.play(); else l.cursorTo(Math.max(0, transport.pos())); }
+    ramp(l.gain.gain, graph.ctx, l.track ? TRACK_LEVEL : 1, 2.5);
     return l;
   }
   function stopAll(secs) {
@@ -370,7 +419,7 @@
   function set(v) {
     var s = store(); if (!s) return false;
     v = !!v; try { s.setState({ music: v }); } catch (e) { return false; }
-    if (v && root.OvuSound && root.OvuSound.resume) root.OvuSound.resume().then(function (st) { ctxReady = st === 'running'; reconcile('resume'); });
+    if (v && root.OvuSound && root.OvuSound.resume) { var rp = root.OvuSound.resume(); unlock(); rp.then(function (st) { ctxReady = st === 'running'; reconcile('resume'); }); } /* the players are readied inside this tap */
     reconcile('set'); return v;
   }
   function toggle() { return set(!on()); }
@@ -410,14 +459,15 @@
     exclusiveTimer = root.setInterval(function () { if (on()) reconcile('poll'); }, 500);
     hourTimer = root.setInterval(function () { if (on()) reconcile('hour'); }, 60000);
     /* the first gesture after a page load with music already on: resume there, not at load */
-    if (root.document) root.document.addEventListener('pointerdown', function () { if (on() && !ctxReady && root.OvuSound && root.OvuSound.resume) root.OvuSound.resume().then(function (st) { ctxReady = st === 'running'; reconcile('gesture'); }); }, true);
+    if (root.document) root.document.addEventListener('pointerdown', function () { if (on() && !ctxReady && root.OvuSound && root.OvuSound.resume) { var rp = root.OvuSound.resume(); unlock(); rp.then(function (st) { ctxReady = st === 'running'; reconcile('gesture'); }); } }, true);
     return true;
   }
   function stateOut() {
     var ctx = graph && graph.ctx;
-    return { on: on(), mode: applied.mode, theme: applied.theme, band: on() ? bandNow() : null, running: !!(transport && transport.running), ctx: ctx ? ctx.state : null, layers: layers.length, voices: layers.reduce(function (n, l) { return n + l.voices; }, 0), media: live.length, gate: gate ? Math.round(gate.gain.value * 100) / 100 : null, why: applied.why || null };
+    var tl = layers.filter(function (x) { return x.track && !x.ending; })[0], track = tl && tl.deck ? { src: tl.deck.el.getAttribute('src'), playing: !tl.deck.el.paused, t: Math.round(tl.deck.el.currentTime * 10) / 10, level: Math.round(tl.gain.gain.value * 100) / 100 } : null;
+    return { track: track, on: on(), mode: applied.mode, theme: applied.theme, band: on() ? bandNow() : null, running: !!(transport && transport.running), ctx: ctx ? ctx.state : null, layers: layers.length, voices: layers.reduce(function (n, l) { return n + l.voices; }, 0), media: live.length, gate: gate ? Math.round(gate.gain.value * 100) / 100 : null, why: applied.why || null };
   }
-  root.OvuMusic = { THEMES: THEMES, BANK: BANK, GROUP: GROUP, SLOT_GROUPS: SLOT_GROUPS, BARS: BARS, CHORDS: CHORDS, LOOP_BEATS: LOOP_BEATS, SCALE: SCALE, hz: hz, midi: midi, chordAt: chordAt, inScale: inScale, chordTone: chordTone, stepDown: stepDown,
+  root.OvuMusic = { THEMES: THEMES, CREDITS: CREDITS, MUSIC_DIR: MUSIC_DIR, TRACK_LEVEL: TRACK_LEVEL, BANK: BANK, GROUP: GROUP, SLOT_GROUPS: SLOT_GROUPS, BARS: BARS, CHORDS: CHORDS, LOOP_BEATS: LOOP_BEATS, SCALE: SCALE, hz: hz, midi: midi, chordAt: chordAt, inScale: inScale, chordTone: chordTone, stepDown: stepDown,
     themeFor: themeFor, bandFor: bandFor, tempoFor: tempoFor, arrange: arrange, events: events, decide: decide, audible: audible, render: render, makeReturn: makeReturn,
     init: init, set: set, toggle: toggle, on: on, state: stateOut, reconcile: reconcile, _media: { track: track, update: updateMedia, live: function () { return live.slice(); }, wrap: wrapPlay } };
   if (root.document && root.OvuRoom) init(); else if (root.document) root.document.addEventListener('DOMContentLoaded', function () { if (root.OvuRoom) init(); });

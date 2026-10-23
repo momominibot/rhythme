@@ -1,23 +1,14 @@
-/* Rhythme community plaza: a fountain, lanterns, a noticeboard, a tea stall and two benches, with
- * neighbours standing about. Until accounts land the neighbours are samples, kept behind
- * OvuCommunity.neighbours() so real friends can be plugged in without touching the scene. Visiting a
- * neighbour applies her home layout as a read-only visit: hotspots are inert, your own props are not
- * drawn, and nothing you tap there writes to anyone's diary. Pure data and rules first (testable in
- * node), then the scene wiring, which mounts when room.js announces boot through window.OvuRoom. */
+/* Rhythme community plaza: a fountain, lanterns, a noticeboard, a tea stall and two benches. The people standing
+ * about are real: ovu-friends.js hands over the plaza-card holders in her group through OvuCommunity.setPeople, and
+ * with nobody there the plaza is simply empty (Jamie, 23 Oct 2026: "I want real other users that enter the room. If
+ * there's no one, then just leave it empty"). The villagers (ovu-villagers.js) stay. Pure data and rules first
+ * (testable in node), then the scene wiring, which mounts when room.js announces boot through window.OvuRoom. */
 (function (root) {
   'use strict';
-  /* ---------- samples until accounts exist ---------- */
-  var NEIGHBOURS = [
-    { id: 'mei', name: 'Mei', outfit: 'kebaya-blue', pet: { id: 'corgi', img: 'prop-corgi.webp', name: 'Butter', w: 8.5 }, home: 'house', spot: { x: 42, y: 60, flip: false }, petSpot: { x: 35, y: 62 }, line: 'Lovely light today. My plot is almost in bloom.', sample: true },
-    { id: 'nadia', name: 'Nadia', outfit: 'kebaya-green', pet: { id: 'catginger', img: 'prop-cat-ginger.webp', name: 'Teh', w: 8 }, home: 'bathhouse', spot: { x: 54, y: 55, flip: true }, petSpot: { x: 60, y: 60 }, line: 'I sit by the fountain when my head is full. It helps.', sample: true },
-    { id: 'priya', name: 'Priya', outfit: 'cozy', pet: { id: 'shiba', img: 'prop-shiba.webp', name: 'Momo', w: 8.5 }, home: 'familyhome', spot: { x: 24, y: 60, flip: true }, petSpot: { x: 16, y: 60 }, line: 'Tea first, then everything else.', sample: true },
-    { id: 'sofia', name: 'Sofia', outfit: 'party', pet: { id: 'cat', img: 'prop-cat.webp', name: 'Pudding', w: 8 }, home: 'house', spot: { x: 80, y: 62, flip: true }, petSpot: { x: 74, y: 63 }, line: 'Three slow breaths on the bench. That is my whole plan.', sample: true }
-  ];
   /* the one seam for real people: ovu-friends.js hands over the plaza-card holders in her group,
-   * [{id, real, handle, name, outfit, friend, spot}]; while any are shown the samples step aside, so a sample is never
-   * mistaken for a person */
+   * [{id, real, handle, name, outfit, friend, spot}]; nobody there means nobody drawn */
   var people = null, openPerson = null;
-  function neighbours() { var real = people ? people() : null; return real && real.length ? real : NEIGHBOURS.slice(); }
+  function neighbours() { var real = people ? people() : null; return real && real.length ? real.slice() : []; }
   function neighbour(id) { return neighbours().filter(function (n) { return n.id === id; })[0] || null; }
   function setPeople(fn, open) { people = typeof fn === 'function' ? fn : null; openPerson = typeof open === 'function' ? open : null; }
   /* gentle prompts for the noticeboard, one per day, chosen by the date so everyone sees the same one */
@@ -37,16 +28,11 @@
     'Open a window. Let the room breathe with you.',
     'A warm drink, held with both hands, for a whole minute.'
   ];
-  var NOTES = [
-    { by: 'Mei', text: 'The bench under the blossom tree gets the evening light. Try it around six.', sample: true },
-    { by: 'Nadia', text: 'Sat by the fountain for two minutes and just listened. The water sounds like rain.', sample: true }, /* no sample note claims a remedy worked (four-persona review, 20 Oct) */
-    { by: 'Priya', text: 'Day 12 of watering. The plot has leaves! No pressure, it waits for you.', sample: true }
-  ];
   function dayIndex(iso) { var t = Date.parse((iso || '1970-01-01') + 'T00:00:00Z'); return Math.floor(t / 86400000); }
   function promptFor(iso) { var i = dayIndex(iso) % PROMPTS.length; return PROMPTS[(i + PROMPTS.length) % PROMPTS.length]; }
   /* each look's outline on its canvas (tools/art/fit_figure.py --trace: alpha traced, dilated 5 px, every opaque pixel inside):
    * a neighbour's picture is clipped to it, which changes nothing you see but lets a tap on the empty canvas beside her reach
-   * the villager, the floor or the pin behind (22 Oct: Mei's canvas took most taps meant for Shen) */
+   * the villager, the floor or the pin behind (22 Oct: a neighbour's canvas took most taps meant for Shen) */
   var OUTLINE = {
     base: '77.7% 0%,61% 0.4%,56% 1.5%,53.1% 3.3%,36.2% 3.6%,22% 6.2%,6.9% 13.1%,0.3% 18.5%,0% 22.5%,7.5% 28.5%,1.9% 33.3%,2.8% 36.4%,10.7% 39.6%,10.1% 40.8%,11.6% 41.2%,16.7% 40.1%,16.4% 38.5%,11.9% 36.5%,12.3% 34.3%,20.1% 37.2%,29.2% 38.8%,26.7% 42.2%,3.1% 58.8%,3.5% 62.4%,0.6% 64.6%,2.8% 69.2%,7.5% 70.6%,11% 70%,10.7% 72.5%,21.1% 74.6%,23.9% 82.5%,23% 86.5%,25.2% 89.2%,15.4% 94.2%,14.8% 97.2%,17.9% 98.2%,29.2% 98.8%,36.5% 97.8%,40.3% 99.4%,55.3% 99.9%,67.6% 97.2%,65.1% 90.6%,67.3% 86%,61.3% 78.5%,60.7% 75%,69.2% 73.8%,70.8% 72.2%,74.8% 72.5%,80.8% 71%,83.6% 67.8%,81.8% 64.9%,83.3% 61.5%,66% 45.3%,60.7% 42.2%,60.4% 40%,67.9% 43.1%,72.3% 42.8%,78.6% 40.8%,79.2% 38.3%,76.7% 37.2%,87.1% 33.2%,92.5% 29%,91.8% 19%,95.9% 18.6%,99.7% 16.8%,99.4% 14.6%,96.2% 14.2%,97.2% 8.9%,95.6% 6.9%,82.7% 1.1%',
     sundress: '77.7% 0%,61.3% 0.4%,56.9% 1.2%,53.1% 3.3%,38.4% 3.5%,23.3% 6%,6.9% 13.1%,0.3% 18.5%,0% 22.6%,7.5% 28.6%,2.2% 32.9%,1.9% 35.6%,10.7% 39.6%,10.1% 40.8%,12.9% 41.4%,16.7% 40.1%,16.4% 38.5%,11.6% 36.1%,12.3% 34.3%,19.5% 37.1%,34.3% 39.2%,23.9% 42.4%,15.7% 46.9%,14.8% 49.9%,16.7% 52.8%,2.2% 66.9%,3.1% 69.4%,8.8% 70.6%,10.1% 72.6%,21.7% 75%,25.2% 89%,15.4% 94%,14.8% 97.2%,18.2% 98.2%,30.8% 98.6%,36.5% 97.8%,39.6% 99.3%,54.7% 99.9%,65.7% 98.2%,67.9% 96.8%,65.1% 90.1%,65.1% 83.9%,60.7% 75%,78.9% 71.7%,81.8% 70.3%,81.8% 68.2%,70.4% 53.9%,72.6% 47.9%,67.3% 44%,55.7% 39.7%,60.7% 39.9%,68.2% 43.2%,78.9% 40.7%,79.2% 38.3%,76.4% 37.4%,87.7% 32.9%,92.8% 28.6%,91.8% 19%,97.2% 18.3%,99.7% 16.9%,99.4% 14.6%,96.2% 14.2%,96.2% 7.4%,82.1% 1%',
@@ -60,7 +46,7 @@
     tudung: '47.2% 0%,38.7% 1.1%,27.4% 4%,19.8% 7.5%,14.5% 12.2%,12.3% 17.5%,12.9% 23.9%,21.7% 36.4%,16.7% 42.4%,17.3% 45.7%,2.8% 60.6%,6.6% 62.9%,6.6% 67.2%,10.4% 68.3%,17.6% 67.4%,15.1% 74.7%,19.2% 76.1%,16.4% 92.2%,18.9% 93.3%,17% 97.5%,25.8% 98.9%,43.1% 97.8%,45% 99.3%,49.1% 99.9%,63.8% 99.9%,73.9% 98.2%,75.2% 95.3%,82.1% 93.6%,77.4% 77.1%,80.8% 76%,78.3% 69.4%,82.7% 70.1%,89.3% 69.4%,92.5% 68.1%,92.5% 65.3%,96.5% 63.6%,85.5% 51.9%,88.1% 49.6%,96.5% 19.9%,90.9% 10%,80.5% 4.3%,63.2% 0.3%',
     gown: '72.2% 0%,59.2% 0.3%,53.8% 3.2%,42.6% 3.3%,33.9% 5.4%,27.4% 8.3%,17.3% 16.5%,15.9% 22.1%,21.3% 27.2%,21.1% 29.3%,17.3% 33.5%,17.9% 36.1%,23.8% 39.4%,23.1% 40.6%,24.7% 41.1%,28% 39.9%,27.8% 38.3%,24.7% 36.4%,24.7% 34.2%,30.5% 37.1%,41.7% 39.4%,35.7% 41.2%,33% 43.6%,29.1% 51.8%,23.3% 59.2%,18.2% 63.3%,17.7% 66%,20.6% 67.4%,11.2% 80.1%,6.7% 88.9%,0.7% 91.2%,1.3% 94%,8.7% 96.9%,14.3% 97.6%,31.4% 97.2%,35% 98.8%,42.4% 98.2%,44.8% 99.3%,53.8% 99%,55.4% 99.9%,72% 99.9%,73.5% 99%,79.4% 99.9%,92.2% 98.3%,98.9% 95.7%,96.6% 91.1%,91% 89.4%,87.2% 86.2%,73.5% 68.5%,74.7% 65.6%,69.7% 61%,60.3% 42.6%,52.9% 39.4%,58.5% 39.4%,64.3% 42.9%,70.6% 41.5%,72.6% 39.7%,72.4% 38.1%,70.6% 37.1%,78% 33.1%,82.1% 28.5%,81.4% 18.9%,85% 18.2%,87.2% 16.2%,86.8% 14.4%,84.5% 14%,85% 8.1%,83% 5.8%'
   };
-  var C = { NEIGHBOURS: NEIGHBOURS, OUTLINE: OUTLINE, PROMPTS: PROMPTS, NOTES: NOTES, neighbours: neighbours, neighbour: neighbour, setPeople: setPeople, promptFor: promptFor, dayIndex: dayIndex };
+  var C = { OUTLINE: OUTLINE, PROMPTS: PROMPTS, neighbours: neighbours, neighbour: neighbour, setPeople: setPeople, promptFor: promptFor, dayIndex: dayIndex };
   root.OvuCommunity = C;
 
   /* rendered 18 Oct 2026 (Seedream 5.0 pro, seed 7302, 1472x1840): positions read off a 5% grid */
@@ -87,11 +73,11 @@
   C.LAYOUT = PLAZA; C.BENCH2 = BENCH2;
   /* ---------- the scene ---------- */
   var R = root.OvuRoom; if (!R || !root.document || !root.document.createElement) return;
-  var S = root.OvuStore, doc = root.document, ART = R.ART, visit = null;
+  var S = root.OvuStore, doc = root.document, ART = R.ART;
   R.LAYOUTS.plaza = PLAZA;
   function esc(s) { return R.esc(s); }
   function inPlaza(L) { return L && L.id === 'plaza'; }
-  function notesState() { var c = S.state().community || {}; return { notes: (c.notes || []).slice(), hellos: c.hellos || {} }; }
+  function notesState() { var c = S.state().community || {}; return { notes: (c.notes || []).slice() }; }
   function copiedNotes() { return JSON.parse(JSON.stringify(S.state().community || {})); }
 
   /* display-only nodes: the class .nb keeps them out of the room's pet and tool click handling */
@@ -105,53 +91,18 @@
     var wrap = R.els.props;
     Array.prototype.slice.call(wrap.querySelectorAll('.nb')).forEach(function (el) { el.remove(); }); /* props re-render clears the wrap, a layout change does not */
     neighbours().forEach(function (n) {
-      var el = nbNode(n, n.spot, 'nbperson' + (n.real ? ' nbreal' + (n.friend ? ' nbfriend' : '') : '')); el.setAttribute('role', 'button'); el.setAttribute('tabindex', '0');
-      el.setAttribute('aria-label', n.real ? n.name + (n.friend ? ', your friend' : '') + ', in your group. Tap to see her card.' : n.name + (n.sample ? ', a sample neighbour' : '') + '. Tap to say hello or visit.');
+      var el = nbNode(n, n.spot, 'nbperson nbreal' + (n.friend ? ' nbfriend' : '')); el.setAttribute('role', 'button'); el.setAttribute('tabindex', '0');
+      el.setAttribute('aria-label', n.name + (n.friend ? ', your friend' : '') + ', in your group. Tap to see her card.');
       el.innerHTML = '<img src="' + ART + 'avatar-' + n.outfit + '.webp" alt=""><span class="nbtag">' + (n.friend ? '<span class="ms" aria-hidden="true">favorite</span>' : '') + esc(n.name) + '</span>'; clipTo(el.querySelector('img'), n.outfit); wrap.appendChild(el);
-      if (n.pet) { var p = nbNode(n, { x: n.petSpot.x, y: n.petSpot.y, w: n.pet.w }, 'nbpet'); p.innerHTML = '<img src="' + ART + n.pet.img + '" alt="">'; wrap.appendChild(p); }
     });
     if (root.OvuWalk && root.OvuWalk.sortDepth) root.OvuWalk.sortDepth(); /* a friends redraw comes without the props event: rank the new people with her and a villager (Codex, 22 Oct) */
   }
-  function openNeighbour(id) {
-    var n = neighbour(id); if (!n || root.OvuWalk.napping()) return; var hellos = notesState().hellos, said = hellos[id] === S.today();
-    R.openSheet('neighbour', n.name, n.sample ? 'A sample neighbour, until friends can join' : 'Your neighbour', 'waving_hand',
-      '<div class="nbcard"><img src="' + ART + 'avatar-' + n.outfit + '.webp" alt=""><div><p>“' + esc(n.line) + '”</p><small>' + (n.pet ? 'With ' + esc(n.pet.name) + '. ' : '') + 'Lives in ' + esc({ house: 'the two-storey cottage', bathhouse: 'the cottage with the bath', familyhome: 'the family home' }[n.home] || 'a dream house') + '.</small></div></div>' +
-      '<div class="row"><button type="button" class="btn primary" id="nbHello"' + (said ? ' disabled' : '') + '><span class="ms">waving_hand</span>' + (said ? 'You said hello today' : 'Say hello') + '</button><button type="button" class="btn soft" id="nbVisit"><span class="ms">cottage</span>Visit her home</button></div>' +
-      '<p class="help">Neighbours are samples for now. Nothing here is sent anywhere, and visiting changes nothing of theirs or yours.</p>');
-    doc.getElementById('nbHello').addEventListener('click', function () {
-      var c = copiedNotes(); c.hellos = c.hellos || {}; c.hellos[id] = S.today();
-      try { S.commit({ community: c }); } catch (e) { R.toast('Your hello could not be saved. Please try again.', 'info'); return; }
-      R.closeSheet(); R.chime('save'); R.toast(n.name + ' waves back. ' + ['A good day to you too.', 'Nice to see you.', 'See you at the fountain.'][Math.floor(Math.random() * 3)], 'waving_hand', R.moment ? R.moment('hello', { quiet: true }) : '');
-      var el = doc.querySelector('.nbperson[data-nb="' + id + '"]'); if (el) { el.classList.remove('wave'); void el.offsetWidth; el.classList.add('wave'); }
-    });
-    doc.getElementById('nbVisit').addEventListener('click', function () { R.closeSheet(); root.setTimeout(function () { visitNeighbour(id); }, 60); });
-  }
-  /* a visit: her home layout as a read-only scene; your own things stay home, hers stand in */
-  function visitNeighbour(id) {
-    var n = neighbour(id); if (!n || !R.LAYOUTS[n.home]) return;
-    var ok = root.OvuWalk.travel(n.home, { visit: true, after: function (L) { visit = n; dressVisit(L); R.renderProps(); R.toast('Visiting ' + n.name + '. Tap Back when you are done.', 'cottage'); } });
-    if (!ok) return;
-  }
-  function dressVisit(L) {
-    R.els.scene.classList.add('nbvisit');
-    var vb = R.els.visitBar; vb.classList.add('on');
-    vb.innerHTML = '<span class="ms">cottage</span><span>Visiting <b>' + esc(visit.name) + '’s home</b> · a sample until friends can join</span><button type="button" id="nbBack"><span class="ms">arrow_back</span>Back</button>';
-  }
-  function renderVisit() {
-    if (!visit) return; var wrap = R.els.props, L = R.layout(); wrap.innerHTML = '';
-    var spot = { x: L.home.x - 14, y: L.home.y, flip: false, w: (L.avatarW || 10) * 0.95 };
-    var el = nbNode(visit, spot, 'nbperson'); el.innerHTML = '<img src="' + ART + 'avatar-' + visit.outfit + '.webp" alt=""><span class="nbtag">' + esc(visit.name) + '</span>'; clipTo(el.querySelector('img'), visit.outfit); wrap.appendChild(el);
-    if (visit.pet) { var isDog = /corgi|shiba/.test(visit.pet.id), pp = (L.props && (isDog ? L.props.dog : L.props.cat)) || { x: 55, y: 82, w: 8 }; var p = nbNode(visit, { x: pp.x, y: pp.y, w: pp.w }, 'nbpet'); p.innerHTML = '<img src="' + ART + visit.pet.img + '" alt="">'; wrap.appendChild(p); }
-    if (!R.els.visitBar.querySelector('#nbBack')) dressVisit(L);
-  }
-  function endVisit() { if (!visit) return; visit = null; R.els.scene.classList.remove('nbvisit'); }
   function openBoard() {
     if (root.OvuWalk.napping()) return;
     var st = notesState(), today = S.today();
-    R.openSheet('board', 'Noticeboard', 'A gentle note for today, and what neighbours pinned', 'push_pin',
+    R.openSheet('board', 'Noticeboard', 'A gentle note for today, and the notes you pinned', 'push_pin',
       '<div class="notice today"><span class="ms">auto_awesome</span><div><b>Today’s gentle prompt</b><p>' + esc(promptFor(today)) + '</p></div></div>' +
-      '<div class="notices">' + NOTES.map(function (n) { return '<div class="notice"><span class="ms">sticky_note_2</span><div><p>' + esc(n.text) + '</p><small>' + esc(n.by) + (n.sample ? ' · sample' : '') + '</small></div></div>'; }).join('') +
-      st.notes.slice(-3).reverse().map(function (n) { return '<div class="notice mine"><span class="ms">favorite</span><div><p>' + esc(n.text) + '</p><small>You · ' + esc(n.date) + ' · only on this phone</small></div></div>'; }).join('') + '</div>' +
+      '<div class="notices">' + st.notes.slice(-3).reverse().map(function (n) { return '<div class="notice mine"><span class="ms">favorite</span><div><p>' + esc(n.text) + '</p><small>You · ' + esc(n.date) + ' · only on this phone</small></div></div>'; }).join('') + '</div>' +
       '<div class="field"><label for="noteText">Pin a note of your own</label><textarea class="input" id="noteText" maxlength="140" placeholder="Something kind, something useful, something you noticed..."></textarea></div>' +
       '<div class="row"><button type="button" class="btn primary" id="notePin"><span class="ms">push_pin</span>Pin it</button></div>' +
       '<p class="help">Your notes stay on this phone until friends can join; then you will choose what to share. No likes, no counts, no feed.</p>');
@@ -188,14 +139,13 @@
   var prevBench = R.hotspotHandlers.bench, prevArch = R.hotspotHandlers.arch;
   R.hotspotHandlers.bench = function (id, L) { if (inPlaza(L)) { root.OvuGarden.openBench(PLAZA.meditator, PLAZA.holo, { x: 34, y: 64, flip: true }); return true; } return prevBench ? prevBench(id, L) : false; };
   R.hotspotHandlers.arch = function (id, L) { if (inPlaza(L)) { root.OvuWalk.travel('street'); return true; } return prevArch ? prevArch(id, L) : false; };
-  C.visiting = function () { return visit; }; C.visitNeighbour = visitNeighbour; C.openNeighbour = openNeighbour; C.LAYOUT = PLAZA; C.openBoard = openBoard;
-  C.redraw = function () { if (!visit && inPlaza(R.layout())) renderNeighbours(); };
-  function tapPerson(id) { var n = neighbour(id); if (n && n.real) { if (openPerson) openPerson(n.handle); } else openNeighbour(id); }
+  C.LAYOUT = PLAZA; C.openBoard = openBoard;
+  C.redraw = function () { if (inPlaza(R.layout())) renderNeighbours(); };
+  function tapPerson(id) { var n = neighbour(id); if (n && openPerson) openPerson(n.handle); }
   R.on('boot', function () {
-    R.on('props', function (L) { if (visit) renderVisit(); else if (inPlaza(L)) renderNeighbours(); });
-    R.on('layout', function (L) { if (visit && (L.id !== visit.home || !R.visiting())) endVisit(); if (inPlaza(L)) renderNeighbours(); });
-    R.els.props.addEventListener('click', function (e) { var n = e.target.closest('.nbperson'); if (n && !visit) { e.stopPropagation(); R.chime('tap'); tapPerson(n.dataset.nb); } });
-    R.els.props.addEventListener('keydown', function (e) { if (e.key !== 'Enter' && e.key !== ' ') return; var n = e.target.closest('.nbperson'); if (n && !visit) { e.preventDefault(); tapPerson(n.dataset.nb); } });
-    doc.addEventListener('click', function (e) { if (e.target.closest('#nbBack')) { R.chime('tap'); root.OvuWalk.travel('plaza', { entry: { x: 54, y: 64, flip: false } }); } });
+    R.on('props', function (L) { if (inPlaza(L)) renderNeighbours(); });
+    R.on('layout', function (L) { if (inPlaza(L)) renderNeighbours(); });
+    R.els.props.addEventListener('click', function (e) { var n = e.target.closest('.nbperson'); if (n) { e.stopPropagation(); R.chime('tap'); tapPerson(n.dataset.nb); } });
+    R.els.props.addEventListener('keydown', function (e) { if (e.key !== 'Enter' && e.key !== ' ') return; var n = e.target.closest('.nbperson'); if (n) { e.preventDefault(); tapPerson(n.dataset.nb); } });
   });
 })(window);

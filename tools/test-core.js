@@ -325,9 +325,9 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('your way: arrive, notice, then brushing only after she says she is ready', yw.join() === 'arrive,notice,ready,yourway' && M.STEPS.ready.gate && M.STEPS.yourway.open && !M.STEPS.yourway.secs, yw.join());
   var wakeV = MF.byId('wake').variations[0], sipV = MF.byId('coffee').variations.filter(function (v) { return v.when === 'morning' && v.author === 'erin'; })[0], sipI = MF.byId('coffee').variations.indexOf(sipV);
   var groups = er.map(function (x) { return x.gate ? 'gate:' + x.group : x.group; }).filter(function (g, i, a) { return g !== a[i - 1]; }).join(',');
-  check('with Erin (21 Oct): her wake-up script, a gate, her brushing script, a gate, her mindful sip, in her words and order with her clips', er.length === wakeV.steps.length + 1 + mv.steps.length + 1 + sipV.steps.length && groups === 'wake,gate:teeth,teeth,gate:sip,sip' && er.slice(0, wakeV.steps.length).every(function (x, i) { return x.text === wakeV.steps[i].text && x.secs === wakeV.steps[i].secs && x.audio === 'assets/audio/guide-interim/wake-0-' + i + '.mp3' && x.erin && x.part === 1; }) && er.slice(-sipV.steps.length).every(function (x, i) { return x.text === sipV.steps[i].text && x.audio === 'assets/audio/guide-interim/coffee-' + sipI + '-' + i + '.mp3' && x.pose === 'coffee' && x.part === 3; }), groups);
+  check('with Erin (21 Oct): her wake-up script, a gate, her brushing script, a gate, her mindful sip, in her words and order, as captions', er.length === wakeV.steps.length + 1 + mv.steps.length + 1 + sipV.steps.length && groups === 'wake,gate:teeth,teeth,gate:sip,sip' && er.slice(0, wakeV.steps.length).every(function (x, i) { return x.text === wakeV.steps[i].text && x.secs === wakeV.steps[i].secs && x.erin && x.part === 1; }) && er.slice(-sipV.steps.length).every(function (x, i) { return x.text === sipV.steps[i].text && x.pose === 'coffee' && x.part === 3; }), groups);
   var brush = er.filter(function (x) { return x.group === 'teeth' && !x.gate; });
-  check('with Erin the brushing part is her whole script, in the brushing pose, with her clips', brush.length === mv.steps.length && brush.every(function (x, i) { return x.text === mv.steps[i].text && x.secs === mv.steps[i].secs && x.audio === 'assets/audio/guide-interim/teeth-' + teeth.variations.indexOf(mv) + '-' + i + '.mp3' && x.pose === 'teeth' && x.erin && x.part === 2; }), brush.length);
+  check('with Erin the brushing part is her whole script, in the brushing pose, as captions', brush.length === mv.steps.length && brush.every(function (x, i) { return x.text === mv.steps[i].text && x.secs === mv.steps[i].secs && x.pose === 'teeth' && x.erin && x.part === 2; }), brush.length);
   var poses = er.slice(0, wakeV.steps.length).map(function (x) { return x.pose || '-'; }).join(',');
   check('the wake-up stands still except on its two movement passages (shoulders, arms), which take the stretch pose', poses === '-,-,stretch,stretch,-,-', poses);
   var ps = M.partsOf(er), tot = ps.reduce(function (t, p) { return t + p.secs; }, 0);
@@ -338,13 +338,14 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('the first steps invite any position, care for dizziness, leave the breath alone, offer touch, sound and colour, and stopping', /Sit, lie down or stand/.test(M.STEPS.arrive.text) && /dizzy, stay sitting or lying/.test(M.STEPS.arrive.text) && /eyes can be open or closed/.test(M.STEPS.arrive.text) && /no need to change your breathing/.test(M.STEPS.arrive.text) && /something you can touch/.test(M.STEPS.arrive.text) && /don’t need to move/.test(M.STEPS.notice.text) && /a sound or a colour instead/.test(M.STEPS.notice.text) && /stop at any time/.test(M.STEPS.notice.text));
   check('any sink, and time for prayer or anything else before brushing', /wherever you brush/.test(M.STEPS.ready.text) && /prayer or anything else/.test(M.STEPS.ready.text) && !/the sink/.test(M.STEPS.ready.text));
   var am = M.plan('yourway', at(8))[0], pm = M.plan('yourway', at(19))[0], gm = M.arriveFor(at(4)), hi = M.arriveFor(at(12));
-  check('Good morning only inside the morning window, Hello at any other hour, each with its own clip', am.text.indexOf('Good morning. Sit') === 0 && /mstart-arrive-0\.mp3$/.test(am.audio) && pm.text.indexOf('Hello. Sit') === 0 && /mstart-arrive-1\.mp3$/.test(pm.audio) && gm.text.indexOf('Good morning') === 0 && hi.text.indexOf('Hello') === 0 && M.STEPS.arrive.text.indexOf('Good') < 0, am.text.slice(0, 20) + ' | ' + pm.text.slice(0, 20));
+  check('Good morning only inside the morning window, Hello at any other hour', am.text.indexOf('Good morning. Sit') === 0 && pm.text.indexOf('Hello. Sit') === 0 && gm.text.indexOf('Good morning') === 0 && hi.text.indexOf('Hello') === 0 && M.STEPS.arrive.text.indexOf('Good') < 0, am.text.slice(0, 20) + ' | ' + pm.text.slice(0, 20));
   var brushAt = brush.map(function (x) { return x.brushing ? 1 : 0; }).join('');
   check('with Erin, brushing counts only from the line after "beginning to brush", not while she picks up the brush', brushAt === '00011111' && /beginning to brush/.test(brush[2].text), brushAt);
   var e8 = M.plan('erin', at(8))[0], e19 = M.plan('erin', at(19))[0], e2 = M.arriveFor(at(8), 'erin');
-  check('with Erin the first words are her own Good morning from the wake-up, at any hour, so no Rhythme greeting comes before hers', e8.text.indexOf('Good morning.') === 0 && e19.text === e8.text && /wake-0-0\.mp3$/.test(e8.audio) && e2.text.indexOf('Sit, lie down') === 0 && /mstart-arrive-2\.mp3$/.test(e2.audio), e8.text.slice(0, 20));
+  check('with Erin the first words are her own Good morning from the wake-up, at any hour, so no Rhythme greeting comes before hers', e8.text.indexOf('Good morning.') === 0 && e19.text === e8.text && e2.text.indexOf('Sit, lie down') === 0, e8.text.slice(0, 20));
   var voiced = [am, pm, e8, M.STEPS.notice, M.STEPS.ready, M.STEPS.yourway].concat(er.filter(function (x) { return x.audio; }));
-  check('every Rhythme step has its own clip on disk, read in Erin\'s voice; Quiet keeps it captions only', voiced.every(function (x) { return x.audio && fs.existsSync(path.join(root, x.audio)) && fs.statSync(path.join(root, x.audio)).size > 20000; }), voiced.map(function (x) { return x.audio; }).join());
+  var msrc = fs.readFileSync(path.join(root, 'ovu-morning.js'), 'utf8');
+  check('Morning start says nothing aloud (Jamie, 23 Oct: "Take a moment to arrive? - remove erin\'s voice"): no step carries a clip, nothing makes an audio element, no Voice button', voiced.concat(er).every(function (x) { return !x.audio; }) && !/new Audio\(|mpQuiet|\.mp3/.test(msrc), voiced.concat(er).filter(function (x) { return x.audio; }).map(function (x) { return x.key; }).join());
   var now = 0, c = M.makeClock(function () { return now; });
   c.run(); now = 10000; c.hold(); now = 25000; c.run(); now = 55000;
   check('practice time counts only while a step runs, not while paused or walking to the sink', c.seconds() === 40 && c.running(), c.seconds());
@@ -354,7 +355,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   var d = M.entryData({ seconds: 30, confirmed: true, version: 'yourway', skipped: ['notice'], brushed: 'yourway', finished: true });
   check('one honest entry: informal, morning, real seconds, what was skipped, whether it finished', d && d.kind === 'informal' && d.activity === 'morning' && d.seconds === 30 && d.minutes === 0.5 && d.skipped.join() === 'notice' && d.finished && d.completed && d.confirmedReal && d.brushed === 'yourway', JSON.stringify(d));
   var e2 = M.entryData({ seconds: 95, confirmed: true, version: 'erin', brushed: 'no', finished: false });
-  check('a stopped routine is saved as not finished and says brushing did not happen; the credit says whose words and whose voice', e2 && !e2.finished && !e2.completed && e2.brushed === 'no' && /Erin Lee/.test(e2.guide) && /Rhythme in Erin’s voice/.test(e2.guide) && /read in Erin’s voice/.test(d.guide));
+  check('a stopped routine is saved as not finished and says brushing did not happen; the credit says whose words and whose voice', e2 && !e2.finished && !e2.completed && e2.brushed === 'no' && /Erin Lee/.test(e2.guide) && /as captions/.test(e2.guide) && /Words by Rhythme, as captions/.test(d.guide) && !/voice/.test(d.guide));
   var pts = [1, 2, 3].map(function () { return RW.award(S.add('mindfulness', S.today(), M.entryData({ seconds: 120, confirmed: true, version: 'yourway', brushed: 'yourway', finished: true }))).points; });
   check('the morning pays its small thank-you once a day: repeating it earns nothing more, and there is never a streak', pts.join() === '2,0,0' && (RW.ledger().streak || 0) === 0, pts.join());
   var pe = M.partEntry('wake', { seconds: 193, confirmed: true, finished: true }), ps2 = M.partEntry('sip', { seconds: 41.2, confirmed: true, finished: false });
@@ -393,7 +394,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   }
   var g = plantWorld(false); g.start(); var stale = g.q.map(function (t) { return t.f; }), oldStop = g.stop();
   g.emit('activity'); g.active(true); var endedAt = g.calls.length; stale.forEach(function (f) { f(); }); oldStop();
-  check('garden watering cancels synchronously on activity, pauses audio and leaves a new session\'s HUD, pose, Stop and diary untouched', !g.w.OvuGarden.watering() && g.q.every(function (t) { return !t.live; }) && g.calls.indexOf('pause') > -1 && g.calls.length === endedAt && g.w.OvuStore.list('mindfulness').length === 0);
+  check('garden watering cancels synchronously on activity and leaves a new session\'s HUD, pose, Stop and diary untouched', !g.w.OvuGarden.watering() && g.q.every(function (t) { return !t.live; }) && g.calls.length === endedAt && g.w.OvuStore.list('mindfulness').length === 0);
   g.active(false); g.start(); var newerAt = g.calls.length; stale.forEach(function (f) { f(); }); oldStop();
   check('a cancelled watering\'s clips, captions, completion and Stop callbacks cannot act inside its replacement', g.w.OvuGarden.watering() && g.calls.length === newerAt && g.w.OvuStore.list('mindfulness').length === 0);
   g.emit('beforeWalk');
@@ -598,7 +599,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
       hudClockStart: function () { c.clock = true; }, hudClockStop: function () { c.clock = false; },
       afterSave: function (ev) { saves.push(ev); }, toast: function (text) { toasts.push(text); }, esc: function (t) { return t; } };
     vm.createContext(c);
-    ['emit', 'sessionCurrent', 'cancelRunner', 'playClip', 'wait', 'runSession', 'finishSession', 'stopSession', 'exitMeditation', 'stopEverything', 'practiceCurrent', 'playUrl', 'pwait', 'runPractice', 'askPracticeDone', 'practiceMs', 'stopPractice'].forEach(function (n) { vm.runInContext(fn(n), c); });
+    ['emit', 'hudVoice', 'sessionCurrent', 'cancelRunner', 'playClip', 'wait', 'runSession', 'finishSession', 'stopSession', 'exitMeditation', 'stopEverything', 'practiceCurrent', 'playUrl', 'pwait', 'runPractice', 'askPracticeDone', 'practiceMs', 'stopPractice'].forEach(function (n) { vm.runInContext(fn(n), c); });
     vm.runInContext('hudOn = ' + hudFn(), c);
     return { c: c, w: w, timers: timers, clips: clips, captions: captions, poses: poses, saves: saves, sheets: sheets, toasts: toasts, node: node, advance: function (ms) { now += ms; }, call: function (code) { return vm.runInContext(code, c); } };
   }
@@ -614,10 +615,10 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
     if (timer) timer.f();
     return flush().then(function () { check('cancelling a timed wait resolves it, clears its own timer, and an old timer cannot act on the next session', settled && !replacement.timer && s.c.session === newest && !s.clips.some(function (t) { return /meditation_begin/.test(t); })); });
   }).then(function () {
-    var p = env(); p.call('runPractice("plants", 0)');
+    var p = env(); p.call('runPractice("plants", 0, true)');
     return flush().then(function () {
       var oldP = p.c.practice, fin = oldP.audio.onended, meta = oldP.audio.onloadedmetadata;
-      p.call('stopPractice()'); p.call('runPractice("teeth", 0)'); var nextP = p.c.practice; if (fin) fin(); if (meta) meta();
+      p.call('stopPractice()'); p.call('runPractice("teeth", 0, true)'); var nextP = p.c.practice; if (fin) fin(); if (meta) meta();
       return flush().then(function () {
         check('Everyday callbacks and captions belong to the originating practice, with the old audio and wait cancelled', p.c.practice === nextP && oldP.audio.paused && oldP.cancelWait === null && p.clips.length === 2 && p.clips[0].indexOf('plants-0-0') > -1 && p.clips[1].indexOf('teeth-0-0') > -1 && p.captions.length === 2, p.clips.join(' | '));
         var b = env(); b.call('runSession("erin", 3)'); var bedRun = b.c.session; b.advance(5000); b.call('stopEverything()'); /* no opening action line to pause since 23 Oct: Erin's action clips are gone */
@@ -632,7 +633,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
       });
     });
   }).then(function () {
-    var p = env(); p.call('runPractice("plants", 0)');
+    var p = env(); p.call('runPractice("plants", 0, true)');
     return flush().then(function () {
       p.advance(65000); p.call('stopPractice()'); var pending = p.c.practice, yes = p.node('#pdYes').events.click, storage = p.w.localStorage, original = storage.setItem, writes = 0;
       storage.setItem = function (k, v) { if (k === 'ovumind_db_v1') throw new Error('quota'); return original.call(storage, k, v); };
@@ -642,7 +643,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
       var events = p.w.OvuStore.list('mindfulness');
       check('failed Everyday confirmation keeps the prompt and exact pending practice, with no event or explored count left in memory', intact && /could not be saved/.test(p.toasts[0] || ''), p.toasts.join(' | '));
       check('retry confirms the same practice once, committing its entry and exploration count in one database write', p.c.practice === null && p.c.current === null && events.length === 1 && p.w.OvuStore.state().explored.plants === 1 && events[0].data.confirmedReal && writes === 1 && p.saves.length === 1, JSON.stringify({ writes: writes, events: events.length }));
-      var no = env(); no.call('runPractice("plants", 0)'); no.advance(65000); no.call('stopPractice()'); no.node('#pdNo').events.click();
+      var no = env(); no.call('runPractice("plants", 0, true)'); no.advance(65000); no.call('stopPractice()'); no.node('#pdNo').events.click();
       check('declining Everyday confirmation saves neither a journal entry nor an exploration completion', !no.w.OvuStore.list('mindfulness').length && !no.w.OvuStore.state().explored && no.c.practice === null);
     });
   }).then(function () { finished = true; }).catch(function (e) { check('runner regression chain completes', false, e.stack); finished = true; });
@@ -699,8 +700,8 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   vm.runInContext(fs.readFileSync(path.join(root, 'ovu-friends.js'), 'utf8'), w, { filename: 'ovu-friends.js' });
   ['ovu-farm.js', 'ovu-stamina.js', 'ovu-harbour.js', 'ovu-villagers.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w, { filename: f }); });
   var V = w.OvuVillagers, F = w.OvuFriends, LAY = { plaza: w.LAYOUTS.plaza, harbour: w.OvuHarbour.LAYOUT };
-  /* the people and pets who stand in each scene: the sample neighbours, the friends' eight places, the neighbours' pets */
-  var others = { plaza: C.NEIGHBOURS.map(function (n) { return { id: n.id, x: n.spot.x, y: n.spot.y, w: 11 }; }).concat(C.NEIGHBOURS.map(function (n) { return { id: n.id + '-pet', x: n.petSpot.x, y: n.petSpot.y, w: n.pet.w }; })).concat(F.SPOTS.map(function (p, i) { return { id: 'friend' + i, x: p.x, y: p.y, w: 11 }; })), harbour: [] };
+  /* the people who stand in each scene: the friends' eight places (the plaza has no sample neighbours since 23 Oct) */
+  var others = { plaza: F.SPOTS.map(function (p, i) { return { id: 'friend' + i, x: p.x, y: p.y, w: 11 }; }), harbour: [] };
   V.VILLAGERS.forEach(function (v) {
     var L = LAY[v.scene], box = V.blockOf(v), bad = [];
     var around = K.world(L, others[v.scene]), withMe = K.world(Object.assign({}, L, { solids: L.solids.concat([box]) }), others[v.scene]);
@@ -716,15 +717,15 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   });
   var wsrc = fs.readFileSync(path.join(root, 'ovu-walk.js'), 'utf8'), css = fs.readFileSync(path.join(root, 'room.css'), 'utf8');
   check('each villager is his own button (not a neighbour .nb a friends redraw clears), drawn at her width times his canvas factor, clipped to his traced outline, ranked with her by his feet and not a solid (his block is in the layout, added once)', /el\.style\.width = \(\(L\.avatarW \|\| 12\) \* \(v\.wk \|\| 1\)\)/.test(src) && /style\.clipPath = 'polygon\(' \+ v\.outline \+ '\)'/.test(src) && /el\.className = 'villager';/.test(src) && V.VILLAGERS.every(function (v) { return v.outline.split(',').length >= 20 && /^[0-9. %,]+$/.test(v.outline); }) && /\.villager\{[^}]*pointer-events:none/.test(css) && /\.villager img\{[^}]*pointer-events:auto/.test(css) && /#ownedProps \.villager, #plateOcc/.test(wsrc) && /!el\.classList\.contains\('villager'\)/.test(wsrc) && /if \(L\.solids && !L\.solids\.some\(function \(b\) \{ return b\.id === 'villager-' \+ v\.id; \}\)\) L\.solids\.push\(blockOf\(v\)\)/.test(src) && /closest\('\.hotspot,\.nb,\.prop\.owned[^']*,\.villager'/.test(fs.readFileSync(path.join(root, 'ovu-camera.js'), 'utf8')));
-  var looks = F.LOOKS.map(function (l) { return l[0]; }).concat(C.NEIGHBOURS.map(function (n) { return n.outfit; })), csrc = fs.readFileSync(path.join(root, 'ovu-community.js'), 'utf8');
-  check('every neighbour and friend look has its traced outline, and a neighbour\'s picture (on the plaza and on a visit) is clipped to it with only the picture taking a tap, so her empty canvas and name tag never hide Shen', looks.every(function (l) { return C.OUTLINE[l] && C.OUTLINE[l].split(',').length >= 20 && /^[0-9. %,]+$/.test(C.OUTLINE[l]); }) && (csrc.match(/clipTo\(el\.querySelector\('img'\), (n|visit)\.outfit\)/g) || []).length === 2 && /\.nbperson\{pointer-events:none;cursor:pointer\}\.nbperson img\{pointer-events:auto\}/.test(css));
+  var looks = F.LOOKS.map(function (l) { return l[0]; }), csrc = fs.readFileSync(path.join(root, 'ovu-community.js'), 'utf8');
+  check('every neighbour and friend look has its traced outline, and a neighbour\'s picture on the plaza is clipped to it with only the picture taking a tap, so her empty canvas and name tag never hide Shen', looks.every(function (l) { return C.OUTLINE[l] && C.OUTLINE[l].split(',').length >= 20 && /^[0-9. %,]+$/.test(C.OUTLINE[l]); }) && (csrc.match(/clipTo\(el\.querySelector\('img'\), n\.outfit\)/g) || []).length === 1 && /\.nbperson\{pointer-events:none;cursor:pointer\}\.nbperson img\{pointer-events:auto\}/.test(css));
   check('nobody floats: a villager stands like her, his canvas bottom on the floor line (translate -100%), with her soft contact shadow at his feet sized to her footprint on any canvas width, and no offset drop shadow', /\.villager\{position:absolute;transform:translate\(-50%,-100%\)[^}]*filter:drop-shadow\(0 1px 2px rgba\(70,40,100,\.2\)\)/.test(css) && /\.avatar::before,[^{]*\.villager::before\{/.test(css) && /\.villager\{--cs:\.62\}/.test(css) && /\.avatar\{position:absolute;[^}]*transform:translate\(-50%,-100%\)/.test(css) && /setProperty\('--cs', \(0\.62 \/ \(v\.wk \|\| 1\)\)/.test(src));
   check('a friends redraw (no props event) ranks the new neighbours with her and Shen; a cutout is ranked by its centre, not its left edge', /renderNeighbours\(\) \{[\s\S]*?if \(root\.OvuWalk && root\.OvuWalk\.sortDepth\) root\.OvuWalk\.sortDepth\(\);[^\n]*\n  \}/.test(csrc) && /cx: occ \? x \+ w \/ 2 : x/.test(wsrc) && /return \{ y: p\.y, x: p\.cx, w: p\.w \}/.test(wsrc));
-  /* the plaza's crowd: four neighbours, their pets, Shen and her (Codex, 22 Oct: Shen at 54.5 and her at 54.4 both had z 2) */
-  var crowd = C.NEIGHBOURS.map(function (n) { return { y: n.spot.y, x: n.spot.x, w: 11 }; }).concat(C.NEIGHBOURS.map(function (n) { return { y: n.petSpot.y, x: n.petSpot.x, w: n.pet.w }; })).concat([{ y: 52.6, x: 40, w: 12 }]);
+  /* the plaza's crowd: the eight friends' places, Shen and her (Codex, 22 Oct: Shen at 54.5 and her at 54.4 both had z 2) */
+  var crowd = F.SPOTS.map(function (p) { return { y: p.y, x: p.x, w: 11 }; }).concat([{ y: 52.6, x: 40, w: 12 }]);
   var zBehind = K.depthRank(crowd.concat([{ y: 52.5 }])), zFront = K.depthRank(crowd.concat([{ y: 52.7 }])), sh = crowd.length, her = crowd.length;
-  var meiZ = zFront[0], shenZ = zFront[sh - 1];
-  check('in the plaza crowd she and Shen never share a level: just behind him he is in front, just in front she is, and Mei (in front of him) stays in front', zBehind[sh - 1] > zBehind[her] && zFront[her] > zFront[sh - 1] && meiZ > shenZ && Math.max.apply(null, zFront) <= 9 && Math.min.apply(null, zFront) >= 2, JSON.stringify({ behind: zBehind, front: zFront }));
+  var meiZ = zFront[0], shenZ = zFront[sh - 1]; /* the first friend's place (42, 60) is in front of him */
+  check('in the plaza crowd she and Shen never share a level: just behind him he is in front, just in front she is, and a friend in front of him stays in front', zBehind[sh - 1] > zBehind[her] && zFront[her] > zFront[sh - 1] && meiZ > shenZ && Math.max.apply(null, zFront) <= 9 && Math.min.apply(null, zFront) >= 2, JSON.stringify({ behind: zBehind, front: zFront }));
   var apart = K.depthRank(new Array(12).fill(0).map(function (_, i) { return { y: 50 + i, x: (i % 2) * 60 + 10, w: 10 }; }));
   check('sprites that do not overlap across share levels, so twelve on two sides of the plate still each sit in front of the one behind on their side', apart.every(function (z, i) { return i < 2 || z > apart[i - 2]; }), apart.join());
   /* the talk data */
@@ -3060,18 +3061,43 @@ function scenes(todayIso) {
   var rw = w.OvuRewards.award(ev);
   check('a watering minute is worth 2 hearts as a one-minute calm entry (plus the usual streak rule)', rw.points === 2, JSON.stringify(rw));
 })();
-(function neighboursAreSamples() {
-  console.log('neighbours are samples behind one seam, with homes that exist and a daily prompt');
-  var w = scenes('2026-10-18'), C = w.OvuCommunity, L = w.LAYOUTS;
-  var ns = C.neighbours();
-  check('four sample neighbours with a name, an outfit sprite, a pet and a real home layout', ns.length === 4 && ns.every(function (n) { return n.sample && n.name && /^[a-z-]+$/.test(n.outfit) && n.pet && n.pet.img && L[n.home] && n.spot && n.line; }), JSON.stringify(ns.map(function (n) { return n.id; })));
-  check('neighbours stand on the plaza floor', ns.every(function (n) { return w.OvuWalk.inZones(L.plaza.zones, n.spot.x, n.spot.y); }));
-  check('neighbours() hands back a copy', (C.neighbours().pop(), C.neighbours().length === 4));
+(function erinOnlyInMindfulness() {
+  console.log('Erin speaks only in mindfulness begun from Mind (Jamie, 23 Oct): every other clip of ours is silent, the practice bar mute quiets her');
+  var store = {}, w = { localStorage: { getItem: function (k) { return k in store ? store[k] : null; }, setItem: function (k, v) { store[k] = String(v); } } };
+  function El(src) { this.tagName = 'AUDIO'; this.src = src; this.muted = false; }
+  El.prototype.play = function () { return 'played'; };
+  w.HTMLMediaElement = El; vm.createContext(w); w.window = w;
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-voicemute.js'), 'utf8'), w, { filename: 'ovu-voicemute.js' });
+  var V = w.OvuVoice, greet = new El('assets/audio/erin-tts/greeting_morning.mp3'), guided = new El('assets/audio/erin-tts/breathing_in.mp3'), pod = new El('https://example.com/podcast.mp3');
+  greet.play(); V.allow(guided, true); guided.play(); pod.play();
+  check('a clip no mindfulness run asked for plays muted; the one a Mind run allowed is heard; the podcast is never touched', greet.muted === true && guided.muted === false && pod.muted === false && V.heard(guided) && !V.heard(greet));
+  V.set(true);
+  check('the practice bar mute quiets the guided clip at once and is remembered; unmuting brings only that clip back', guided.muted === true && store.rhythme_guide_muted === '1' && (V.set(false), guided.muted === false && greet.muted === true));
+  var rsrc = fs.readFileSync(path.join(root, 'room.js'), 'utf8');
+  check('room: With Erin and an everyday practice are heard only when begun from the M or Mind (a bench session stays captions), and no greeting or good night is spoken', /var heard = !!\(run\.audio && guided\); if \(heard && window\.OvuVoice\) OvuVoice\.allow\(run\.audio, true\);/.test(rsrc) && /runSession\(b\.dataset\.kind, Number\(b\.dataset\.min\), true\)/.test(rsrc) && /if \(id === 'coach'\) return openEveryday\(null, true\)/.test(rsrc) && /var voiced = a\.audio !== false && !!guided;/.test(rsrc) && /openEveryday\(null, true\)/.test(rsrc) && !/night_sweet_dreams|morning_how/.test(rsrc) && !/erinvoice/.test(rsrc));
+  var gsrc = fs.readFileSync(path.join(root, 'ovu-garden.js'), 'utf8');
+  check('the garden watering minute says nothing aloud', !/new Audio\(|garden-water-|\.mp3/.test(gsrc));
+})();
+(function musicTracksAreCC0() {
+  console.log('music (Jamie, 23 Oct): a livelier recorded tune of its own for each scene, every one CC0 and on disk; the cave keeps its drawn drone');
+  var w = fresh(); w.OvuRoom = null; vm.runInContext(fs.readFileSync(path.join(root, 'ovu-music.js'), 'utf8'), w, { filename: 'ovu-music.js' });
+  var M = w.OvuMusic, withTrack = Object.keys(M.THEMES).filter(function (k) { return M.THEMES[k].track; });
+  check('six scenes have their own recorded track, all different, and the cave has none', withTrack.sort().join() === 'farm,garden,harbour,home,plaza,street' && !M.THEMES.cave.track && withTrack.map(function (k) { return M.THEMES[k].track; }).filter(function (t, i, a) { return a.indexOf(t) === i; }).length === 6);
+  check('every track is an MP3 on disk under assets/music, between 0.5 and 3 MB', withTrack.every(function (k) { var f = path.join(root, M.MUSIC_DIR + M.THEMES[k].track); return /\.mp3$/.test(f) && fs.existsSync(f) && fs.statSync(f).size > 500000 && fs.statSync(f).size < 3000000; }));
+  check('every track has a credit: title, author, its OpenGameArt page and CC0, matched in docs/music-credits.md', withTrack.every(function (k) { var c = M.CREDITS[k]; return c && c.title && c.by && /^https:\/\/opengameart\.org\/content\//.test(c.page) && c.licence === 'CC0'; }) && withTrack.every(function (k) { return fs.readFileSync(path.join(root, 'docs/music-credits.md'), 'utf8').indexOf(M.CREDITS[k].page) > -1; }));
+  var msrc = fs.readFileSync(path.join(root, 'ovu-music.js'), 'utf8');
+  check('the music players are never counted as a voice (no ducking under itself) and live outside assets/audio (the voice mute never touches them)', /el\.__ovuMusic\) return false;/.test(msrc) && M.MUSIC_DIR === 'assets/music/' && M.audible({ tagName: 'AUDIO', __ovuMusic: true, paused: false, ended: false, muted: false, volume: 1, src: 'assets/music/home.mp3' }) === false);
+})();
+(function plazaHasOnlyRealPeople() {
+  console.log('the plaza shows only real people (Jamie, 23 Oct: no sample neighbours; nobody there means an empty plaza)');
+  var w = scenes('2026-10-18'), C = w.OvuCommunity;
+  check('with nobody in her group the plaza has nobody standing, and no sample list is kept', C.neighbours().length === 0 && !('NEIGHBOURS' in C) && !('NOTES' in C));
   check('today’s prompt is the same all day and comes from the list', C.promptFor('2026-10-18') === C.promptFor('2026-10-18') && C.PROMPTS.indexOf(C.promptFor('2026-10-18')) > -1 && C.promptFor('2026-10-19') !== C.promptFor('2026-10-18'));
-  check('noticeboard sample notes are marked as samples', C.NOTES.length >= 3 && C.NOTES.every(function (n) { return n.sample; }));
+  var src = fs.readFileSync(path.join(root, 'ovu-community.js'), 'utf8');
+  check('no Mei, Nadia, Priya or Sofia anywhere in the plaza module', !/\b(Mei|Nadia|Priya|Sofia)\b/.test(src));
 })();
 (function communityFailedSavesKeepTheSheet() {
-  console.log('audit P1: hello and pinned notes leave no failed action in memory and retain her words');
+  console.log('audit P1: pinned notes leave no failed action in memory and retain her words');
   var w = fresh(), S = w.OvuStore, ls = w.localStorage, realSet = ls.setItem, nodes = {}, opens = 0, closes = 0, toasts = [];
   function node() { return { value: '', handlers: {}, addEventListener: function (k, f) { this.handlers[k] = f; } }; }
   w.document = { createElement: node, getElementById: function (id) { return nodes[id] || (nodes[id] = node()); }, querySelector: function () { return null; }, addEventListener: function () {} };
@@ -3080,16 +3106,7 @@ function scenes(todayIso) {
     openSheet: function () { opens++; nodes = {}; }, closeSheet: function () { closes++; }, chime: function () {}, toast: function (t) { toasts.push(t); } };
   vm.runInContext(fs.readFileSync(path.join(root, 'ovu-community.js'), 'utf8'), w, { filename: 'ovu-community.js' });
   var C = w.OvuCommunity;
-  S.setState({ community: { notes: [{ text: 'Original', date: S.today() }], hellos: { nadia: S.today() }, extra: 'keep' } });
-  C.openNeighbour('mei');
-  var snap = JSON.stringify(S.state().community), opened = opens;
-  ls.setItem = function (k, v) { if (k === 'ovumind_db_v1') throw new Error('QuotaExceededError'); return realSet.call(ls, k, v); };
-  var helloThrew = false; try { nodes.nbHello.handlers.click(); } catch (e) { helloThrew = true; } ls.setItem = realSet;
-  check('a refused hello leaves memory unchanged and keeps its sheet open for retry', !helloThrew && JSON.stringify(S.state().community) === snap && opens === opened && closes === 0 && /hello could not be saved/.test(toasts[toasts.length - 1]));
-  S.setProfile({ name: 'After failed hello' });
-  check('the refused hello cannot leak through a later unrelated save', JSON.stringify(JSON.parse(ls.getItem('ovumind_db_v1')).state.community) === snap);
-  nodes.nbHello.handlers.click();
-  check('retry saves just the intended hello and closes after success', S.state().community.hellos.mei === S.today() && S.state().community.hellos.nadia === S.today() && S.state().community.extra === 'keep' && closes === 1);
+  S.setState({ community: { notes: [{ text: 'Original', date: S.today() }], extra: 'keep' } });
   C.openBoard(); w.document.getElementById('noteText').value = 'Keep these words for retry';
   var textarea = nodes.noteText, pin = nodes.notePin, snap2 = JSON.stringify(S.state().community), opened2 = opens;
   ls.setItem = function (k, v) { if (k === 'ovumind_db_v1') throw new Error('QuotaExceededError'); return realSet.call(ls, k, v); };
@@ -3652,7 +3669,7 @@ function scenes(todayIso) {
   var withReal = C.neighbours();
   C.setPeople(function () { return []; }); var emptyReal = C.neighbours();
   C.setPeople(null);
-  check('real people take the samples’ place while any are shown; with none, the samples come back', withReal.length === 2 && withReal[0].real && emptyReal.length === 4 && emptyReal[0].sample && C.neighbours().length === 4);
+  check('real people stand in the plaza while any are shown; with none, the plaza is empty (no samples come back)', withReal.length === 2 && withReal[0].real && emptyReal.length === 0 && C.neighbours().length === 0);
 })();
 
 (function ledgerAccounting() {
@@ -4032,7 +4049,7 @@ var summarised = false;
 (function appleHealthDirectRead() {
   console.log('Apple Health read directly (native shell): flag, bridge detection and mapping into the same import path');
   var cfgWin = function (override) { var w = { }; w.window = w; if (override !== undefined) w.OVU_NATIVE_HEALTH_OVERRIDE = override; vm.runInContext(fs.readFileSync(path.join(root, 'ovu-config.js'), 'utf8'), vm.createContext(w)); return w.OVU_CONFIG; };
-  check('the switch is off by default in ovu-config.js, and only a strict true turns it on', cfgWin().nativeHealth.apple === false && cfgWin('1').nativeHealth.apple === false && cfgWin(true).nativeHealth.apple === true);
+  check('the switch is on by default since 23 Oct (Jamie: connect Apple Health), and only a strict false turns it off', cfgWin().nativeHealth.apple === true && cfgWin('0').nativeHealth.apple === true && cfgWin(false).nativeHealth.apple === false);
   function load(flag, cap) {
     var w = fresh('2026-10-20'); w.OVU_CONFIG = { nativeHealth: { apple: flag } }; if (cap) w.Capacitor = cap;
     vm.runInContext(fs.readFileSync(path.join(root, 'ovu-healthnative.js'), 'utf8'), w, { filename: 'ovu-healthnative.js' });
@@ -4119,7 +4136,7 @@ var summarised = false;
 (function healthConnectDirectRead() {
   console.log('Health Connect read directly (Android shell): switch, permissions, and records mapped into the same import path');
   var cfg = function (override) { var w = { }; w.window = w; if (override !== undefined) w.OVU_NATIVE_HEALTH_OVERRIDE = override; vm.runInContext(fs.readFileSync(path.join(root, 'ovu-config.js'), 'utf8'), vm.createContext(w)); return w.OVU_CONFIG.nativeHealth; };
-  check('the Android switch is off by default and on only with a strict true', cfg().android === false && cfg(true).android === true);
+  check('the Android switch is on by default and off only with a strict false', cfg().android === true && cfg(false).android === false);
   function load(flags, cap) { var w = fresh('2026-10-20'); w.OVU_CONFIG = { nativeHealth: flags }; if (cap) w.Capacitor = cap; vm.runInContext(fs.readFileSync(path.join(root, 'ovu-healthnative.js'), 'utf8'), w, { filename: 'ovu-healthnative.js' }); return w; }
   function droid(records, auth) {
     var calls = [];
@@ -4285,18 +4302,17 @@ var summarised = false;
   vm.runInContext(fs.readFileSync(path.join(root, 'ovu-seats.js'), 'utf8'), w, { filename: 'ovu-seats.js' });
   var SE = w.OvuSeats, src = fs.readFileSync(path.join(root, 'ovu-seats.js'), 'utf8'), ids = Object.keys(SE.SCRIPTS);
   check('four practices, seven, six, six and six steps, each about two and a half to three minutes', ids.join() === 'street,plaza,tree,harbour' && SE.steps('street').length === 7 && SE.steps('plaza').length === 6 && SE.steps('tree').length === 6 && SE.steps('harbour').length === 6 && ids.every(function (id) { var t = SE.total(id); return t >= 140 && t <= 185; }), ids.map(function (id) { return SE.total(id); }).join());
-  var missing = [];
-  ids.forEach(function (id) { SE.steps(id).forEach(function (s) { if (!fs.existsSync(path.join(root, s.audio))) missing.push(s.audio); }); });
-  SE.steps('harbour', true).forEach(function (s) { if (!fs.existsSync(path.join(root, s.audio))) missing.push(s.audio); });
-  check('every clip is on disk, the reduced-motion line too', missing.length === 0, missing.join());
+  var voicedSteps = [];
+  ids.forEach(function (id) { SE.steps(id).concat(SE.steps(id, true)).forEach(function (s) { if (s.audio) voicedSteps.push(s.key); }); });
+  check('a bench says nothing aloud (Jamie, 23 Oct): no step carries a clip, no audio element is made, no Voice button, and the credit says captions', voicedSteps.length === 0 && !/new Audio\(|spQuiet|\.mp3/.test(src) && /captions/.test(SE.CREDIT), voicedSteps.join());
   var rm = SE.steps('harbour', true), plain = SE.steps('harbour', false);
-  check('with reduced motion the water’s second line asks for a colour, not a ripple; nothing else changes', /colour or a reflection/.test(rm[1].text) && /ripple/.test(plain[1].text) && rm[1].audio !== plain[1].audio && rm[0].text === plain[0].text && rm[2].audio === plain[2].audio && SE.steps('street', true)[1].text === SE.steps('street')[1].text);
+  check('with reduced motion the water’s second line asks for a colour, not a ripple; nothing else changes', /colour or a reflection/.test(rm[1].text) && /ripple/.test(plain[1].text) && rm[1].text !== plain[1].text && rm[0].text === plain[0].text && rm[2].text === plain[2].text && SE.steps('street', true)[1].text === SE.steps('street')[1].text);
   var words = ids.map(function (id) { return SE.SCRIPTS[id].steps.map(function (s) { return s.text; }).join(' '); }).join(' ');
   check('no claims in the scripts: nothing cured, healed or promised, no em dashes, every part of the kindness practice optional with a way out', !/\b(cure|heal|fix|anxiety|depression|reduce stress|lower your|boost|detox|will feel)\b/i.test(words) && words.indexOf('—') < 0 && SE.SCRIPTS.plaza.steps.slice(1, 5).every(function (s) { return /If you would like|If someone|you might|Otherwise/.test(s.text); }) && /stop now/.test(SE.SCRIPTS.plaza.steps[5].text));
   var seatList = Object.keys(SE.SEATS).map(function (k) { return SE.SEATS[k]; });
   check('every bench has its own words and its own animation (Codex, 21 Oct: the bench by the tree had shared the board bench’s)', seatList.length === 4 && new Set(seatList.map(function (s) { return s.practice; })).size === 4 && new Set(seatList.map(function (s) { return s.fx; })).size === 4 && SE.SEATS['plaza:bench2'].practice === 'tree' && SE.SEATS['plaza:bench2'].fx === 'shade');
   check('the shade practice makes its small thanks optional and says so when nothing comes', /^If you would like/.test(SE.SCRIPTS.tree.steps[4].text) && /If nothing comes to mind, that is fine too/.test(SE.SCRIPTS.tree.steps[4].text) && /stop whenever you need/.test(SE.SCRIPTS.tree.steps[0].text));
-  check('the credit names Erin Lee, her cloned voice and her permission', /Erin Lee/.test(SE.CREDIT) && /cloned voice/.test(SE.CREDIT) && /permission/.test(SE.CREDIT));
+  check('the credit says whose words and that they are captions, never a voice', /Rhythme/.test(SE.CREDIT) && /captions/.test(SE.CREDIT) && !/voice/.test(SE.CREDIT));
   var e1 = SE.entry('street', { seconds: 59.9, confirmed: true, finished: false }), e2 = SE.entry('street', { seconds: 60, confirmed: true, finished: false, startedAt: 'x' }), e3 = SE.entry('street', { seconds: 200, confirmed: false, finished: true }), e4 = SE.entry('nowhere', { seconds: 200, confirmed: true, finished: true }), e5 = SE.entry('plaza:bench2', { seconds: 168.4, confirmed: true, finished: true });
   check('59.9 seconds is not a minute; sixty is; nothing unconfirmed and no unknown seat; a finished practice is complete, a stopped one says so', e1 === null && !!e2 && e2.seconds === 60 && e2.minutes === 1 && e2.stoppedEarly && !e2.completed && e2.activity === 'seat' && e2.seat === 'street' && e2.scene === 'street' && e2.activityName === 'Sounds of the street' && e2.confirmedReal && e2.startedAt === 'x' && e2.guide === SE.CREDIT && e3 === null && e4 === null && e5.completed && !e5.stoppedEarly && e5.minutes === 2.8 && e5.scene === 'plaza', JSON.stringify([e1, e2, e5]));
   var t = 1000, clk = SE.makeClock(function () { return t; });
@@ -5275,7 +5291,7 @@ var summarised = false;
   check('init wires the room once: a second call does nothing, and the state reports off until she opts in', first === true && second === false && hooks.layout.length === 1 && hooks.travel.length === 1 && hooks.boot.length === 1 && M.state().on === false && M.state().mode === 'off');
   check('the module pays no hearts, writes no diary entry, names no model and uses no em dash', !/OvuRewards|\.award\(|S\.add\(|OvuStore\.add\(|addMany\(/.test(src) && !/gpt|claude|doubao|deepseek|gemini/i.test(src) && src.indexOf('—') < 0);
   var rs = fs.readFileSync(path.join(root, 'room.js'), 'utf8'), rh = fs.readFileSync(path.join(root, 'room.html'), 'utf8'), ss = fs.readFileSync(path.join(root, 'ovu-sound.js'), 'utf8');
-  check('the two controls are native buttons named Music with aria-pressed, the icon hidden from assistive technology, and the window help says what music is', /id="musicChip" type="button" aria-label="Music" aria-pressed="false"><span class="ms" aria-hidden="true">/.test(rh) && /id="winMusic" aria-pressed="/.test(rs) && /Music is a soft tune drawn in the browser/.test(rs) && rh.indexOf('<script src="ovu-music.js"></script>') > rh.indexOf('<script src="ovu-voicemute.js"></script>'));
+  check('the two controls are native buttons named Music with aria-pressed, the icon hidden from assistive technology, and the window help says what music is', /id="musicChip" type="button" aria-label="Music" aria-pressed="false"><span class="ms" aria-hidden="true">/.test(rh) && /id="winMusic" aria-pressed="/.test(rs) && /Music is a cheerful tune of its own for each place/.test(rs) && /Music credits/.test(rs) && rh.indexOf('<script src="ovu-music.js"></script>') > rh.indexOf('<script src="ovu-voicemute.js"></script>'));
   check('the kit shares its graph without resuming it, resumes only on request, and knows the cast', /function graph\(\)/.test(ss) && !/function graph\(\)[^\n]*resume/.test(ss) && /function resume\(\)/.test(ss) && !!w.OvuSound.KIT.cast && /play\('cast'\)/.test(fs.readFileSync(path.join(root, 'ovu-harbour.js'), 'utf8')) && /play\('boop'\)/.test(fs.readFileSync(path.join(root, 'ovu-seats.js'), 'utf8')) && /R\.emit\('travel', target, T\)/.test(fs.readFileSync(path.join(root, 'ovu-walk.js'), 'utf8')) && typeof w.OvuBreathTap.running === 'function');
 })();
 
@@ -5441,6 +5457,11 @@ var summarised = false;
 (function pondAndFlowerBreathing() {
   console.log('2k19. the koi pond and Light Flower with the breath (21 Oct): paces in and out only, the flower sways to the chosen pace, words only with a pace, how-to lists on both cards');
   var w = fresh(), LF = w.OvuLightFlower;
+  /* Jamie, 23 Oct: "it hangs halfway". A fading spark's alpha printed as 8.6e-7 became a colour the canvas refused, the frame
+   * threw, and the flower stopped. Every alpha is now written as a plain decimal, and the next frame is booked before drawing */
+  var okCol = function (c) { return /^rgba\(\d+,\d+,\d+,(0|1)\.\d{4}\)$/.test(c); }, lfsrc = fs.readFileSync(path.join(root, 'ovu-lightflower.js'), 'utf8');
+  check('Light Flower: a tiny alpha in exponent form gives a colour the canvas reads, scaled and clamped', okCol(LF.rgba('rgba(255,238,214,' + (0.75 * 1e-4 * 1e-4) + ')', 0.45)) && LF.rgba('rgba(255,238,214,' + 8.6e-7 + ')', 0.45) === 'rgba(255,238,214,0.0000)' && LF.rgba('rgba(1,2,3,0.8)', 0.45) === 'rgba(1,2,3,0.3600)' && LF.rgba('rgba(1,2,3,0.9)', 2) === 'rgba(1,2,3,1.0000)');
+  check('Light Flower: the next frame is booked before the frame is drawn, so one bad frame cannot stop it', /raf = root\.requestAnimationFrame\(tick\);[^\n]*\n\s*draw\(now\);/.test(lfsrc));
   var paces = Object.keys(LF.PACES);
   check('four paces: the flower’s own rhythm and the koi pond’s three; in and out only, never a hold, none longer than six seconds a side', paces.join() === 'own,easy,steady,longout' && paces.every(function (k) { var p = LF.PACES[k]; return p.inS > 0 && p.outS > 0 && p.inS <= 6 && p.outS <= 6 && Object.keys(p).indexOf('holdS') < 0; }) && !LF.PACES.own.word && LF.PACES.longout.inS === 4 && LF.PACES.longout.outS === 6);
   var ownOk = true; for (var q = 0; q < 12; q += 0.5) { if (Math.abs(LF.breathAt(q, 'own').v - Math.sin(q * 2 * Math.PI / LF.BREATH_S)) > 1e-9 || LF.breathAt(q, 'own').phase !== null) ownOk = false; }
@@ -6469,5 +6490,26 @@ var summarised = false;
   check('Chat and Wins run live (never After a loss); every hold rule still applies; the app-wide mode stays reviewed', /set live = \(kind in \('chat', 'wins'\) and server <> 'after-a-loss'\)/.test(mig) && /if hold is null and not \(plaza\.live\(\) or r\.live\) then hold := 'review'/.test(mig) && /hold := plaza\.hold_why\(v_body, r\.no_news\)/.test(mig) && !/plaza_flags_review_only/.test(mig.replace(/^--.*$/mg, '')));
   check('the room list marks live rooms and says which rooms show at once and that crisis words, medicine advice and pregnancy news always wait', /class="rmlive">Live</.test(rs) && /mixed: 'Rooms marked Live show messages straight away/.test(rs) && /Crisis words, medicine advice and pregnancy news wait for a person everywhere/.test(rs));
   check('the live rooms migration has its rolled-back check beside it', fs.existsSync(path.join(root, 'tools/db/plaza_live_rooms_dryrun.sql')) && /raise exception 'RESULT %'/.test(fs.readFileSync(path.join(root, 'tools/db/plaza_live_rooms_dryrun.sql'), 'utf8')));
+})();
+(function bodyLog() {
+  console.log('body log on the symptom day (23 Oct): discharge with Ovaria\'s photos, sex and sex drive, pregnancy test, basal temperature, a pill reminder');
+  var w = fresh('2026-10-23'), S = w.OvuStore; vm.runInContext(fs.readFileSync(path.join(root, 'ovu-bodylog.js'), 'utf8'), w, { filename: 'ovu-bodylog.js' });
+  var B = w.OvuBodyLog, rj = fs.readFileSync(path.join(root, 'room.js'), 'utf8');
+  check('eight discharge choices, each with its picture on disk; clumpy, green and grey are the ones worth a clinician\'s look', B.DISCHARGE.length === 8 && B.DISCHARGE.every(function (d) { return fs.existsSync(path.join(root, 'assets/room/discharge', d.id + '.webp')); }) && B.DISCHARGE.filter(function (d) { return d.flag; }).map(function (d) { return d.id; }).join() === 'clumpy,green,grey');
+  check('answers are cleaned to known values; anything else is left out', JSON.stringify(B.clean({ discharge: 'creamy', sex: 'protected', drive: 'high', pregTest: 'faint', extra: 1 })) === JSON.stringify({ discharge: 'creamy', sex: 'protected', drive: 'high', pregTest: 'faint' }) && JSON.stringify(B.clean({ discharge: 'purple', sex: 'maybe' })) === '{}');
+  var pos = B.notes({ pregTest: 'positive' });
+  check('a positive test says to confirm it with a doctor and names the urgent signs (one-sided pain, shoulder tip pain, heavy bleeding, feeling faint) with the local emergency number', pos[0].level === 'urgent' && /doctor or clinic to confirm/.test(pos[0].text) && /sharp pain low on one side/.test(pos[0].text) && /tip of your shoulder/.test(pos[0].text) && /your local emergency number/.test(pos[0].text));
+  check('a faint line usually still means pregnant; test again in two or three days; a negative says when to test again', /usually still means pregnant/.test(B.notes({ pregTest: 'faint' })[0].text) && /in a week, test again/.test(B.notes({ pregTest: 'negative' })[0].text));
+  check('flagged discharge brings the clinician line; ordinary discharge brings none', B.notes({ discharge: 'green' }).length === 1 && /sexual health clinic/.test(B.notes({ discharge: 'green' })[0].text) && B.notes({ discharge: 'creamy' }).length === 0);
+  check('basal temperature: 36.45 stays, 97.7 (°F) becomes 36.5, out of range and empty give nothing', B.basalC('36.45') === 36.45 && B.basalC('97.7') === 36.5 && B.basalC('34') === null && B.basalC('') === null && B.basalC('36,7') === 36.7);
+  S.add('temperature', '2026-10-22', { wrist: 35.6, basal: null }, 'apple-health');
+  S.add('temperature', '2026-10-22', { basal: 36.42 }, 'room', { merge: true });
+  var t = S.list('temperature');
+  check('a basal temperature typed in joins that day\'s temperature, keeping the watch\'s reading, and the day becomes hers', t.length === 1 && t[0].data.basal === 36.42 && t[0].data.wrist === 35.6 && t[0].source === 'room');
+  check('the symptom day shows the body log and saves its answers and the basal temperature', /bodyLogHTML\(sd, date\)/.test(rj) && /Object\.assign\(data, OvuBodyLog\.clean\(bl\.values\(\)\)\)/.test(rj) && /S\.add\('temperature', date, \{ basal: basal \}, 'room', \{ merge: true \}\)/.test(rj));
+  check('sex answers are said to stay private, and the staff contract reads none of the symptom day\'s fields', /Never shared, never on the team’s dashboard/.test(B.COPY.sexPrivate) && !/data ->> 'sex'|data ->> 'discharge'|data ->> 'pregTest'/.test(fs.readFileSync(path.join(root, 'supabase/migrations/20261021100000_staff_data_contract_v3.sql'), 'utf8')));
+  check('a pill reminder is one of the reminder templates, with what to do after a missed pill', /kind: 'pill', label: 'Take your pill', icon: 'medication'/.test(fs.readFileSync(path.join(root, 'ovu-remind.js'), 'utf8')) && /follow the leaflet that came with your pill or ask a pharmacist/.test(fs.readFileSync(path.join(root, 'ovu-remind.js'), 'utf8')));
+  check('care copy is world-wide: the low-mood line names no local number', !/mindline 1771/.test(rj) && /findahelpline\.com/.test(rj));
+  check('the words have no em dash', !/—/.test(JSON.stringify(B)));
 })();
 process.on('beforeExit', function () { if (summarised) return; summarised = true; Object.keys(openHarness).forEach(function (k) { check('async harness ' + k + ' finished', false, 'its promises never settled'); }); console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });

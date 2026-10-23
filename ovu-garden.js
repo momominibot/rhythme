@@ -108,12 +108,11 @@
   var S = root.OvuStore, doc = root.document, ART = R.ART;
   R.LAYOUTS.garden = GARDEN;
   var WATER_LINES = ['Pick up the can. Feel its weight before you pour.', 'Let the water fall slowly. Watch the soil darken.', 'Breathe in as you move to the next corner.', 'Nothing to hurry. The plants drink at their own pace.', 'Notice the sound of it, and the smell of wet earth.', 'Set the can down. One ordinary minute, fully lived.'];
-  var watering = null, lastWaterAt = 0, waterAsk = null, waterAskTimer = 0, VOICE = 'assets/audio/guide-interim/garden-water-';
+  var watering = null, lastWaterAt = 0, waterAsk = null, waterAskTimer = 0;
   /* Erin's cloned voice reads each line (pre-recorded clips, like the everyday practices); a missing clip is just silent */
   /* one audio element, created and first played inside the tap that starts the minute, then reused for every later line:
    * a fresh element started from a timer is silent on the iPhone, which is why only the first line used to be heard */
   function waterLive(w) { return !!w && watering === w && !w.done; }
-  function say(w, i) { try { if (!waterLive(w)) return; var a = w.audio || (w.audio = new Audio()); a.pause(); a.src = VOICE + i + '.mp3'; a.currentTime = 0; a.play().catch(function () { }); } catch (e) { } }
 
   function esc(s) { return R.esc(s); }
   function placeEl(el, p) { if (!el || !p) return; el.style.left = p.x + '%'; el.style.top = p.y + '%'; if (p.w) el.style.width = p.w + '%'; }
@@ -142,7 +141,7 @@
     clearWaterAsk();
     var sm = summary(S), w = { startedAt: Date.now(), timers: [], done: false, rewarded: !sm.wateredToday };
     watering = w;
-    R.hideSheet(); R.hudOn(true, 'Watering'); R.caption(WATER_LINES[0]); say(w, 0);
+    R.hideSheet(); R.hudOn(true, 'Watering'); R.caption(WATER_LINES[0]); /* captions and bells only: Erin speaks only in the mindfulness begun from Mind (Jamie, 23 Oct) */
     R.setPose('plants'); R.els.avatar.classList.add('acting');
     var wrap = R.els.props, drops = doc.createElement('div'); drops.className = 'drops'; drops.setAttribute('aria-hidden', 'true');
     drops.style.left = PLOT.x + '%'; drops.style.top = (PLOT.y - 2) + '%'; drops.style.width = PLOT.w + '%';
@@ -150,7 +149,6 @@
     wrap.appendChild(drops); w.drops = drops;
     WATER_LINES.forEach(function (line, i) { if (i) w.timers.push(root.setTimeout(function () {
       if (!waterLive(w)) return; R.caption(line); R.chime('bell', true);
-      w.timers.push(root.setTimeout(function () { if (waterLive(w)) say(w, i); }, 350));
     }, i * 10000)); });
     w.timers.push(root.setTimeout(function () { if (waterLive(w)) finishWatering(true, w); }, 60000));
     R.setHudStop(function () { if (!waterLive(w)) return false; finishWatering(false, w); return true; });
@@ -171,7 +169,7 @@
   /* timers retain their own run, so an old callback can never finish its replacement */
   function finishWatering(completed, w, handover) {
     w = w || watering; if (!waterLive(w)) return; w.done = true;
-    w.timers.forEach(root.clearTimeout); if (w.drops) w.drops.remove(); if (w.audio) { try { w.audio.pause(); } catch (e) { } } watering = null; R.setHudStop(null);
+    w.timers.forEach(root.clearTimeout); if (w.drops) w.drops.remove(); watering = null; R.setHudStop(null);
     if (!handover) { R.hudOn(false); R.els.avatar.classList.remove('acting'); R.restorePose(); }
     if (!completed) { if (!handover) R.toast('Stopped. The plants are glad of the drink anyway.', 'yard'); return; }
     lastWaterAt = Date.now();
@@ -264,7 +262,7 @@
     if (R.refuseBusy && R.refuseBusy()) return; /* one activity at a time (room.js activityNow) */
     var recent = S.list('mindfulness', { from: S.addDays(S.today(), -6), to: S.today() }), mins = recent.reduce(function (a, e) { return a + (Number(e.data.minutes) || 0); }, 0);
     R.openSheet('bench', 'Sit a while', 'The bench is yours for a few minutes', 'chair',
-      '<div class="erin small"><img src="assets/avatars/erin/erin-chibi-face.webp" alt="Erin Lee"><div><b>Breathe with Erin, outdoors</b><small>Pick a length and Erin sits beside you on the bench, speaking in her own voice. Or follow the breathing orb with its soft bell.</small></div></div>' +
+      '<div class="erin small"><img src="assets/avatars/erin/erin-chibi-face.webp" alt="Erin Lee"><div><b>Breathe with Erin, outdoors</b><small>Pick a length and Erin sits beside you on the bench, her words written out as you go (she speaks aloud in the mindfulness you begin from Mind). Or follow the breathing orb with its soft bell.</small></div></div>' +
       '<div class="sessions" id="benchSessions"><button type="button" class="session on" data-kind="erin" data-min="3"><b>Erin · 3 minutes</b><small>Guided breathing, a soft close</small></button><button type="button" class="session" data-kind="erin" data-min="6"><b>Erin · 6 minutes</b><small>A longer settle</small></button><button type="button" class="session" data-kind="breathe" data-min="2"><b>Orb · 2 min</b><small>4-4-6 with a quiet bell</small></button><button type="button" class="session" data-kind="breathe" data-min="5"><b>Orb · 5 min</b><small>Follow the orb</small></button></div>' +
       '<div class="orbwrap"><div class="orb out" id="orb"></div><div class="orbtext" id="orbText">Ready when you are</div><div class="orbsub" id="orbSub">' + (mins ? Math.round(mins) + ' min this week' : 'First session this week') + '</div></div>' +
       '<div class="row"><button type="button" class="btn primary" id="benchStart"><span class="ms">self_improvement</span>Begin</button><button type="button" class="btn soft" id="benchSit"><span class="ms">chair</span>Just sit a while</button></div>' +

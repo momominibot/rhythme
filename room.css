@@ -470,6 +470,7 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .hud-text b{display:block;font:800 11px var(--sans);color:var(--rm-ink-3);letter-spacing:.06em;text-transform:uppercase}
 .hud-text span{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;font-family:var(--serif);font-size:14px;color:var(--rm-plum);line-height:1.25;overflow:hidden;text-wrap:pretty}
 .hud-stop{width:36px;height:36px;border-radius:50%;border:none;background:var(--rm-lilac-2);color:var(--rm-plum);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.hud-mute[hidden]{display:none}
 
 /* ---------- Luna chat ---------- */
 .chat{display:flex;flex-direction:column;gap:8px;margin-top:6px}
@@ -1386,8 +1387,6 @@ summary.c-lbl{cursor:pointer;list-style-position:inside}
 .nbperson.wave img{animation:joyhop .55s ease-out!important}
 .nbperson:focus-visible{outline:2px solid #fff;outline-offset:3px;border-radius:12px}
 .nbtag{position:absolute;left:50%;top:-4px;transform:translate(-50%,-100%);background:rgba(255,255,255,.92);border-radius:999px;padding:3px 8px;font:800 10px var(--sans);color:var(--rm-plum);white-space:nowrap;box-shadow:0 3px 10px rgba(90,66,116,.18)}
-.nbpet img{animation:petbob 3.4s ease-in-out infinite;transform-origin:50% 100%}
-.scene.nbvisit .hotspot{pointer-events:none;opacity:.3}
 .plot{position:absolute;transform:translate(-50%,-78%);pointer-events:none;filter:drop-shadow(0 4px 6px rgba(70,40,100,.18))}
 .plot svg{width:100%;height:auto;display:block;overflow:visible}
 .plot.stage-5 svg{animation:plotsway 5s ease-in-out infinite;transform-origin:50% 90%}
@@ -1409,10 +1408,6 @@ summary.c-lbl{cursor:pointer;list-style-position:inside}
 .plotcard small{font:700 11px var(--sans);color:var(--rm-ink-3)}
 .plotcard .bar{margin-top:6px;height:6px;border-radius:99px;background:var(--rm-lilac-2);overflow:hidden}
 .plotcard .bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#f6c9d6,#c9b6e6)}
-.nbcard{display:flex;gap:12px;align-items:center;background:var(--rm-card,#fff);border-radius:16px;padding:12px;margin-top:10px}
-.nbcard img{width:64px;height:auto;flex-shrink:0}
-.nbcard p{font-family:var(--serif);font-size:15px;color:var(--rm-ink);line-height:1.35}
-.nbcard small{display:block;margin-top:4px;font:700 11px var(--sans);color:var(--rm-ink-3)}
 .notice{display:flex;gap:10px;align-items:flex-start;background:var(--rm-card,#fff);border-radius:16px;padding:10px 12px;margin-top:8px}
 .notice>.ms{color:var(--rm-mauve);font-size:20px;flex-shrink:0}
 .notice.today{background:linear-gradient(135deg,#fbe3ea,#e7dcf5)}
@@ -1427,7 +1422,7 @@ summary.c-lbl{cursor:pointer;list-style-position:inside}
 .tea span:not(.ms){display:block;font-family:var(--serif);font-size:13.5px;color:var(--rm-ink);line-height:1.35}
 .tea small{display:block;margin-top:3px;font:600 11px var(--sans);color:var(--rm-ink-3);line-height:1.4}
 .tea em{display:block;margin-top:3px;font:700 11px var(--sans);color:#a06b2a;font-style:normal}
-@media (prefers-reduced-motion: reduce){.nbperson img,.nbpet img,.plot svg,.drops i,.wish i{animation:none!important}.scenefade{transition:none}}
+@media (prefers-reduced-motion: reduce){.nbperson img,.plot svg,.drops i,.wish i{animation:none!important}.scenefade{transition:none}}
 /* ---- 18 Oct, later: walkable store interiors (ovu-shops.js) and the mini-map's store sub-stops ---- */
 /* the store row sits in its own pill above the main one, so the walk pad on the left keeps its room */
 .shopprop{pointer-events:auto;cursor:pointer}
@@ -2690,3 +2685,12 @@ button.rmgroup:focus-visible{outline:3px solid var(--rm-mauve);outline-offset:2p
 .rmlive{display:inline-block;margin-left:5px;padding:1px 7px;border-radius:99px;font:800 9.5px var(--sans);font-style:normal;letter-spacing:.06em;text-transform:uppercase;color:#2d7a4f;background:#e2f5ea;vertical-align:2px;animation:rmlive 2.4s ease-in-out infinite}
 @keyframes rmlive{0%,100%{box-shadow:0 0 0 0 rgba(95,174,138,.4)}50%{box-shadow:0 0 0 4px rgba(95,174,138,0)}}
 @media (prefers-reduced-motion:reduce){.rmlive{animation:none}}
+/* the symptom day's body log (23 Oct): Ovaria's discharge photos as small round tiles */
+.dcgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.dctile{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 4px 7px;border-radius:16px;border:2px solid transparent;background:#fff;box-shadow:0 2px 8px rgba(122,92,150,.10);cursor:pointer;font:700 11.5px var(--sans);color:var(--rm-ink-2);transition:transform .12s ease}
+.dctile img{width:100%;max-width:64px;aspect-ratio:1;object-fit:cover;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.05)}
+.dctile.on{border-color:#c9b6e6;background:linear-gradient(180deg,#fbf6fe,#f2eafb);color:var(--rm-plum);transform:translateY(-1px)}
+.dctile:active{transform:scale(.95)}
+.bnote{margin-top:6px;min-height:1em}.bnote.flag{color:#9a5a00;font-weight:700}
+.sublbl{display:block;margin-top:8px}
+@media (prefers-reduced-motion:reduce){.dctile{transition:none}}

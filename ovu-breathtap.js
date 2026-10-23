@@ -92,7 +92,7 @@
     pending = null;
     state = { preset: preset, plan: plan, startedAt: Date.now(), taps: 0, lastPhase: '' };
     $('#btapCard').hidden = true; $('#btapDone').hidden = true; $('#btapStage').hidden = false;
-    $('#btapWord').textContent = PRESETS[preset].quiet ? '' : 'in';
+    $('#btapWord').textContent = PRESETS[preset].quiet ? '' : 'breathe in'; /* Jamie, 23 Oct: "breathe in, breathe out" instead of "in and out" */
     var stage = $('#btapStage'); water = reduced ? null : makeWater($('#btapWater'), stage.clientWidth || root.innerWidth, stage.clientHeight || root.innerHeight);
     if (water) { renderWater(water); drop(water, water.w / 2, water.h * 0.44, 12, 10); }
     koiStart(stage.clientWidth || root.innerWidth, stage.clientHeight || root.innerHeight);
@@ -103,7 +103,7 @@
     var t = Date.now() - state.startedAt, ph = phaseAt(state.preset, t), ring = $('#btapRing'), word = $('#btapWord');
     if (reduced) { ring.style.transform = 'translate(-50%,-50%) scale(.95)'; ring.style.opacity = String(0.55 + 0.45 * ph.size); }
     else ring.style.transform = 'translate(-50%,-50%) scale(' + (0.72 + 0.38 * ph.size).toFixed(3) + ')';
-    if (ph.phase !== state.lastPhase) { state.lastPhase = ph.phase; if (!PRESETS[state.preset].quiet) word.textContent = ph.phase === 'in' ? 'in' : 'out'; if (water) drop(water, water.w / 2, water.h * 0.44, 14, 9); }
+    if (ph.phase !== state.lastPhase) { state.lastPhase = ph.phase; if (!PRESETS[state.preset].quiet) word.textContent = ph.phase === 'in' ? 'breathe in' : 'breathe out'; if (water) drop(water, water.w / 2, water.h * 0.44, 14, 9); }
     if (water && water.active > 0) { stepWater(water); renderWater(water); water.active -= 1; }
     koiStep();
     if (state.plan && t >= state.plan * 60000) { stop(true); return; }
