@@ -5800,4 +5800,56 @@ var summarised = false;
   check('the sweep ends on practiceStop, activity, layout, clear and import, sleep and a replaced floor; pauses by the frame clamp while hidden; writes through the farm lock, after a re-read, before any puff', /R\.on\('practiceStop', end\)/.test(tj) && /R\.on\('activity', function \(kind, id\) \{ end\(\);/.test(tj) && /R\.on\('layout', function \(\) \{ end\(\); draw\(\); \}\)/.test(tj) && /reason === 'clear' \|\| reason === 'import'/.test(tj) && /if \(sweep && R\.asleep && R\.asleep\(\)\) \{ end\(\); return; \}/.test(tj) && /FMl\.locked\(S, go\)/.test(tj) && /S\.reload\(\)/.test(tj) && /Math\.min\(0\.1, \(t - last\) \/ 1000\)/.test(tj) && tj.indexOf('puffAt(target.x') > tj.indexOf("(S.commit || S.setState)({ tidy: r.state })"));
 })();
 
+(function dashboardTeamReview() {
+  console.log('review worker (23 Oct): the dashboard says plainly why the team was or was not asked, never shows a failed proposals load as empty, and drops replies meant for another account');
+  var el = function () { return { innerHTML: '', textContent: '', className: '', style: {}, dataset: {}, classList: { add: function () { }, remove: function () { }, toggle: function () { } }, setAttribute: function () { }, addEventListener: function () { }, querySelector: function () { return null; }, querySelectorAll: function () { return []; }, insertAdjacentHTML: function () { }, appendChild: function () { } }; };
+  var w = { console: console, setTimeout: setTimeout, clearTimeout: clearTimeout, setInterval: function () { return 0; }, clearInterval: function () { }, Promise: Promise, JSON: JSON, Date: Date, Math: Math, String: String, Number: Number, Array: Array, Object: Object, encodeURIComponent: encodeURIComponent, location: { search: '', hash: '', href: 'x' }, history: { replaceState: function () { } } };
+  w.window = w; w.document = { getElementById: function () { return el(); }, createElement: el, querySelector: function () { return null; }, querySelectorAll: function () { return []; }, addEventListener: function () { }, body: el(), documentElement: el(), hidden: false };
+  w.OVU_CONFIG = { supabaseUrl: 'https://t.invalid', supabaseKey: 'k' };
+  var uid = 'A', subs = [], tokens = [];
+  w.OvuAuth = { token: function () { tokens.push(uid); return 't-' + uid; }, init: function () { return new Promise(function () { }); }, session: function () { return null; }, userId: function () { return uid; }, subscribe: function (fn) { subs.push(fn); } };
+  w.__ADMIN_TEST__ = {};
+  var pending = [], fail = {};
+  w.fetch = function (u, o) {
+    var name = String(u).split('/rpc/')[1];
+    if (fail[name]) return Promise.resolve({ ok: false, status: 500, text: function () { return Promise.resolve('{"message":"down"}'); } });
+    return new Promise(function (res) { pending.push({ name: name, res: function (j) { res({ ok: true, status: 200, text: function () { return Promise.resolve(JSON.stringify(j)); } }); } }); });
+  };
+  vm.runInContext(fs.readFileSync(path.join(root, 'admin.js'), 'utf8'), vm.createContext(w), { filename: 'admin.js' });
+  var T = w.__ADMIN_TEST__.api; T.setTab('none');
+  var tick = function () { return new Promise(function (r) { setTimeout(r, 0); }); };
+  var line = function (r) { T.setReview(r); return T.teamLine(); };
+  check('the status line says the review waits for the privacy clearance when it is on but not cleared', /privacy clearance/.test(line({ review_on: true, transfer_cleared: false })), line({ review_on: true, transfer_cleared: false }));
+  check('a queued review says it waits for the worker on the Mac', /waiting for the worker on the Mac/.test(line({ review_on: true, transfer_cleared: true, open: { state: 'queued', requested_at: new Date().toISOString() } })));
+  var stale = line({ review_on: true, transfer_cleared: true, open: { state: 'claimed', heartbeats: [{ agent: 'cycle', state: 'reading', age_s: 95 }] } });
+  check('a claimed review names the reading agent and calls a 95 s old heartbeat longer than expected', /is reading the numbers/.test(stale) && /longer than expected/.test(stale), stale);
+  check('a provider block wins over every other state and says nothing retries by itself', /Codex reported a usage limit/.test(line({ review_on: true, transfer_cleared: true, block: { code: 'provider_limit' }, open: { state: 'queued' } })) && /Nothing retries by itself/.test(line({ block: { code: 'provider_limit' } })));
+  check('a last review older than the newest run says the newer results are not reviewed', /newer results are not reviewed/.test(line({ review_on: true, transfer_cleared: true, latest_run: 'r2', last: { state: 'done', run: 'r1', finished_at: new Date().toISOString() } })));
+  check('refresh replies read as plain words for queued, busy and every reason it was not asked', /queued for the worker/.test(T.refreshText({ state: 'queued' })) && /still reviewing an earlier run/.test(T.refreshText({ state: 'busy' })) && /privacy clearance/.test(T.refreshText({ state: 'skipped', code: 'transfer_not_cleared' })) && /switched off/.test(T.refreshText({ state: 'skipped', code: 'review_off' })) && /held/.test(T.refreshText({ state: 'skipped', code: 'run_held' })));
+  openHarness.dashboardTeamReview = true;
+  fail.admin_proposals = true;
+  T.loadProposals().then(function () {
+    check('a failed proposals load is shown as unavailable, never as an empty queue', T.proposals() === 'unavailable', JSON.stringify(T.proposals()));
+    delete fail.admin_proposals;
+    var late = T.loadProposals();
+    return tick().then(function () {
+      T.dropResults(); /* a floor change lands while the answer is on its way */
+      pending.shift().res([{ id: 1, kind: 'prompt_copy', target: 'bed_tap', status: 'open', rationale: 'from the old floor' }]);
+      return late;
+    }).then(function () {
+      check('a proposals answer sent before the results were dropped is not filed', T.proposals() === null, JSON.stringify(T.proposals()));
+      var slow = T.loadReview();
+      return tick().then(function () {
+        uid = 'B'; subs.forEach(function (f) { f(); }); /* another account signs in on this page */
+        pending.shift().res({ review_on: true, transfer_cleared: true, open: { state: 'queued' } });
+        return slow;
+      }).then(tick).then(function () {
+        check('after an account switch the old account\'s late review status is not shown', T.review() === null, JSON.stringify(T.review()));
+        var before = subs.length; subs.forEach(function (f) { f(); }); /* a token refresh for the same account */
+        check('a session save for the same account does not reboot the page', T.review() === null && subs.length === before);
+        delete openHarness.dashboardTeamReview;
+      });
+    });
+  }).catch(function (e) { check('dashboard team review harness ran', false, String(e && e.stack || e)); });
+})();
 process.on('beforeExit', function () { if (summarised) return; summarised = true; Object.keys(openHarness).forEach(function (k) { check('async harness ' + k + ' finished', false, 'its promises never settled'); }); console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });
