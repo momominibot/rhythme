@@ -93,17 +93,12 @@ async def check_legacy_pages(browser):
     except Exception: check("settings: the You tab has a Settings row", False, "no [data-yact=settings]"); await ctx.close(); return
     await pg.click('[data-yact="settings"]'); await pg.wait_for_timeout(400)
     s1 = await pg.evaluate("()=>({id: OvuRoom.sheetId(), chips: [...document.querySelectorAll('#sheetBody [data-persona], .sheet [data-persona]')].map(b=>b.dataset.persona), on: (document.querySelector('[data-persona].on')||{}).dataset, csv: !!document.querySelector('#setSleepCsv'), links: [...document.querySelectorAll('.sheet a.yrow')].map(a=>a.getAttribute('href'))})")
-    check("settings: You opens a Settings sheet in the room with the four life-stage looks, the sleep file and the records links", s1["id"] == "settings" and s1["chips"] == ["grow", "nurture", "peri", "wisdom"] and s1["csv"] and "health-profile.html" in s1["links"] and "labs.html" in s1["links"] and "privacy.html#privacy-local-title" in s1["links"], s1)
+    check("settings: You opens a Settings sheet in the room with the four life-stage looks and the records links, and no sleep file", s1["id"] == "settings" and s1["chips"] == ["grow", "nurture", "peri", "wisdom"] and not s1["csv"] and "health-profile.html" in s1["links"] and "labs.html" in s1["links"] and "privacy.html#privacy-local-title" in s1["links"], s1)
     await pg.click('[data-persona="nurture"]'); await pg.wait_for_timeout(200)
     s2 = await pg.evaluate("()=>({saved: localStorage.getItem('ovuluna_persona'), pressed: document.querySelector('[data-persona=nurture]').getAttribute('aria-pressed'), others: document.querySelectorAll('[data-persona].on').length})")
     check("settings: a life-stage look is saved where it always was (localStorage ovuluna_persona) and shows as chosen", s2["saved"] == "nurture" and s2["pressed"] == "true" and s2["others"] == 1, s2)
-    await pg.set_input_files("#setSleepCsv", files=[{"name": "sleep.csv", "mimeType": "text/csv", "buffer": b"date,bedTime,wakeTime,quality\n2026-10-17,23:10,06:45,4\nnot a night\n"}]); await pg.wait_for_timeout(600)
-    s3 = await pg.evaluate("()=>({msg: (document.querySelector('#setSleepMsg')||{}).textContent||'', id: OvuRoom.sheetId(), night: OvuStore.list('sleep').filter(e=>e.date==='2026-10-17').map(e=>({src:e.source, bed:e.data.bedTime, wake:e.data.wakeTime, q:e.data.quality, mode:e.data.mode}))})")
-    check("settings: a sleep file comes in as sleep entries from 'import', the same as the old page, and says what it skipped", s3["id"] == "settings" and s3["night"] == [{"src": "import", "bed": "23:10", "wake": "06:45", "q": 4, "mode": "import"}] and "Brought in 1 night, skipped 1 unreadable line" in s3["msg"], s3)
-    await pg.evaluate("()=>OvuStore.add('sleep','2026-10-16',{bedTime:'22:00',wakeTime:'06:00',quality:3},'room')")  # a night she wrote herself
-    await pg.set_input_files("#setSleepCsv", files=[{"name": "sleep.csv", "mimeType": "text/csv", "buffer": b"2026-10-17,23:30,07:00,5\n2026-10-16,23:00,07:15,4\n"}]); await pg.wait_for_timeout(600)
-    s3b = await pg.evaluate("()=>({n17: OvuStore.list('sleep').filter(e=>e.date==='2026-10-17').map(e=>e.data.bedTime), n16: OvuStore.list('sleep').filter(e=>e.date==='2026-10-16').map(e=>e.source+':'+e.data.bedTime).sort()})")
-    check("settings: the same night brought in again is updated, not doubled, and a night she wrote herself is kept beside it", s3b["n17"] == ["23:30"] and s3b["n16"] == ["import:23:00", "room:22:00"], s3b)
+    s3 = await pg.evaluate("()=>{var b=document.querySelector('#sheetBody'); return {files: b.querySelectorAll('input[type=file]').length, text: b.textContent}}")
+    check("settings: no export file and no sleep file to choose (Jamie, 23 Oct); Apple Health and Health Connect are explained as connecting from the Rhythme app", s3["files"] == 0 and "Bring in from files" not in s3["text"] and "export.zip" not in s3["text"] and "Apple Health and Health Connect" in s3["text"] and "Rhythme app on your phone" in s3["text"], {"files": s3["files"]})
     # the retired settings page, opened in the viewer, hands over to the sheet; opened on its own, it lands on the sheet
     await pg.evaluate("()=>{ OvuRoom.closeSheet && OvuRoom.closeSheet(); }"); await pg.keyboard.press("Escape"); await pg.wait_for_timeout(300)
     await pg.evaluate("()=>OvuPage.open('settings.html')"); await pg.wait_for_timeout(1500)
@@ -508,6 +503,68 @@ async def gym_checks(browser, gate):
     check("gym: signing out mid-workout ends it, her own clothes back, and its panel goes", not so["active"] and so["costume"] is None and not so["panel"], so)
     await ctxs.close()
 
+# A stand-in for the iPhone app's RhythmeHealth plugin (ios/App/App/RhythmeHealthPlugin.swift): the same Capacitor
+# globals ovu-healthnative.js looks for, answering isAvailable, requestAuthorization and readSamples with the
+# export-shaped records the plugin returns. window.__hk holds the samples by type and records every call.
+def native_ios_script(samples):
+    return ("window.__hk = {samples: %s, calls: []}; window.Capacitor = {isNativePlatform: function(){return true}, getPlatform: function(){return 'ios'}, "
+            "PluginHeaders: [{name: 'RhythmeHealth', methods: []}], nativePromise: function(plugin, method, o){ window.__hk.calls.push(method + (o && o.type ? ':' + o.type : '')); "
+            "if (method === 'isAvailable') return Promise.resolve({available: true}); if (method === 'requestAuthorization') return Promise.resolve({requested: true}); "
+            "if (method === 'readSamples') return Promise.resolve({samples: (window.__hk.samples[o.type] || []).slice()}); return Promise.reject(new Error('unknown ' + method)); }};") % json.dumps(samples)
+
+
+async def check_health_connect(browser):
+    """Jamie, 23 Oct: "connect and remove the export file under settings". In a browser You says Apple Health and Health
+    Connect connect from the phone app and nothing offers a file; inside the iPhone app Connect Apple Health asks for the
+    named kinds only, lists what came back with nothing ticked, brings in only what she ticks, and what came in can be
+    removed one kind at a time or all together, her own entries untouched."""
+    today = datetime.date.today(); day = lambda n: (today - datetime.timedelta(days=n)).isoformat()
+    # the web: no file to choose anywhere, and the row says where to connect
+    ctx = await browser.new_context(viewport={"width": 390, "height": 844})
+    await ctx.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB))); await ctx.add_init_script(SESSION_SEED)
+    await ctx.route("**/functions/v1/**", lambda r: r.abort())
+    pg = await ctx.new_page(); errs = []; pg.on("pageerror", lambda e: errs.append(str(e)[:200]))
+    await pg.goto(BASE + "room.html", wait_until="domcontentloaded")
+    try: await pg.wait_for_function("()=>window.OvuRoom && !OvuRoom.busy()", timeout=15000)
+    except Exception: pass
+    await pg.click("nav a[data-tab=you]"); await pg.wait_for_selector('[data-yact="import"]', timeout=8000)
+    w0 = await pg.evaluate("()=>({row: document.querySelector('[data-yact=import]').textContent, connect: !!document.querySelector('[data-yact=healthkit]')})")
+    await pg.click('[data-yact="import"]'); await pg.wait_for_timeout(400)
+    w1 = await pg.evaluate("()=>{var b=document.querySelector('#sheetBody'); return {id: OvuRoom.sheetId(), files: document.querySelectorAll('input[type=file][accept*=zip], input[type=file][accept*=xml]').length, text: b.textContent}}")
+    check("health: in a browser You's Apple Health and Health Connect row says it connects from the phone app, no Connect button shows, and its sheet offers no export file", "Rhythme app on your phone" in w0["row"] and not w0["connect"] and w1["id"] == "import" and w1["files"] == 0 and "Connect in the Rhythme app" in w1["text"] and "export.zip" not in w1["text"], {"w0": w0, "w1": {"id": w1["id"], "files": w1["files"]}})
+    await ctx.close()
+    # the iPhone app: Connect Apple Health reads, lists, brings in only what is ticked, and removes
+    st = lambda n, h: "%sT%s+08:00" % (day(n), h)
+    hk = {"sleep": [{"type": "HKCategoryTypeIdentifierSleepAnalysis", "startDate": st(13, "23:00:00"), "endDate": st(12, "06:30:00"), "value": "3"},
+                    {"type": "HKCategoryTypeIdentifierSleepAnalysis", "startDate": st(12, "23:15:00"), "endDate": st(11, "07:00:00"), "value": "3"}],
+          "menstrualFlow": [{"type": "HKCategoryTypeIdentifierMenstrualFlow", "startDate": st(9, "08:00:00"), "endDate": st(9, "08:00:00"), "value": "3"}],
+          "steps": [{"type": "HKQuantityTypeIdentifierStepCount", "startDate": st(2, "00:00:00"), "endDate": st(2, "23:59:00"), "value": "7200", "unit": "count", "sourceName": "Health daily total"}]}
+    ctx = await browser.new_context(viewport={"width": 390, "height": 844})
+    await ctx.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB))); await ctx.add_init_script(SESSION_SEED)
+    await ctx.add_init_script(native_ios_script(hk))
+    await ctx.route("**/functions/v1/**", lambda r: r.abort())
+    pg = await ctx.new_page(); pg.on("pageerror", lambda e: errs.append(str(e)[:200]))
+    await pg.goto(BASE + "room.html", wait_until="domcontentloaded")
+    try: await pg.wait_for_function("()=>window.OvuRoom && !OvuRoom.busy()", timeout=15000)
+    except Exception: pass
+    own0 = await pg.evaluate("()=>OvuStore.list('sleep').length + OvuStore.list('period').length")
+    await pg.click("nav a[data-tab=you]"); await pg.wait_for_selector('[data-yact="healthkit"]', timeout=8000); await pg.click('[data-yact="healthkit"]'); await pg.wait_for_selector("#hkGo", timeout=8000)
+    c0 = await pg.evaluate("()=>({title: document.querySelector('#sheetTitle').textContent, reads: document.querySelectorAll('#sheetBody .imp-steps li').length})")
+    await pg.click("#hkGo")
+    try: await pg.wait_for_selector(".imp-kinds", timeout=10000)
+    except Exception: pass
+    pk = await pg.evaluate("()=>({kinds: [...document.querySelectorAll('.imp-kinds input[data-kind]')].map(i=>i.dataset.kind+':'+i.checked), go: (document.querySelector('#impGo')||{}).disabled, calls: window.__hk.calls})")
+    check("health: in the iPhone app Connect Apple Health names what it reads, asks for only those kinds, and lists what came back with nothing ticked and Bring in locked", c0["title"].startswith("Apple Health") and c0["reads"] == 8 and pk["kinds"] == ["sleep:false", "period:false", "steps:false"] and pk["go"] is True and pk["calls"][:2] == ["isAvailable", "requestAuthorization"] and all(c.startswith("readSamples:") or c in ("isAvailable", "requestAuthorization") for c in pk["calls"]), {"c0": c0, "pk": pk})
+    await pg.click('.imp-kinds input[data-kind="sleep"]'); await pg.wait_for_function("()=>!document.querySelector('#impGo').disabled")
+    await pg.click("#impGo"); await pg.wait_for_selector('.imp-have[data-kind="sleep"]', timeout=10000)
+    got = await pg.evaluate("()=>({sleep: OvuStore.list('sleep').filter(e=>e.source==='apple-health').length, period: OvuStore.list('period').filter(e=>e.source==='apple-health').length, steps: OvuStore.list('steps').filter(e=>e.date===arguments[0]).length})".replace("arguments[0]", json.dumps(day(2))))
+    check("health: only the ticked kind comes in (two nights), not the period day or the steps", got["sleep"] == 2 and got["period"] == 0 and got["steps"] == 0, got)
+    await pg.click('[data-impact="remove"][data-kind="all"]'); await pg.wait_for_selector('[data-impact="remove-yes"][data-kind="all"]', timeout=5000); await pg.click('[data-impact="remove-yes"][data-kind="all"]'); await pg.wait_for_timeout(500)
+    left = await pg.evaluate("()=>({imported: OvuStore.list('sleep').filter(e=>e.source==='apple-health').length, own: OvuStore.list('sleep').length + OvuStore.list('period').length, have: document.querySelectorAll('.imp-have').length})")
+    check("health: Remove everything brought in takes the nights out and leaves her own entries", left["imported"] == 0 and left["own"] == own0 and left["have"] == 0, {"left": left, "own0": own0})
+    check("health: no page errors", not errs, errs[:3]); await ctx.close()
+
+
 async def check_body_signals(browser):
     """Steps, workouts, resting heart rate and temperature from a health app (23 Oct): Movement shows steps against her
     usual with no goal, a walk logged by hand and the same walk from Apple Health count once, the Cycle tab shows body
@@ -521,8 +578,13 @@ async def check_body_signals(browser):
     walk = {"activity": "walk", "label": "Walking", "variant": "brisk", "detail": "Brisk, about 5.6 to 6.3 km/h, from your pace", "code": "17200", "met": 4.8, "metSource": "2024 Adult Compendium", "minutes": 40, "intensity": "moderate", "strength": False, "aerobic": True, "note": "", "from": "Apple Health", "importKey": "Walking@x", "start": "07:00"}
     ev.append({"id": "wk1", "type": "exercise", "date": day(1), "createdAt": NOW, "updatedAt": NOW, "source": "apple-health", "data": walk})
     ev.append({"id": "wk2", "type": "exercise", "date": day(1), "createdAt": NOW, "updatedAt": NOW, "source": "room", "data": dict(walk, detail="Brisk, about 5.6 to 6.3 km/h", minutes=30, importKey=None, start=None, **{"from": None})})
+    st = lambda n: "%sT09:00:00+08:00" % day(n)
+    hk = {"steps": [{"type": "HKQuantityTypeIdentifierStepCount", "startDate": st(3), "endDate": "%sT23:59:00+08:00" % day(3), "value": "900", "unit": "count", "sourceName": "Health daily total"}],
+          "restingHeartRate": [{"type": "HKQuantityTypeIdentifierRestingHeartRate", "startDate": st(3), "endDate": st(3), "value": "58", "unit": "count/min", "sourceName": "Watch"}],
+          "workouts": [{"type": "HKWorkout", "workoutActivityType": "HKWorkoutActivityTypeCycling", "startDate": "%sT18:00:00+08:00" % day(3), "endDate": "%sT18:45:00+08:00" % day(3), "duration": 45, "durationUnit": "min"}]}
     ctx = await browser.new_context(viewport={"width": 390, "height": 844})
     await ctx.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(d))); await ctx.add_init_script(SESSION_SEED)
+    await ctx.add_init_script(native_ios_script(hk))
     await ctx.route("**/functions/v1/**", lambda r: r.abort())
     pg = await ctx.new_page(); errs = []
     pg.on("pageerror", lambda e: errs.append(str(e)[:200]))
@@ -545,15 +607,12 @@ async def check_body_signals(browser):
       return {text: b.textContent, cards: b.querySelectorAll('.sigcard').length, sparks: b.querySelectorAll('.sigbars').length, fits: sh.scrollWidth <= sh.clientWidth + 1}}""")
     check("the Cycle tab shows body signals: resting heart rate 4 above her usual of 60 and wrist temperature +0.3 °C, never called stress", bool(bs) and bs["cards"] == 2 and bs["sparks"] == 2 and "4 above your usual of 60" in bs["text"] and "+0.3 °C" in bs["text"] and "stress score" not in bs["text"].lower() and bs["fits"], bs)
     await pg.evaluate("()=>OvuRoom.closeSheet && OvuRoom.closeSheet()"); await pg.keyboard.press("Escape"); await pg.wait_for_timeout(300)
-    await pg.click("nav a[data-tab=you]"); await pg.wait_for_selector('[data-yact="import"]', timeout=8000); await pg.click('[data-yact="import"]'); await pg.wait_for_selector("#impApple", state="attached", timeout=8000)
-    xml = ('<HealthData><Record type="HKQuantityTypeIdentifierStepCount" sourceName="iPhone" unit="count" startDate="%s 09:00:00 +0800" endDate="%s 09:30:00 +0800" value="900"/>'
-           '<Record type="HKQuantityTypeIdentifierRestingHeartRate" sourceName="Watch" unit="count/min" startDate="%s 08:00:00 +0800" endDate="%s 08:00:00 +0800" value="58"/>'
-           '<Workout workoutActivityType="HKWorkoutActivityTypeCycling" duration="45" durationUnit="min" startDate="%s 18:00:00 +0800" endDate="%s 18:45:00 +0800"></Workout></HealthData>') % ((day(3),) * 6)
-    await pg.set_input_files("#impApple", files=[{"name": "export.xml", "mimeType": "text/xml", "buffer": xml.encode()}])
+    await pg.click("nav a[data-tab=you]"); await pg.wait_for_selector('[data-yact="healthkit"]', timeout=8000); await pg.click('[data-yact="healthkit"]'); await pg.wait_for_selector("#hkGo", timeout=8000)
+    await pg.click("#hkGo")
     try: await pg.wait_for_selector(".imp-kinds", timeout=10000)
     except Exception: pass
     pk = await pg.evaluate("()=>({kinds: [...document.querySelectorAll('.imp-kinds input[data-kind]')].map(i=>i.dataset.kind+':'+i.checked), go: (document.querySelector('#impGo')||{}).disabled})")
-    check("the import picker offers steps, workouts and resting heart rate from an export, with nothing ticked", pk["kinds"] == ["steps:false", "workouts:false", "restinghr:false"] and pk["go"] is True, pk)
+    check("Connect Apple Health offers steps, workouts and resting heart rate read from the phone, with nothing ticked", pk["kinds"] == ["steps:false", "workouts:false", "restinghr:false"] and pk["go"] is True, pk)
     await pg.click('.imp-kinds input[data-kind="workouts"]'); await pg.wait_for_timeout(200); await pg.click("#impGo"); await pg.wait_for_timeout(500)
     got = await pg.evaluate("()=>OvuStore.list('exercise').filter(e=>e.source==='apple-health').map(e=>e.data.activity+':'+e.data.minutes+':'+e.data.strength).sort()")
     check("bringing in only workouts adds the ride to Movement (45 min, no strength day) and nothing else", got == ["cycle:45:false", "walk:40:false"], got)
@@ -1370,51 +1429,7 @@ async def main():
                 dests[old_page] = await page.evaluate("()=>(location.pathname.endsWith('room.html') ? (document.querySelector('#sheet[aria-hidden=false]') && OvuRoom.sheetId && OvuRoom.sheetId() === 'calendar' ? 'calendar' : (document.querySelector('nav a.on')?.dataset.tab || 'home')) : location.pathname)")
             check("old screens redirect into the room and open the right place (the old cycle-log page opens the Past days sheet)", all(dests[k] == v for k, v in [("home.html", "home"), ("cycle-log.html", "calendar"), ("diet.html", "food"), ("breathwork.html", "mind")]), dests)
 
-            # 6b. health data: a tiny Apple Health export.xml and a Takeout Fit zip are read on the phone, every kind found is listed
-            # with nothing ticked, only the ticked kinds come in, the journal marks them, and one kind (then all) can be removed
-            await page.goto(BASE + "room.html#you", wait_until="load"); await page.reload(wait_until="networkidle")
-            await page.wait_for_selector('#sheet[aria-hidden="false"] [data-yact="import"]', timeout=10000)
-            await page.click('[data-yact="import"]'); await page.wait_for_selector("#impApple", state="attached", timeout=10000)
-            imp0 = await page.evaluate("()=>({title: document.querySelector('#sheetTitle')?.textContent, cards: document.querySelectorAll('.imp-card').length, have: document.querySelectorAll('.imp-have').length, bar: !!document.querySelector('#impBar')})")
-            check("health data sheet opens from You with the two sources, a progress bar and nothing brought in yet", imp0["cards"] == 2 and imp0["have"] == 0 and imp0["bar"] and "health data" in (imp0["title"] or ""), imp0)
-            await page.set_input_files("#impApple", os.path.join(ROOT, "tools", "fixtures", "apple-export-mini.xml"))
-            await page.wait_for_selector("#impGo", timeout=15000)
-            pk = await page.evaluate("()=>({kinds: [...document.querySelectorAll('.imp-kind input')].map(i=>i.dataset.kind).join(','), ticked: document.querySelectorAll('.imp-kind input:checked').length, go: document.querySelector('#impGo').disabled, later: document.querySelector('.imp-later summary')?.textContent || '', db: JSON.parse(localStorage.getItem('ovumind_db_v1')).events.filter(e=>e.source==='apple-health').length})")
-            check("the picker lists every kind found with nothing ticked (steps and the walk too, since 23 Oct), Bring in locked, kinds with no place yet named, nothing written yet", pk["kinds"] == "sleep,period,spotting,symptoms,weight,mindful,steps,workouts" and pk["ticked"] == 0 and pk["go"] and "2 other kinds" in pk["later"] and pk["db"] == 0, pk)
-            await page.click('.imp-kind input[data-kind="sleep"]'); await page.wait_for_function("()=>document.querySelector('.imp-kind input[data-kind=\"sleep\"]')?.checked")
-            await page.click('.imp-kind input[data-kind="weight"]'); await page.wait_for_function("()=>!document.querySelector('#impGo').disabled && /2 kinds/.test(document.querySelector('#impGo').textContent)")
-            await page.click("#impGo"); await page.wait_for_function("()=>document.querySelector('#impSummary')?.dataset.run === '1'", timeout=15000)
-            imp = await page.evaluate("()=>({text: document.querySelector('#impSummary').innerText, have: [...document.querySelectorAll('.imp-have')].map(c=>c.dataset.kind).join(','), bars: document.querySelectorAll('.imp-have[data-kind=\"sleep\"] .ibars i').length, db: JSON.parse(localStorage.getItem('ovumind_db_v1')).events.filter(e=>e.source==='apple-health').map(e=>e.type).sort().join(',')})")
-            check("only the ticked kinds come in: 2 nights and 1 weigh-in, the rest left out by her choice, the file never left the phone", "2 nights" in imp["text"] and "1 weigh-in" in imp["text"] and "Left out by your choice" in imp["text"] and "never left" in imp["text"] and imp["db"] == "sleep,sleep,weight", imp)
-            check("the Brought in so far cards show sleep and weight (two nights get a sentence, not bars)", imp["have"] == "sleep,weight" and imp["bars"] == 0, imp)
-            await page.set_input_files("#impGoogle", os.path.join(ROOT, "tools", "fixtures", "takeout-fit-mini.zip"))
-            await page.wait_for_selector("#impGo", timeout=20000)
-            await page.click('.imp-kind input[data-kind="sleep"]'); await page.wait_for_function("()=>!document.querySelector('#impGo').disabled")
-            await page.click("#impGo"); await page.wait_for_function("()=>document.querySelector('#impSummary')?.dataset.run === '2'", timeout=15000)
-            tk = await page.evaluate("()=>({text: document.querySelector('#impSummary').innerText, db: JSON.parse(localStorage.getItem('ovumind_db_v1')).events.filter(e=>e.source==='google-fit').map(e=>e.type).sort().join(','), src: document.querySelector('.imp-have[data-kind=\"sleep\"] .imp-srcs')?.innerText || '', bars: document.querySelectorAll('.imp-have[data-kind=\"sleep\"] .ibars i').length})")
-            check("the Takeout zip is read on the phone and only its nights come in, shown with both sources", "2 nights" in tk["text"] and tk["db"] == "sleep,sleep" and "GOOGLE" in tk["src"].upper() and "APPLE" in tk["src"].upper() and tk["bars"] == 4, tk)
-            # an imported symptom day edited on the calendar keeps "pain not stated" and becomes hers (Codex review, 19 Oct)
-            await page.set_input_files("#impApple", os.path.join(ROOT, "tools", "fixtures", "apple-export-mini.xml"))
-            await page.wait_for_selector("#impGo", timeout=15000)
-            await page.click('.imp-kind input[data-kind="symptoms"]'); await page.wait_for_function("()=>!document.querySelector('#impGo').disabled")
-            await page.click("#impGo"); await page.wait_for_function("()=>document.querySelector('#impSummary')?.dataset.run === '3'", timeout=15000)
-            await page.click('[data-impact="calendar"][data-kind="symptoms"]'); await page.wait_for_selector("#saveSym", timeout=10000)
-            note = await page.evaluate("()=>({note: document.querySelector('.imp-note')?.innerText || '', on: [...document.querySelectorAll('#symChips .on')].map(b=>b.dataset.sym).join(',')})")
-            await page.fill("#symNotes", "felt fine by lunch"); await page.click("#saveSym"); await page.wait_for_timeout(400)
-            sym = await page.evaluate("()=>{var e=JSON.parse(localStorage.getItem('ovumind_db_v1')).events.filter(x=>x.type==='symptom'&&x.date==='2025-06-04')[0]; return e?{pain: e.data.pain, source: e.source, notes: e.data.notes, syms: e.data.symptoms.join(',')}:null;}")
-            check("a brought-in symptom day says where it came from, and a note added on the calendar keeps pain unstated and makes the day hers", "Apple Health" in note["note"] and note["on"] == "cramps,headache" and sym and sym["pain"] is None and sym["source"] == "room" and sym["syms"] == "cramps,headache", {"note": note, "sym": sym})
-            await page.goto(BASE + "journal.html#weight", wait_until="networkidle"); await page.wait_for_timeout(500)
-            jw = await page.evaluate("()=>({on: document.querySelector('#filters .on')?.dataset.f, entry: document.querySelector('#timeline .entry b')?.innerText || ''})")
-            check("the journal opens on Weight and marks the weigh-in as from Apple Health", jw["on"] == "weight" and "58.1 kg" in jw["entry"] and "APPLE HEALTH" in jw["entry"].upper(), jw)
-            await page.goto(BASE + "room.html", wait_until="networkidle"); await page.goto(BASE + "room.html#you", wait_until="load"); await page.reload(wait_until="networkidle")
-            await page.wait_for_selector('#sheet[aria-hidden="false"] [data-yact="import"]', timeout=10000); await page.click('[data-yact="import"]')
-            await page.wait_for_selector('[data-impact="remove"][data-kind="weight"]', timeout=10000); await page.click('[data-impact="remove"][data-kind="weight"]')
-            await page.wait_for_selector('[data-impact="remove-yes"][data-kind="weight"]', timeout=5000); await page.click('[data-impact="remove-yes"][data-kind="weight"]'); await page.wait_for_timeout(400)
-            one = await page.evaluate("()=>{var db=JSON.parse(localStorage.getItem('ovumind_db_v1')); return {weight: db.events.filter(e=>e.type==='weight').length, sleepImported: db.events.filter(e=>e.type==='sleep'&&(e.source==='apple-health'||e.source==='google-fit')).length, have: [...document.querySelectorAll('.imp-have')].map(c=>c.dataset.kind).join(',')};}")
-            check("removing one kind takes only that kind; the nights stay", one["weight"] == 0 and one["sleepImported"] == 4 and one["have"] == "sleep", one)
-            await page.click('[data-impact="remove"][data-kind="all"]'); await page.wait_for_selector('[data-impact="remove-yes"][data-kind="all"]', timeout=5000); await page.click('[data-impact="remove-yes"][data-kind="all"]'); await page.wait_for_timeout(500)
-            left = await page.evaluate("()=>{var db=JSON.parse(localStorage.getItem('ovumind_db_v1')); return {imported: db.events.filter(e=>e.source==='apple-health'||e.source==='google-fit').length, own: db.events.filter(e=>['s1','s2','s3'].includes(e.id)).length, total: db.events.length, have: document.querySelectorAll('.imp-have').length};}")
-            check("Remove everything brought in takes out only imported entries and keeps the seeded ones and the symptom day she edited", left["imported"] == 0 and left["own"] == 3 and left["total"] == 6 and left["have"] == 0, left)
+            # 6b. health data comes from Apple Health or Health Connect in the phone app: see check_health_connect
             # Movement: from the mat, log a brisk walk; the week, the entry, the hearts, the period note, the guide and the old page line up
             await page.goto(BASE + "room.html", wait_until="networkidle"); await page.wait_for_selector(".hotspot"); await page.wait_for_timeout(800)
             await page.click("nav a[data-tab=mind]"); await page.wait_for_selector("#mindMove", timeout=8000); await page.click("#mindMove"); await page.wait_for_selector("#mvActs", timeout=8000)
@@ -1870,7 +1885,6 @@ async def main():
             await page.click("#mpPause"); await page.click("#mpNext"); await page.click("#mpStop"); await page.wait_for_selector("#mdYes", timeout=5000)
             pn2 = await page.evaluate("()=>{Date.now = window.__dn8; return [...document.querySelectorAll('.mintro')].map(e=>e.textContent).join(' | ')}")
             await page.click("#mdNo"); await page.wait_for_timeout(200)
-            lw = await page.evaluate("()=>{window.__RealAudio = window.Audio; window.Audio = function(){ var o = {muted:false, src:'', currentTime:0, ended:false, paused:true, play: function(){ o.paused = false; return Promise.resolve(); }, pause: function(){ o.paused = true; } }; window.__fa = o; return o; }; OvuMorning.begin('yourway', false); OvuMorning._due(); var waiting = OvuMorning.state().key; window.__fa.ended = true; OvuMorning._due(); var after = OvuMorning.state().key; window.__fa.ended = false; window.__fa.paused = false; OvuMorning.state(); for (var i = 0; i < 9; i++) { if (OvuMorning.state().key !== 'notice') break; OvuMorning._due(); } var capped = OvuMorning.state().key; OvuMorning.cancel(); window.Audio = window.__RealAudio; return {waiting: waiting, after: after, capped: capped}}")
             await page.evaluate("()=>{OvuMorning.begin('yourway', true); window.__dn9 = Date.now; var n0 = window.__dn9; Date.now = function(){return n0() + 40000};}"); await page.wait_for_timeout(80)
             await page.click("#mpStop"); await page.wait_for_selector("#mdYes", timeout=5000)
             fs0 = await page.evaluate("()=>{Date.now = window.__dn9; window.__realSetItem = Storage.prototype.setItem; Storage.prototype.setItem = function(k){ if (k === OvuStore.KEY) throw new Error('storage full'); return window.__realSetItem.apply(this, arguments); }; return OvuStore.list('mindfulness').length}")
@@ -1879,7 +1893,7 @@ async def main():
             await page.click("#mdYes"); await page.wait_for_timeout(400)
             fs2 = await page.evaluate("()=>({sheet: OvuRoom.sheetOpen() && !!document.querySelector('#mdYes'), n: OvuStore.list('mindfulness').length})")
             await page.evaluate("()=>{if (OvuRoom.sheetOpen()) OvuRoom.closeSheet(); OvuStore.setState({morningStart:null});}")
-            check("Codex fourth check: Pause then Next claims nothing for an untouched step; a late line is waited for (at most eight seconds); a failed save keeps the sheet for a retry that saves once", "You arrived." in pn2 and "noticed" not in pn2 and lw["waiting"] == "arrive" and lw["after"] == "notice" and lw["capped"] == "ready" and fs1["sheet"] and fs1["yes"] and fs1["n"] == fs0 and "could not be saved" in fs1["toast"] and not fs2["sheet"] and fs2["n"] == fs0 + 1, {"pn2": pn2, "lw": lw, "fs0": fs0, "fs1": fs1, "fs2": fs2})
+            check("Codex fourth check: Pause then Next claims nothing for an untouched step; a failed save keeps the sheet for a retry that saves once", "You arrived." in pn2 and "noticed" not in pn2 and fs1["sheet"] and fs1["yes"] and fs1["n"] == fs0 and "could not be saved" in fs1["toast"] and not fs2["sheet"] and fs2["n"] == fs0 + 1, {"pn2": pn2, "fs0": fs0, "fs1": fs1, "fs2": fs2})
             # Codex fifth check: a storage failure before Stop still asks about saving; the save prompt never replaces another open form
             await page.evaluate("()=>{OvuMorning.begin('yourway', true); window.__dnA = Date.now; var n0 = window.__dnA; Date.now = function(){return n0() + 31000}; window.__realSetItem2 = Storage.prototype.setItem; Storage.prototype.setItem = function(){ throw new Error('storage full'); };}"); await page.wait_for_timeout(80)
             await page.click("#mpStop"); await page.wait_for_timeout(250)
@@ -4421,6 +4435,7 @@ async def main():
             await ctxV.close()
             await check_legacy_pages(browser)  # the older pages and the Settings sheet (22 Oct)
             await check_body_signals(browser)  # steps, workouts, resting heart rate and temperature (23 Oct)
+            await check_health_connect(browser)  # Apple Health and Health Connect from the phone app; no export file (23 Oct)
             await check_body_log(browser)  # discharge, sex and sex drive, pregnancy test, basal temperature (23 Oct)
             await gym_checks(browser, gate)  # Tideline Gym workouts, in a context of their own with a fake clock
 

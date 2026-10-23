@@ -4039,7 +4039,7 @@ var summarised = false;
 (function appleHealthDirectRead() {
   console.log('Apple Health read directly (native shell): flag, bridge detection and mapping into the same import path');
   var cfgWin = function (override) { var w = { }; w.window = w; if (override !== undefined) w.OVU_NATIVE_HEALTH_OVERRIDE = override; vm.runInContext(fs.readFileSync(path.join(root, 'ovu-config.js'), 'utf8'), vm.createContext(w)); return w.OVU_CONFIG; };
-  check('the switch is off by default in ovu-config.js, and only a strict true turns it on', cfgWin().nativeHealth.apple === false && cfgWin('1').nativeHealth.apple === false && cfgWin(true).nativeHealth.apple === true);
+  check('the switch is on by default since 23 Oct (Jamie: connect Apple Health), and only a strict false turns it off', cfgWin().nativeHealth.apple === true && cfgWin('0').nativeHealth.apple === true && cfgWin(false).nativeHealth.apple === false);
   function load(flag, cap) {
     var w = fresh('2026-10-20'); w.OVU_CONFIG = { nativeHealth: { apple: flag } }; if (cap) w.Capacitor = cap;
     vm.runInContext(fs.readFileSync(path.join(root, 'ovu-healthnative.js'), 'utf8'), w, { filename: 'ovu-healthnative.js' });
@@ -4126,7 +4126,7 @@ var summarised = false;
 (function healthConnectDirectRead() {
   console.log('Health Connect read directly (Android shell): switch, permissions, and records mapped into the same import path');
   var cfg = function (override) { var w = { }; w.window = w; if (override !== undefined) w.OVU_NATIVE_HEALTH_OVERRIDE = override; vm.runInContext(fs.readFileSync(path.join(root, 'ovu-config.js'), 'utf8'), vm.createContext(w)); return w.OVU_CONFIG.nativeHealth; };
-  check('the Android switch is off by default and on only with a strict true', cfg().android === false && cfg(true).android === true);
+  check('the Android switch is on by default and off only with a strict false', cfg().android === true && cfg(false).android === false);
   function load(flags, cap) { var w = fresh('2026-10-20'); w.OVU_CONFIG = { nativeHealth: flags }; if (cap) w.Capacitor = cap; vm.runInContext(fs.readFileSync(path.join(root, 'ovu-healthnative.js'), 'utf8'), w, { filename: 'ovu-healthnative.js' }); return w; }
   function droid(records, auth) {
     var calls = [];

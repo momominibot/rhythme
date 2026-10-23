@@ -178,7 +178,7 @@
     if (room.freezeWalk) { try { room.freezeWalk(); } catch (e) { } } /* and so does the room's own fallback walk */
     if (room.emit) room.emit('activity', 'morning', version); /* as a practice does: a sit by the water, a pending care step or a greenhouse minute steps aside first */
     room.hideSheet(); hideInvite();
-    run = { version: version, steps: plan(version), i: -1, quiet: !!quiet, spent: {}, done: {}, brushMs: 0, stepMs: 0, waits: 0, paused: false, timer: null, left: 0, t0: 0, clock: makeClock(), skipped: [], brushed: 'no', audio: null }; /* made inside the Begin tap, so later clips may play on phones */
+    run = { version: version, steps: plan(version), i: -1, quiet: !!quiet, spent: {}, done: {}, brushMs: 0, stepMs: 0, paused: false, timer: null, left: 0, t0: 0, clock: makeClock(), skipped: [], brushed: 'no', audio: null }; /* made inside the Begin tap, so later clips may play on phones */
     if (room.endMoment) room.endMoment();
     /* from the mat she sits there hidden: bring her back first, or the routine plays to an empty room */
     var onMat = room.meditating ? room.meditating() : !!(room.els && room.els.meditator && room.els.meditator.classList.contains('on'));
@@ -225,7 +225,7 @@
     if (s.gate) { run.paused = false; run.clock.hold(); } else if (!run.paused) run.clock.run(); /* the sink has no Pause, so it is never left paused */
     run.stepMs = run.clock.ms(); /* her own way counts as brushed only when she taps Done; Erin's on time spent brushing (leaveStep) */
     paint();
-    run.left = s.secs ? s.secs * 1000 : 0; run.pending = null; run.waits = 0;
+    run.left = s.secs ? s.secs * 1000 : 0; run.pending = null;
     if (s.secs && !run.paused) arm(); /* a paused routine keeps the new step's full time for Resume */
   }
   /* leaving a step: the practice time actually spent on it (the clock never runs while paused or at the sink) is what the
@@ -236,12 +236,9 @@
     run.spent[cur.key] = (run.spent[cur.key] || 0) + d;
     if (cur.brushing) { run.brushMs += d; if (run.brushMs >= BRUSH_MIN_MS) run.brushed = 'erin'; }
   }
-  /* a step's time is up: if its line is still being said (a clip that started late), wait a second at a time, at most
-   * eight, so no line is cut off; Pause, Next and Stop keep working while it waits */
+  /* a step's time is up: the next step (nothing is spoken, so there is no line to wait for) */
   function due() {
     if (!run) return;
-    var s = step(), a = run.audio;
-    if (s && s.audio && !run.quiet && a && run.audioKey === s.key && !a.paused && !a.ended && run.waits < 8) { run.waits++; run.left = 1000; arm(); return; }
     next(false);
   }
   function arm() { clearTimeout(run.timer); run.t0 = Date.now(); run.timer = setTimeout(due, run.left); }
