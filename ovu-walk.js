@@ -252,12 +252,12 @@
   var cyc = { box: null, img: null, sheets: {}, key: '', frame: -1, acc: 0, dir: 'side', on: false, cssFrom: null, cssRaf: 0 };
   var EASE = 6, MIN_EASE = 0.35, SNAP = 8, lastTap = { t: 0, x: -99, y: -99 };
   var KEYS = { ArrowUp: 'u', ArrowDown: 'd', ArrowLeft: 'l', ArrowRight: 'r', w: 'u', s: 'd', a: 'l', d: 'r', W: 'u', S: 'd', A: 'l', D: 'r' };
-  var INTERACTIVE = '.hotspot,.avatar,.prop.owned.pet,.prop.owned.tool,.poop,.nb,.camctl,.topbar,.chip,.bubble,.visitbar,.propctl,.minimap,.hud,.sleeper,.meditator,.holo,.phase-chip,.greeting,.hint,button,a,input,textarea,select,label';
+  var INTERACTIVE = '.hotspot,.avatar,.prop.owned.pet,.prop.owned.tool,.poop,.nb,.tidy,.camctl,.topbar,.chip,.bubble,.visitbar,.propctl,.minimap,.hud,.sleeper,.meditator,.holo,.phase-chip,.greeting,.hint,button,a,input,textarea,select,label';
 
   /* a foreground cutout (.plate-occ) is ranked by its base, not its top edge, and is never a solid: its object's solid is
    * already in the layout. A shopkeeper (.keeper) is ranked by its feet and is not a solid either: its block is in the layout */
   function sprites() {
-    return Array.prototype.slice.call(doc.querySelectorAll('#ownedProps .prop.owned, #ownedProps .nb, #ownedProps .plot, #ownedProps .keeper, #plateOcc .plate-occ')).map(function (el) { var occ = el.classList.contains('plate-occ'); return { el: el, id: el.dataset.id, x: parseFloat(el.style.left), y: parseFloat(occ ? el.dataset.base : el.style.top), w: parseFloat(el.style.width) || 8, solid: !occ && !el.classList.contains('plot') && !el.classList.contains('keeper') }; }).filter(function (p) { return isFinite(p.x) && isFinite(p.y); });
+    return Array.prototype.slice.call(doc.querySelectorAll('#ownedProps .prop.owned, #ownedProps .nb, #ownedProps .plot, #ownedProps .keeper, #plateOcc .plate-occ, #tidyLayer .tidy')).map(function (el) { var occ = el.classList.contains('plate-occ'); return { el: el, id: el.dataset.id, x: parseFloat(el.style.left), y: parseFloat(occ ? el.dataset.base : el.style.top), w: parseFloat(el.style.width) || 8, solid: !occ && !el.classList.contains('plot') && !el.classList.contains('keeper') && !el.classList.contains('tidy') }; }).filter(function (p) { return isFinite(p.x) && isFinite(p.y); });
   }
   /* the layout's foreground cutouts (L.occluders; only the wide street has any). They live in #plateOcc, a layer of their own
    * beside #ownedProps with no stacking context, so the one depth sort covers them with her and the pets, while a props
