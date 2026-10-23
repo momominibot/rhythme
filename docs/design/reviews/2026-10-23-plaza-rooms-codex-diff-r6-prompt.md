@@ -1,11 +1,12 @@
 You are reviewing a DIFF for Rhythme (women's health life-sim PWA, vanilla JS, Supabase), round 6. Read-only; do not edit files.
 Repository: this working directory, branch claude/plaza-groups-1fc459.
   The whole change:            git diff origin/main...HEAD
-  What changed since round 5:  git show FIXCOMMIT   (the round-5 fixes)
-                               git show --cc MERGECOMMIT   (main merged in: PR 51, data capture phase 0; admin.js had real
+  What changed since round 5:  git show 8c36917   (the round-5 fixes)
+                               git show --cc 30fb811   (main merged in: PR 51, data capture phase 0; admin.js had real
                                conflicts with this branch's account binding, resolved by keeping main's feed and overview
                                generations and this branch's account binding; tools/test-core.js gained a stub
                                addEventListener in main's four admin.js harnesses)
+                               git show --cc 03e0ed7   (main again: PR 85, gym workouts; room.css and sw.js only, both sides kept)
 Earlier reviews: docs/design/reviews/2026-10-2x-plaza-rooms-codex-diff-r1.md to ...-r5.md. Your round 5 said MERGE with
 three P2s still open (A10, B3, B4) and six new P2/P3 findings; how each was answered: design note
 docs/design/2026-10-22-plaza-rooms-and-live-channel.md section 16.
