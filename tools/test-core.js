@@ -6035,4 +6035,79 @@ var summarised = false;
     });
   }).catch(function (e) { check('dashboard team review harness ran', false, String(e && e.stack || e)); });
 })();
+(function dashboardScreenState() {
+  console.log('review worker round 1 (23 Oct): what is on screen, not only in memory: held words, account switches, failed loads, one refresh id, late boots');
+  var els = {};
+  function el(id) {
+    if (id && els[id]) return els[id];
+    var e = { id: id, innerHTML: '', textContent: '', className: '', disabled: false, style: {}, dataset: {}, classList: { add: function () { }, remove: function () { }, toggle: function () { } }, setAttribute: function () { }, removeAttribute: function () { }, addEventListener: function () { }, querySelector: function () { return null; }, querySelectorAll: function () { return []; }, insertAdjacentHTML: function () { }, appendChild: function () { }, closest: function () { return null; } };
+    if (id) els[id] = e;
+    return e;
+  }
+  var w = { console: console, setTimeout: setTimeout, clearTimeout: clearTimeout, setInterval: function () { return 0; }, clearInterval: function () { }, Promise: Promise, JSON: JSON, Date: Date, Math: Math, String: String, Number: Number, Array: Array, Object: Object, encodeURIComponent: encodeURIComponent, location: { search: '', hash: '', href: 'x' }, history: { replaceState: function () { } }, crypto: { randomUUID: function () { return 'id-' + Math.random().toString(16).slice(2); } } };
+  w.window = w; w.document = { getElementById: function (id) { return el(id); }, createElement: function () { return el(null); }, querySelector: function () { return null; }, querySelectorAll: function () { return []; }, addEventListener: function () { }, body: el(null), documentElement: el(null), hidden: false };
+  w.OVU_CONFIG = { supabaseUrl: 'https://t.invalid', supabaseKey: 'k' };
+  var uid = 'A', subs = [];
+  w.OvuAuth = { token: function () { return 't-' + uid; }, init: function () { return new Promise(function () { }); }, session: function () { return { user: { id: uid } }; }, userId: function () { return uid; }, email: function () { return uid + '@example.invalid'; }, subscribe: function (fn) { subs.push(fn); } };
+  w.__ADMIN_TEST__ = {};
+  var pending = [], sent = [], fail = {};
+  w.fetch = function (u, o) {
+    var name = String(u).split('/rpc/')[1], body = JSON.parse(o.body || '{}'); sent.push({ name: name, body: body });
+    if (fail[name]) { fail[name]--; return Promise.reject(new Error('network down')); }
+    return new Promise(function (res) { pending.push({ name: name, res: function (j) { res({ ok: true, status: 200, text: function () { return Promise.resolve(JSON.stringify(j)); } }); }, err: function () { res({ ok: false, status: 500, text: function () { return Promise.resolve('{"message":"down"}'); } }); } }); });
+  };
+  vm.runInContext(fs.readFileSync(path.join(root, 'admin.js'), 'utf8'), vm.createContext(w), { filename: 'admin.js' });
+  var T = w.__ADMIN_TEST__.api;
+  var tick = function () { return new Promise(function (r) { setTimeout(r, 0); }); };
+  function answer(name, j) { return tick().then(tick).then(function () { var i = pending.findIndex(function (p) { return p.name === name; }); if (i < 0) throw new Error('no pending ' + name); var p = pending.splice(i, 1)[0]; p.res(j); return tick().then(tick); }); }
+  openHarness.dashboardScreenState = true;
+  T.setMe({ role: 'owner' }); T.setTab('queue');
+  var lp = T.loadProposals();
+  answer('admin_proposals', [{ id: 1, kind: 'prompt_copy', target: 'bed_tap', status: 'open', rationale: 'WORDS-FROM-A-RUN-SINCE-HELD', change: { copy: 'x' }, priority: 99, requires_human: true, at: new Date().toISOString() }]).then(function () { return lp; }).then(function () {
+    T.renderQueue();
+    var before = els.panel.innerHTML.indexOf('WORDS-FROM-A-RUN-SINCE-HELD') >= 0;
+    T.dropResults();
+    var after = els.panel.innerHTML.indexOf('WORDS-FROM-A-RUN-SINCE-HELD') >= 0;
+    check('a hold takes the proposal words off the Queue at once, before any reload answers', before && !after && /Loading/.test(els.panel.innerHTML), { before: before, after: after });
+    check('an unavailable proposals load never shows a count', (function () { fail.admin_proposals = 1; return true; })());
+    return T.loadProposals();
+  }).then(function () {
+    T.renderQueue();
+    check('the failed load says unavailable and the header shows no number', /could not be loaded/.test(els.panel.innerHTML) && !/Proposals<span>11</.test(els.panel.innerHTML), els.panel.innerHTML.slice(0, 200));
+    T.setTab('feed');
+    fail.admin_feed = 1;
+    return T.loadFeed(true);
+  }).then(tick).then(function () {
+    T.renderFeed();
+    check('a feed that never loaded says it could not be loaded, not that nothing has happened', /could not be loaded/.test(els.panel.innerHTML) && !/Nothing has happened/.test(els.panel.innerHTML), els.panel.innerHTML.slice(0, 200));
+    // one refresh id, kept across a redraw and reused after a lost answer
+    T.setTab('today');
+    fail.admin_refresh = 1;
+    T.runNow();
+    return tick().then(tick);
+  }).then(function () {
+    var first = sent.filter(function (x) { return x.name === 'admin_refresh'; })[0].body.p_request_id;
+    T.runNow();
+    return tick().then(tick).then(function () {
+      T.runNow(); /* pressed again while the second is still out */
+      return tick().then(tick);
+    }).then(function () {
+    var refs = sent.filter(function (x) { return x.name === 'admin_refresh'; }), second = refs[1] && refs[1].body.p_request_id;
+    check('after a lost answer the next press resends the same request id, and a press while one is out sends nothing', first && first === second && refs.length === 2 && /disabled/.test(els.panel.innerHTML + (els.runNow.disabled ? 'disabled' : '')), { first: first, second: second, count: refs.length });
+    // an account switch blanks the screen at once and a late answer from the first boot cannot take over
+    els.app.innerHTML = '<h1>A@example.invalid</h1> old screen';
+    uid = 'B'; subs.forEach(function (f) { f(); });
+    var blank = els.app.innerHTML.indexOf('A@example.invalid') < 0 && /Checking the account/.test(els.app.innerHTML);
+    check('switching accounts replaces the old account\'s screen before the new account is checked', blank, els.app.innerHTML.slice(0, 120));
+    return tick().then(tick).then(function () {
+      var oldMe = pending.filter(function (p) { return p.name === 'admin_me'; })[0];
+      T.boot(); /* a second boot (a sign-in finishing) overtakes the first */
+      return tick().then(tick).then(function () { oldMe.err(); pending.splice(pending.indexOf(oldMe), 1); return tick().then(tick); });
+    }).then(function () {
+      check('a late failure from an earlier boot does not replace the newer boot\'s screen with a sign-in error', !/Could not check your account/.test(els.app.innerHTML), els.app.innerHTML.slice(0, 160));
+      delete openHarness.dashboardScreenState;
+    });
+    });
+  }).catch(function (e) { check('dashboard screen-state harness ran', false, String(e && e.stack || e)); });
+})();
 process.on('beforeExit', function () { if (summarised) return; summarised = true; Object.keys(openHarness).forEach(function (k) { check('async harness ' + k + ' finished', false, 'its promises never settled'); }); console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });
