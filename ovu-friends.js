@@ -327,7 +327,7 @@
     if (ib.blocked.length) html += '<div class="frsec"><span class="lbl">Blocked</span>' + ib.blocked.map(function (b) {
       return row({ name: b.name || 'Someone', look: b.look }, '<span>Since ' + esc(dayText(b.at)) + '</span><div class="fracts"><button type="button" class="frlink" data-fr="unblock" data-id="' + esc(b.id) + '">Unblock</button></div>');
     }).join('') + '</div>';
-    html += '<details class="frabout"><summary>What others see and what is kept</summary><p>' + esc(WORDS) + ' A report sends Rhythme staff your card, her card and the phrase, never your diary. Staff never see your account, your email or your group.</p></details>' +
+    html += '<details class="frabout"><summary>What others see and what is kept</summary><p>' + esc(WORDS) + ' A report sends Rhythme staff your card, her card and the phrase, never your diary. ' + (rooms() ? 'A room message held for a check or reported also shows staff its group and its room. ' : '') + (rooms() ? 'Staff never see your account or your email.' : 'Staff never see your account, your email or your group.') + '</p></details>' +
       (rooms() ? '<div class="frsec"><span class="lbl">Room chat</span><p class="help">What you write in the rooms shows with this card. Turning Room chat off deletes your messages at once; you can read the rooms still.</p><div class="row"><button type="button" class="btn soft" data-fr="chatoff"><span class="ms">speaker_notes_off</span>Turn Room chat off</button></div></div>' : '') +
       '<div class="row"><button type="button" class="btn soft" data-fr="off"><span class="ms">toggle_off</span>Turn Plaza friends off</button></div>';
     el.innerHTML = html;

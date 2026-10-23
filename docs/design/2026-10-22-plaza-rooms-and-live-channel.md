@@ -169,3 +169,29 @@ Channel tab exactly as it is. The plaza sheet keeps "There is no open chat" unti
 Checks: dry run `tools/db/plaza_rooms_dryrun.sql` (70 checks, local 70/70); races `tools/db/race_test.py --rooms
 --mutate` (6 of 6 safe with the second session seen waiting; with the locks removed 4 of 6 go wrong); core suite block
 2k21r; smoke block "rooms:" (19 checks) and the staff room-messages checks.
+
+## 10. Codex diff review, round 1 (22 Oct, gpt-6.1-sol, read-only): HOLD, and what changed (23 Oct)
+
+Full text: `docs/design/reviews/2026-10-22-plaza-rooms-codex-diff-r1.md`.
+
+| # | Finding | What changed |
+|---|---|---|
+| 1 (P0) | A queue reply survives an account switch on the staff page | Every staff request belongs to the account signed in when it left; a reply after another account signs in (this tab or another) is dropped. The page forgets everything it loaded and starts again. Smoke: a slow queue reply during a switch never draws |
+| 2 | A care or hold sheet confirmed later could send into another room | The message is fixed when she taps Send: account, visit, room and her entry to that room. A sheet confirmed later sends only if all four still hold; otherwise "Something changed since this opened" |
+| 3 | An older message shown after newer ones never reached readers | Every message has a revision (`plaza_messages.rev`), bumped on show, hide and the third report; the feed cursor is the newest revision she has. Dry run and smoke: an approval after a newer message arrives |
+| 4 | A read refusal kept the messages and the box | Signed out, card gone or hidden, paused or under 18: the open room closes, its messages, box and entry go, late replies are dropped, and the list says why. Smoke: card hidden on another phone |
+| 5 | Staff could list shown or hidden messages | `admin_plaza_messages` answers for held messages only |
+| 6 | "Staff never see your group" | Plaza friends and the plaza sheet now say a held or reported room message shows staff its group and room |
+| 7 | "Take 4 ibuprofen every 2 hours" showed at once in live mode | Held as advice: a dose, a schedule (every N hours, N times a day), or a named medicine next to take, stop, start, buy... The phone says why before she sends. Review mode stays the default |
+| 8 | No under-18 guard in the rooms | A phone marked under 18 on its old age question asks for nothing and shows no groups, rooms or Room chat |
+| 9 | A slow send cleared what she typed meanwhile | Only the words sent are cleared |
+| 10 | Bare links such as example.co and myprofile.me | Two-letter and short endings count with a three-letter name (it.in stays allowed); the refusal says to add a space after a full stop if she did not mean a link |
+| 11 | Lock checks could pass without the lock | The dry run checks acquisition on fresh accounts; three two-session lock-order races show the account lock held and the membership lock waited for (say, join, feed), and fail when the locks are removed |
+| 12 | `{ok:true, rooms:[null]}` threw | Rows are checked before drawing; a bad row hides the rooms; busy flags always clear |
+| 13 | `consent_record` could grant Room chat | A trigger refuses a Room chat grant from anywhere but `plaza_chat_on` (withdrawal still works anywhere) |
+| 14 | Feed checks ran outside the locks | The feed takes her account lock and a shared membership lock; race: a withdrawal while she looks |
+
+Checks after round 1: dry run 74/74 locally and on the live project, rolled back (all 29 function bodies equal the
+file; nothing persisted); races 10 of 10 safe with the second session seen waiting, 8 of 10 go wrong with the locks
+removed; core suite 1834/0; smoke rooms and staff blocks 32/32, and each new check fails on the code it guards against
+(three against the previous commit, two by mutation).

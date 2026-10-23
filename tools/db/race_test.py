@@ -11,8 +11,8 @@ Setup (once):  brew install postgresql@17; initdb -D DIR -U postgres --auth=trus
                LC_ALL=en_US.UTF-8 pg_ctl -D DIR -o "-p 55432 -c listen_addresses=127.0.0.1 -c unix_socket_directories=''" start
                python -m pip install "psycopg[binary]"
 Usage:         python3 tools/db/race_test.py [--mutate] [--dryrun]      (RACE_DSN overrides host/port/user)
-               python3 tools/db/race_test.py --rooms [--mutate] [--dryrun]  plaza rooms and room chat (20261022120000): six
-               races; --mutate also takes the plaza membership lock out of staff.plaza_sweep(); --dryrun runs
+               python3 tools/db/race_test.py --rooms [--mutate] [--dryrun]  plaza rooms and room chat (20261022120000): seven
+               races and three lock-order checks; --mutate also takes the plaza membership lock out of staff.plaza_sweep(); --dryrun runs
                tools/db/plaza_rooms_dryrun.sql against the local copy
 """
 import json, os, re, sys, threading, time, uuid
@@ -216,11 +216,53 @@ def rules(c):
 def chatter(c, name, server, room=None):
     """A person with Room chat on, in a group now and, if a room is named, in that room; carries the room entry."""
     P = person(c, name, server)
-    c.execute("insert into public.consent_events (user_id, purpose, action, notice_version, method) values (%s, 'plaza_chat', 'grant', 1, 'jit')", [P['id']])
+    with c.transaction():  # as plaza_chat_on does: the grant guard refuses a Room chat grant from anywhere else
+        c.execute("select set_config('plaza.chat_on', 'yes', true)")
+        c.execute("insert into public.consent_events (user_id, purpose, action, notice_version, method) values (%s, 'plaza_chat', 'grant', 1, 'jit')", [P['id']])
     P['entry'] = None
     if room:
         P['entry'] = one(c, "insert into public.plaza_room_presence (user_id, server, visit, room) values (%s, %s, %s, %s) returning entry", [P['id'], server, P['visit'], room])
     return P
+
+
+def lock_order(who, sql, params):
+    """Session one holds the plaza membership lock; session two runs the call. While two waits it must already hold its
+    own account lock (taken first) and be waiting on the membership lock (taken second): a call that checked or locked
+    in the other order would show no account lock here (Codex diff review, 22 Oct, item 11)."""
+    a, b = Session(), Session()
+    mon = psycopg.connect(DSN + ' dbname=' + DB, autocommit=True)
+    acct = one(mon, "select ((hashtext('social:acct:' || %s::text)::bigint) & 4294967295)", [str(who)])
+    member = one(mon, "select ((hashtext('plaza:membership')::bigint) & 4294967295)")
+    a.c.execute("select pg_advisory_xact_lock(hashtext('plaza:membership'))")
+    out = {}
+
+    def run():
+        try:
+            out['r'] = b.call(who, sql, params)
+            b.c.commit()
+        except Exception as e:  # noqa
+            out['r'] = {'error': str(e)}
+            b.c.rollback()
+    t = threading.Thread(target=run)
+    t.start()
+    waited, locks = False, []
+    for _ in range(60):
+        row = mon.execute('select wait_event_type from pg_stat_activity where pid = %s', [b.pid]).fetchone()
+        if row and row[0] == 'Lock':
+            waited = True
+            locks = mon.execute("select classid::bigint, objid::bigint, objsubid, granted from pg_locks where pid = %s and locktype = 'advisory'", [b.pid]).fetchall()
+            break
+        if not t.is_alive():
+            break
+        time.sleep(0.05)
+    a.c.commit()
+    t.join(15)
+    for s_ in (a, b):
+        s_.c.close()
+    mon.close()
+    holds_acct = any(l[0] == 4242 and l[1] == acct and l[2] == 2 and l[3] for l in locks)
+    waits_member = any(l[1] == member and l[2] == 1 and not l[3] for l in locks)
+    return (waited and holds_acct and waits_member, {'locks': locks, 'result': out.get('r'), 'waited': waited}, waited)
 
 
 def room_scenarios(c):
@@ -275,6 +317,22 @@ def room_scenarios(c):
     r1, r2, w = race((A['id'], 'select public.plaza_chat_off(3, null)', []), (O['id'], 'select public.admin_plaza_decide(%s, %s)', [mid, 'show']))
     left = one(c, 'select count(*) from public.plaza_messages where id = %s', [mid])
     seen['chat_off_vs_staff_show'] = (r2.get('ok') is False and left == 0, {'decide': r2, 'waited': w, 'left': left}, w)
+
+    # 7. a look at a room while she turns Plaza friends off on another phone: the look waits, then shows her nothing
+    X = chatter(c, 'Xue', 'trying-to-conceive', 'ttc-chat'); A = chatter(c, 'Ama', 'trying-to-conceive')
+    c.execute("update public.plaza_flags set value = 'live' where key = 'mode'")
+    s0 = Session(); s0.call(X['id'], 'select public.plaza_say(%s, %s, false)', [X['entry'], 'two week wait again']); s0.c.commit(); s0.c.close()
+    c.execute("update public.plaza_flags set value = 'review' where key = 'mode'")
+    r1, r2, w = race((A['id'], "select public.consent_record('social', 'withdraw', 3)", []), (A['id'], 'select public.plaza_room_feed(%s, %s, %s, null)', ['trying-to-conceive', A['visit'], 'ttc-chat']))
+    seen['withdraw_vs_feed'] = (r2.get('ok') is False and not r2.get('messages'), {'feed': r2, 'waited': w}, w)
+
+    # 8-10. lock order: account first, then membership, in the calls that check and write
+    for nm, (who, sql, params) in {
+        'say_locks_account_then_membership': (lambda P: (P['id'], 'select public.plaza_say(%s, %s, false)', [P['entry'], 'order please']))(chatter(c, 'Ola', 'everyone', 'everyone-cycle')),
+        'join_locks_account_then_membership': (lambda P: (P['id'], 'select public.plaza_room_join(%s, %s, %s)', ['everyone', P['visit'], 'everyone-cycle']))(chatter(c, 'Oda', 'everyone')),
+        'feed_locks_account_then_membership': (lambda P: (P['id'], 'select public.plaza_room_feed(%s, %s, %s, null)', ['everyone', P['visit'], 'everyone-cycle']))(chatter(c, 'Oni', 'everyone')),
+    }.items():
+        seen[nm] = lock_order(who, sql, params)
     return seen
 
 
@@ -291,7 +349,8 @@ def main_rooms(mutate, dry):
         seen = room_scenarios(c)
         wrong = [k for k, (ok, _, _w) in seen.items() if not ok]
         check('without the locks, the races that write after a check go wrong (%d of %d: %s)' % (len(wrong), len(seen), ', '.join(wrong)),
-              {'room_capacity_last_place', 'say_vs_chat_off', 'displaced_vs_say', 'withdraw_vs_room_join'} <= set(wrong), seen)
+              {'room_capacity_last_place', 'say_vs_chat_off', 'displaced_vs_say', 'withdraw_vs_room_join', 'withdraw_vs_feed',
+               'say_locks_account_then_membership', 'join_locks_account_then_membership', 'feed_locks_account_then_membership'} <= set(wrong), seen)
         c.close()
     if dry:
         print('the rolled-back dry run, against the local copy')

@@ -100,6 +100,18 @@
   {
    "text": "it.in my back hurts",
    "problem": null
+  },
+  {
+   "text": "see example.co for more",
+   "problem": "link"
+  },
+  {
+   "text": "myprofile.me",
+   "problem": "link"
+  },
+  {
+   "text": "x.com/mei",
+   "problem": "link"
   }
  ],
  "hold": [
@@ -180,6 +192,36 @@
   },
   {
    "text": "this cramp is killing me",
+   "noNews": false,
+   "hold": null
+  },
+  {
+   "text": "Take 4 ibuprofen every 2 hours",
+   "noNews": false,
+   "hold": "advice"
+  },
+  {
+   "text": "Start taking aspirin every day",
+   "noNews": false,
+   "hold": "advice"
+  },
+  {
+   "text": "two tablets twice a day helps",
+   "noNews": false,
+   "hold": "advice"
+  },
+  {
+   "text": "I take metformin",
+   "noNews": false,
+   "hold": "advice"
+  },
+  {
+   "text": "I walk every day now",
+   "noNews": false,
+   "hold": null
+  },
+  {
+   "text": "my doctor said to stop worrying",
    "noNews": false,
    "hold": null
   }

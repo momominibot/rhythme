@@ -43,7 +43,11 @@ declare v uuid;
 begin
   insert into auth.users (id, email, aud, role) values (u, 'dryrun-' || u || '@example.invalid', 'authenticated', 'authenticated');
   insert into public.consent_events (user_id, purpose, action, notice_version, method) values (u, 'age_18', 'grant', 3, 'sheet'), (u, 'social', 'grant', 3, 'jit');
-  if chat then insert into public.consent_events (user_id, purpose, action, notice_version, method) values (u, 'plaza_chat', 'grant', 1, 'jit'); end if;
+  if chat then
+    perform set_config('plaza.chat_on', 'yes', true); -- as plaza_chat_on does; the guard refuses any other grant
+    insert into public.consent_events (user_id, purpose, action, notice_version, method) values (u, 'plaza_chat', 'grant', 1, 'jit');
+    perform set_config('plaza.chat_on', '', true);
+  end if;
   insert into public.social_profiles (user_id, name, look) values (u, nm, 'base');
   if srv is not null then insert into public.plaza_presence (user_id, server, visit, joined_at, seen_at) values (u, srv, gen_random_uuid(), clock_timestamp(), clock_timestamp()) returning visit into v; end if;
   return v;
@@ -74,8 +78,9 @@ declare
   r jsonb; r2 jsonb; r3 jsonb; out jsonb := '{}'; ok boolean; i integer; mid bigint; mid2 bigint; mid3 bigint; hid bigint; ev bigint; fillers uuid[];
   expected text[] := array['groups', 'rooms', 'wins_and_vent', 'loss_has_no_wins', 'no_news_rooms', 'review_by_default', 'anon_refused', 'no_sub_refused',
     'tables_closed', 'list_not_here', 'list_rooms', 'list_no_card', 'list_adult_shows_nothing', 'join_needs_card', 'hidden_cannot_read', 'join_room',
-    'join_retry_same_entry', 'join_locks_account_then_membership', 'join_full_suggests', 'say_needs_notice', 'chat_on_needs_opt_in', 'chat_on_stale_card',
-    'chat_on_stale_event', 'chat_on', 'review_holds', 'held_only_to_writer', 'staff_queue', 'staff_decide_needs_owner', 'staff_show', 'say_locks_both',
+    'join_retry_same_entry', 'join_locks_account', 'join_full_suggests', 'say_needs_notice', 'chat_on_needs_opt_in', 'chat_on_stale_card',
+    'chat_on_stale_event', 'chat_on', 'review_holds', 'held_only_to_writer', 'staff_queue', 'staff_decide_needs_owner', 'staff_show', 'say_locks_account', 'feed_locks_account',
+    'grant_only_through_rooms', 'queue_held_only', 'approval_reaches_advanced_cursor',
     'peek_without_joining', 'live_shows', 'say_without_entry', 'old_entry_refused', 'late_leave_harmless', 'text_cases', 'hold_cases', 'care_held_then_marked',
     'advice_held', 'news_held_in_quiet_room', 'grief_shown_in_quiet_room', 'news_shown_in_everyone', 'asked_hold_is_private', 'same_twice', 'too_fast',
     'hourly_limit', 'feed_after', 'block_hides_both_ways', 'paused_author_hidden', 'paused_cannot_say', 'hidden_author_hidden', 'report_bad_reason',
@@ -117,6 +122,7 @@ begin
   insert into public.plaza_presence (user_id, server, visit, joined_at, seen_at) values (d, 'everyone', gen_random_uuid(), clock_timestamp(), clock_timestamp()) returning visit into vd;
   ve := pg_temp.person(e, 'Eve', 'everyone', true); update public.social_profiles set hidden = true where user_id = e;
   vf := pg_temp.person(f, 'Fay', 'pcos', true);
+  insert into auth.users (id, email, aud, role) values (q, 'dryrun-' || q || '@example.invalid', 'authenticated', 'authenticated');
   insert into auth.users (id, email, aud, role) values (m1, 'dryrun-' || m1 || '@example.invalid', 'authenticated', 'authenticated');
   insert into public.plaza_presence (user_id, server, visit, joined_at, seen_at) values (m1, 'everyone', gen_random_uuid(), clock_timestamp(), clock_timestamp()) returning visit into vm1;
 
@@ -139,8 +145,24 @@ begin
   -- joining a room: an entry; the same room again keeps it; her account lock and the membership lock are both held
   r := pg_temp.call(a, format('select public.plaza_room_join(%L, %L::uuid, %L)', 'everyone', va, 'everyone-chat'));
   ea := (r ->> 'entry')::uuid;
-  out := out || jsonb_build_object('join_room', (r ->> 'ok')::boolean and ea is not null and (r ->> 'people')::int = 1,
-    'join_locks_account_then_membership', pg_temp.locked(a) and pg_temp.member_locked());
+  out := out || jsonb_build_object('join_room', (r ->> 'ok')::boolean and ea is not null and (r ->> 'people')::int = 1);
+  -- lock checks use accounts that made no call before in this transaction, so they show acquisition, not possession; the
+  -- order (account before membership) and the checks under the locks are shown by the two-session races
+  -- (tools/db/race_test.py --rooms), which a single transaction cannot show
+  declare x1 uuid := gen_random_uuid(); vx1 uuid; x2 uuid := gen_random_uuid(); vx2 uuid; x3 uuid := gen_random_uuid(); vx3 uuid; ex2 uuid; begin
+    vx1 := pg_temp.person(x1, 'Lia', 'everyone', true); vx2 := pg_temp.person(x2, 'Lin', 'everyone', true); vx3 := pg_temp.person(x3, 'Lou', 'everyone', true);
+    ok := pg_temp.locked(x1);
+    perform pg_temp.call(x1, format('select public.plaza_room_join(%L, %L::uuid, %L)', 'everyone', vx1, 'everyone-cycle'));
+    out := out || jsonb_build_object('join_locks_account', not ok and pg_temp.locked(x1));
+    ex2 := pg_temp.seat(x2, 'everyone-cycle'); ok := pg_temp.locked(x2);
+    perform pg_temp.say(x2, ex2, 'a first hello', false);
+    out := out || jsonb_build_object('say_locks_account', not ok and pg_temp.locked(x2));
+    ok := pg_temp.locked(x3);
+    perform pg_temp.feed(x3, 'everyone', vx3, 'everyone-cycle');
+    out := out || jsonb_build_object('feed_locks_account', not ok and pg_temp.locked(x3));
+    delete from public.plaza_room_presence where user_id in (x1, x2);
+    delete from public.plaza_messages where author = x2;
+  end;
   r := pg_temp.call(a, format('select public.plaza_room_join(%L, %L::uuid, %L)', 'everyone', va, 'everyone-chat'));
   out := out || jsonb_build_object('join_retry_same_entry', (r ->> 'entry')::uuid = ea);
   -- a full room names the rooms with space
@@ -159,19 +181,26 @@ begin
   out := out || jsonb_build_object('chat_on_needs_opt_in', r ->> 'why' = 'consent');
   r := pg_temp.call(g, format('select public.plaza_chat_on(1, null, null, true, %L::uuid, null)', gen_random_uuid()));
   out := out || jsonb_build_object('chat_on_stale_card', r ->> 'why' = 'stale');
+  perform set_config('plaza.chat_on', 'yes', true);
   insert into public.consent_events (user_id, purpose, action, notice_version, method) values (g, 'plaza_chat', 'grant', 1, 'jit'), (g, 'plaza_chat', 'withdraw', 1, 'you');
+  perform set_config('plaza.chat_on', '', true);
   r := pg_temp.call(g, format('select public.plaza_chat_on(1, null, null, true, %L::uuid, null)', (select handle from public.social_profiles where user_id = g)));
   out := out || jsonb_build_object('chat_on_stale_event', r ->> 'why' = 'stale' and not public.consent_allows(g, 'plaza_chat'));
   select max(id) into ev from public.consent_events where user_id = g and purpose = 'plaza_chat';
   r := pg_temp.call(g, format('select public.plaza_chat_on(1, %L, %L, true, %L::uuid, %s)', 'abc', 'dev', (select handle from public.social_profiles where user_id = g), ev));
   out := out || jsonb_build_object('chat_on', (r ->> 'ok')::boolean and public.consent_allows(g, 'plaza_chat') and (r ->> 'chat_event')::bigint > ev);
+  -- the general consent call cannot grant Room chat (it skips the form, card and history checks); it can withdraw it
+  r := pg_temp.call(q, 'select public.consent_record(''plaza_chat'', ''grant'', 3)');
+  out := out || jsonb_build_object('grant_only_through_rooms', coalesce(r ->> 'error', '') like '%turned on from the rooms%' and not exists (select 1 from public.consent_events where user_id = q and purpose = 'plaza_chat'));
+  r := pg_temp.call(o, 'select public.admin_plaza_messages(''shown'')'); r2 := pg_temp.call(o, 'select public.admin_plaza_messages(''hidden'')');
+  r3 := pg_temp.call(o, 'select public.admin_plaza_messages(null)');
+  out := out || jsonb_build_object('queue_held_only', r ? 'error' and r2 ? 'error' and r3 ? 'error' and not (r ? 'messages'));
 
   -- review mode: every message waits; only its writer sees it, marked held; staff see it; an owner shows it
   r := pg_temp.say(a, ea, '  Hello   everyone, first time here  ', false);
   mid := (r -> 'message' ->> 'id')::bigint;
   out := out || jsonb_build_object('review_holds', (r ->> 'ok')::boolean and (r ->> 'held')::boolean and r ->> 'held_why' = 'review'
-    and r -> 'message' ->> 'body' = 'Hello everyone, first time here' and (r -> 'message' ->> 'mine')::boolean and (r -> 'message' ->> 'held')::boolean,
-    'say_locks_both', pg_temp.locked(a) and pg_temp.member_locked());
+    and r -> 'message' ->> 'body' = 'Hello everyone, first time here' and (r -> 'message' ->> 'mine')::boolean and (r -> 'message' ->> 'held')::boolean);
   r := pg_temp.feed(a, 'everyone', va, 'everyone-chat'); r2 := pg_temp.feed(b, 'everyone', vb, 'everyone-chat');
   out := out || jsonb_build_object('held_only_to_writer', pg_temp.has(r, mid) and (r -> 'messages' -> 0 ->> 'held')::boolean and not pg_temp.has(r2, mid));
   r := pg_temp.call(o, 'select public.admin_plaza_messages(''held'')');
@@ -186,6 +215,23 @@ begin
   -- B peeks without joining
   out := out || jsonb_build_object('peek_without_joining', (r2 ->> 'ok')::boolean and not (r2 ->> 'joined')::boolean and pg_temp.bodies(r2) = array['Hello everyone, first time here']
     and not (r2 -> 'messages' -> 0 ->> 'mine')::boolean and (r2 ->> 'people')::int = 2 and r2 -> 'messages' -> 0 ->> 'name' = 'Ann');
+
+  -- an older held message shown after newer ones: readers whose cursor has passed it still receive it (Codex diff review, 3)
+  declare h1 bigint; rv bigint; begin
+    update public.social_rate set at = at - interval '1 minute' where user_id = a;
+    r := pg_temp.say(a, ea, 'an older note, waiting', false); h1 := (r -> 'message' ->> 'id')::bigint;
+    update public.plaza_flags set value = 'live' where key = 'mode';
+    update public.social_rate set at = at - interval '1 minute' where user_id = a;
+    perform pg_temp.say(a, ea, 'a newer note, shown', false);
+    r := pg_temp.feed(b, 'everyone', vb, 'everyone-chat'); rv := (r ->> 'rev')::bigint;
+    perform pg_temp.call(o, format('select public.admin_plaza_decide(%s, %L)', h1, 'show'));
+    r2 := pg_temp.call(b, format('select public.plaza_room_feed(%L, %L::uuid, %L, %s)', 'everyone', vb, 'everyone-chat', rv));
+    r3 := pg_temp.call(a, format('select public.plaza_room_feed(%L, %L::uuid, %L, %s)', 'everyone', va, 'everyone-chat', rv));
+    out := out || jsonb_build_object('approval_reaches_advanced_cursor', not pg_temp.has(r, h1) and pg_temp.bodies(r2) = array['an older note, waiting']
+      and pg_temp.has(r2, h1) and pg_temp.bodies(r3) = array['an older note, waiting'] and not (r3 -> 'messages' -> 0 ->> 'held')::boolean);
+    delete from public.plaza_messages where id = h1 or (author = a and body = 'a newer note, shown');
+    update public.plaza_flags set value = 'review' where key = 'mode';
+  end;
 
   -- live mode: shown at once
   update public.plaza_flags set value = 'live' where key = 'mode';
@@ -220,7 +266,8 @@ begin
     and plaza.text_problem('call me crazy but it helped') is null and plaza.text_problem('my phone died mid-appointment') is null
     and plaza.text_problem('sex hurts since the baby') is null and plaza.text_problem('I keep thinking about suicide') is null
     and plaza.text_problem('this fucking cramp') is null and plaza.text_problem('what a slut') = 'word'
-    and plaza.text_problem('I saw it on Instagram') is null and plaza.text_problem('it.in my back hurts') is null);
+    and plaza.text_problem('I saw it on Instagram') is null and plaza.text_problem('it.in my back hurts') is null
+    and plaza.text_problem('see example.co for more') = 'link' and plaza.text_problem('myprofile.me') = 'link' and plaza.text_problem('x.com/mei') = 'link');
   out := out || jsonb_build_object('hold_cases',
     plaza.hold_why('I keep thinking about suicide', false) = 'care' and plaza.hold_why('some days I want to die', false) = 'care'
     and plaza.hold_why('I don’t want to be here any more', false) = 'care' and plaza.hold_why('I used to self-harm', false) = 'care'
@@ -229,7 +276,10 @@ begin
     and plaza.hold_why('I’m pregnant!', false) is null and plaza.hold_why('we lost the heartbeat at 9 weeks', true) is null
     and plaza.hold_why('my due date would have been today', true) is null and plaza.hold_why('I gave birth to my son sleeping', true) is null
     and plaza.hold_why('I''m not pregnant again this month', true) is null and plaza.hold_why('my doctor finally listened', false) is null
-    and plaza.hold_why('this cramp is killing me', false) is null);
+    and plaza.hold_why('this cramp is killing me', false) is null
+    and plaza.hold_why('Take 4 ibuprofen every 2 hours', false) = 'advice' and plaza.hold_why('Start taking aspirin every day', false) = 'advice'
+    and plaza.hold_why('two tablets twice a day helps', false) = 'advice' and plaza.hold_why('I take metformin', false) = 'advice'
+    and plaza.hold_why('I walk every day now', false) is null and plaza.hold_why('my doctor said to stop worrying', false) is null);
 
   -- holds in live mode: crisis words (then the help reminder once shown), advice, news in a quiet room; grief and news elsewhere shown
   ec := pg_temp.seat(c, 'everyone-vent');
@@ -270,9 +320,9 @@ begin
   out := out || jsonb_build_object('hourly_limit', r ->> 'why' = 'hour');
   delete from public.social_rate where user_id = a;
 
-  -- p_after returns only newer rows; ids lists all visible
+  -- p_after (a revision) returns only rows changed since; ids lists all visible
   r := pg_temp.feed(b, 'everyone', vb, 'everyone-chat');
-  r2 := pg_temp.call(b, format('select public.plaza_room_feed(%L, %L::uuid, %L, %s)', 'everyone', vb, 'everyone-chat', mid2));
+  r2 := pg_temp.call(b, format('select public.plaza_room_feed(%L, %L::uuid, %L, %s)', 'everyone', vb, 'everyone-chat', (select rev from public.plaza_messages where id = mid2)));
   out := out || jsonb_build_object('feed_after', jsonb_array_length(r2 -> 'ids') = jsonb_array_length(r -> 'ids') and jsonb_array_length(r -> 'ids') = 3
     and pg_temp.bodies(r2) = array['third thought']);
 
@@ -368,7 +418,8 @@ begin
   for i in 1 .. 24 loop perform pg_temp.person(fillers[i], 'Loss' || i, 'after-a-loss', false); end loop;
   for i in 25 .. 48 loop perform pg_temp.person(fillers[i], 'Meno' || i, 'menopause', false); end loop;
   delete from public.plaza_presence where user_id = h;
-  vq := pg_temp.person(q, 'Quin', null, false);
+  insert into public.consent_events (user_id, purpose, action, notice_version, method) values (q, 'age_18', 'grant', 3, 'sheet'), (q, 'social', 'grant', 3, 'jit');
+  insert into public.social_profiles (user_id, name, look) values (q, 'Quin', 'base');
   r := pg_temp.call(q, 'select public.plaza_join(''after-a-loss'')');
   r2 := pg_temp.call(q, 'select public.plaza_join(''menopause'')');
   out := out || jsonb_build_object('quiet_full_no_suggest', r ->> 'why' = 'full' and (r -> 'suggest') = 'null'::jsonb,

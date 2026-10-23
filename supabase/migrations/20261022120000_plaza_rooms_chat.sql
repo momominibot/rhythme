@@ -142,9 +142,13 @@ create table if not exists public.plaza_room_presence (
 );
 create index if not exists plaza_room_presence_room on public.plaza_room_presence (room);
 
--- a message belongs to her plaza card, so withdrawing Plaza friends, 18+ or a removed card deletes it with the card
+-- a message belongs to her plaza card, so withdrawing Plaza friends, 18+ or a removed card deletes it with the card.
+-- `rev` is new on insert and on every change of status (shown, held, hidden): phones ask for rows with a higher rev than
+-- they have seen, so a message shown after newer ones were written still reaches every reader (Codex diff review, 3)
+create sequence if not exists public.plaza_messages_rev_seq;
 create table if not exists public.plaza_messages (
   id bigserial primary key,
+  rev bigint not null default nextval('public.plaza_messages_rev_seq'),
   room text not null references public.plaza_rooms (id) on delete cascade,
   server text not null references public.plaza_servers (id) on delete cascade,
   author uuid not null references public.social_profiles (user_id) on delete cascade,
@@ -163,14 +167,17 @@ create index if not exists plaza_messages_room on public.plaza_messages (room, i
 create index if not exists plaza_messages_at on public.plaza_messages (at);
 create index if not exists plaza_messages_author on public.plaza_messages (author);
 create index if not exists plaza_messages_held on public.plaza_messages (status, id) where status = 'held';
+create index if not exists plaza_messages_rev on public.plaza_messages (room, rev);
 
 -- phrases that hold a message for a person to read first (lower case, straight apostrophes, hyphens as spaces), matched
--- as whole words. 'care': self-harm and crisis; 'advice': instructions about treatment; 'news': pregnancy and birth
--- announcements, only in rooms that keep news out. Grief ("we lost the heartbeat", "my due date would have been today",
+-- as whole words. 'care': self-harm and crisis; 'advice': instructions about treatment; 'med': medicines and supplements,
+-- which hold a message only together with an instruction word (take, start, stop, try, use, double, ...); 'news':
+-- pregnancy and birth announcements, only in rooms that keep news out. Doses and schedules hold on their own. This is
+-- deliberately cautious ("I take metformin" waits too): a person shows it in a moment, and review mode is the default. Grief ("we lost the heartbeat", "my due date would have been today",
 -- "I gave birth to my son sleeping") is on no list. Staff can add or remove rows without a release.
 create table if not exists public.plaza_hold_phrases (
   phrase text primary key check (phrase = lower(phrase) and char_length(phrase) between 3 and 60),
-  kind text not null check (kind in ('care', 'advice', 'news'))
+  kind text not null check (kind in ('care', 'advice', 'med', 'news'))
 );
 insert into public.plaza_hold_phrases (phrase, kind) values
   ('kill myself', 'care'), ('killing myself', 'care'), ('end it all', 'care'), ('end my life', 'care'), ('take my life', 'care'), ('suicide', 'care'),
@@ -182,6 +189,13 @@ insert into public.plaza_hold_phrases (phrase, kind) values
   ('instead of your doctor', 'advice'), ('don''t listen to your doctor', 'advice'), ('dont listen to your doctor', 'advice'),
   ('no need for a doctor', 'advice'), ('don''t take your', 'advice'), ('dont take your', 'advice'), ('skip your', 'advice'), ('cures pcos', 'advice'),
   ('cure for', 'advice'), ('buy it from', 'advice'),
+  ('ibuprofen', 'med'), ('paracetamol', 'med'), ('acetaminophen', 'med'), ('panadol', 'med'), ('aspirin', 'med'), ('naproxen', 'med'),
+  ('mefenamic', 'med'), ('ponstan', 'med'), ('tranexamic', 'med'), ('codeine', 'med'), ('tramadol', 'med'), ('metformin', 'med'),
+  ('letrozole', 'med'), ('clomid', 'med'), ('clomiphene', 'med'), ('progesterone', 'med'), ('estrogen', 'med'), ('oestrogen', 'med'),
+  ('estradiol', 'med'), ('oestradiol', 'med'), ('testosterone', 'med'), ('hrt', 'med'), ('inositol', 'med'), ('spironolactone', 'med'),
+  ('vitex', 'med'), ('berberine', 'med'), ('semaglutide', 'med'), ('ozempic', 'med'), ('wegovy', 'med'), ('tirzepatide', 'med'),
+  ('mounjaro', 'med'), ('sertraline', 'med'), ('fluoxetine', 'med'), ('antidepressant', 'med'), ('antidepressants', 'med'),
+  ('the pill', 'med'), ('supplement', 'med'), ('supplements', 'med'), ('pills', 'med'), ('tablets', 'med'), ('painkillers', 'med'),
   ('i''m pregnant', 'news'), ('im pregnant', 'news'), ('i am pregnant', 'news'), ('we''re pregnant', 'news'), ('we are pregnant', 'news'),
   ('i''m expecting', 'news'), ('i am expecting', 'news'), ('we''re expecting', 'news'), ('we are expecting', 'news'), ('bfp', 'news'),
   ('big fat positive', 'news'), ('got my positive', 'news'), ('it''s a girl', 'news'), ('it''s a boy', 'news'), ('its a girl', 'news'),
@@ -208,7 +222,7 @@ alter table public.plaza_words enable row level security;
 alter table public.plaza_flags enable row level security;
 revoke all on table public.plaza_rooms, public.plaza_room_presence, public.plaza_messages, public.plaza_hold_phrases, public.plaza_words,
   public.plaza_flags from public, anon, authenticated;
-revoke all on sequence public.plaza_messages_id_seq from public, anon, authenticated;
+revoke all on sequence public.plaza_messages_id_seq, public.plaza_messages_rev_seq from public, anon, authenticated;
 
 -- ---------- helpers (schema plaza, callable only by the functions below) ----------
 create schema if not exists plaza;
@@ -267,7 +281,7 @@ begin
   if char_length(t) > 280 then return 'long'; end if;
   low := replace(lower(translate(t, '’‘', '''''')), 'findahelpline.com', ' '); -- the one address the help card itself names
   if low ~ '[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}' or low ~ '(^|[^a-z0-9])@[a-z0-9_.]{2,}' then return 'contact'; end if;
-  if low ~ '(https?:|www\.|[a-z0-9-]+\.(com|net|org|io|ly|gg|app|sg|uk|au|ph|info|xyz|link|site|online|shop|store|biz)\y)' then return 'link'; end if;
+  if low ~ '(https?:|www\.|[a-z0-9-]+\.(com|net|org|io|ly|gg|app|info|xyz|link|site|online|shop|store|biz)\y|[a-z0-9-]{3,}\.(co|me|sg|uk|au|ph|my|in|id|us|ca|de|fr|tv|ai|so|to|cc)\y)' then return 'link'; end if;
   for run in select m[1] from regexp_matches(low, '(\+?[0-9][0-9 ().-]{6,}[0-9])', 'g') as m loop
     if char_length(regexp_replace(run, '[^0-9]', '', 'g')) >= 8 and run !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' then return 'contact'; end if;
   end loop;
@@ -288,7 +302,10 @@ declare f text := plaza.flat(p_body);
 begin
   if exists (select 1 from public.plaza_hold_phrases h where h.kind = 'care' and position(' ' || replace(h.phrase, '-', ' ') || ' ' in f) > 0) then return 'care'; end if;
   if exists (select 1 from public.plaza_hold_phrases h where h.kind = 'advice' and position(' ' || h.phrase || ' ' in f) > 0)
-     or f ~ ' [0-9]+ ?(mg|mcg|iu|ml) ' then return 'advice'; end if;
+     or f ~ ' [0-9]+ ?(mg|mcg|iu|ml|g|tablets?|pills?|capsules?|caps|drops?|puffs?|units?) '
+     or f ~ ' every [0-9]+ ?(hours?|hrs?|h|days?) ' or f ~ ' ([0-9]+|once|twice|three|four) times? (a|per) day ' or f ~ ' (once|twice) (a|per) day '
+     or (exists (select 1 from public.plaza_hold_phrases h where h.kind = 'med' and position(' ' || h.phrase || ' ' in f) > 0)
+         and f ~ ' (take|taking|start|starting|stop|stopping|try|use|double|increase|up|skip|quit|buy|swap|switch) ') then return 'advice'; end if;
   if coalesce(p_no_news, false) and exists (select 1 from public.plaza_hold_phrases h where h.kind = 'news' and position(' ' || h.phrase || ' ' in f) > 0) then return 'news'; end if;
   return null;
 end $$;
@@ -317,7 +334,7 @@ end $$;
 -- a message as a reader sees it (her own held message says so; nobody else ever receives one)
 create or replace function plaza.row(m public.plaza_messages, p_viewer uuid) returns jsonb
 language sql stable security definer set search_path = '' as $$
-  select jsonb_build_object('id', m.id, 'at', m.at, 'body', m.body, 'care', m.care and m.status = 'shown', 'mine', m.author = p_viewer,
+  select jsonb_build_object('id', m.id, 'rev', m.rev, 'at', m.at, 'body', m.body, 'care', m.care and m.status = 'shown', 'mine', m.author = p_viewer,
     'held', m.status = 'held', 'handle', m.handle, 'name', m.name, 'look', m.look)
 $$;
 
@@ -346,6 +363,18 @@ begin
   end if;
   return new;
 end $$;
+-- a Room chat yes is recorded only by plaza_chat_on (its own form, card and history checks); the general consent call may
+-- still record a withdrawal (Codex diff review, 13)
+create or replace function plaza.guard_chat_grant() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  if new.purpose = 'plaza_chat' and new.action = 'grant' and coalesce(current_setting('plaza.chat_on', true), '') <> 'yes' then
+    raise exception 'Room chat is turned on from the rooms' using errcode = '42501';
+  end if;
+  return new;
+end $$;
+drop trigger if exists consent_plaza_chat_grant_guard on public.consent_events;
+create trigger consent_plaza_chat_grant_guard before insert on public.consent_events for each row execute function plaza.guard_chat_grant();
 drop trigger if exists consent_plaza_chat_withdraw on public.consent_events;
 create trigger consent_plaza_chat_withdraw after insert on public.consent_events for each row execute function plaza.on_consent();
 
@@ -413,13 +442,15 @@ begin
 end $$;
 
 -- a room's latest messages, read-only, for anyone who may read in that group (a peek or the room she is in). `p_after`
--- returns only newer rows in full; `ids` always lists the latest visible ids, so a phone drops what was hidden, blocked,
--- withdrawn or expired since.
+-- is the highest rev the phone has: rows created or changed since come back in full; `ids` always lists the latest
+-- visible ids, so a phone drops what was hidden, blocked, withdrawn or expired since.
 create or replace function public.plaza_room_feed(p_server text, p_visit uuid, p_room text, p_after bigint default null) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare uid uuid := auth.uid(); why text; r public.plaza_rooms%rowtype; ids bigint[]; e uuid;
 begin
   if uid is null then raise exception 'sign in first' using errcode = '42501'; end if;
+  perform social.lock(uid); -- a withdrawal or pause of her account cannot land between these checks and the rows
+  perform pg_advisory_xact_lock_shared(hashtext('plaza:membership')); -- nor a group move (shared: readers never wait on each other)
   if not plaza.here(uid, p_server, p_visit) then return jsonb_build_object('ok', false, 'why', 'not_here'); end if;
   why := plaza.read_problem(uid);
   if why is not null then return jsonb_build_object('ok', false, 'why', why); end if;
@@ -431,8 +462,9 @@ begin
   return jsonb_build_object('ok', true, 'room', r.id, 'people', plaza.room_count(r.id), 'capacity', r.capacity, 'mode', case when plaza.live() then 'live' else 'review' end,
     'open', r.open and plaza.chat_on() and coalesce((select s.open from public.plaza_servers s where s.id = p_server), false),
     'joined', e is not null, 'entry', e, 'ids', to_jsonb(coalesce(ids, '{}')),
+    'rev', (select max(m.rev) from public.plaza_messages m where m.id = any (coalesce(ids, '{}'))),
     'messages', (select coalesce(jsonb_agg(plaza.row(m, uid) order by m.id), '[]'::jsonb) from public.plaza_messages m
-                  where m.id = any (coalesce(ids, '{}')) and m.id > coalesce(p_after, 0)));
+                  where m.id = any (coalesce(ids, '{}')) and m.rev > coalesce(p_after, 0)));
 end $$;
 
 -- say something in the room her entry names. p_hold: her phone's warning-sign rules matched and she chose to send it for
@@ -490,9 +522,11 @@ begin
   if last_ev is distinct from p_seen then return jsonb_build_object('ok', false, 'why', 'stale'); end if;
   if public.consent_allows(uid, 'plaza_chat') then return jsonb_build_object('ok', true, 'recorded', '[]'::jsonb); end if;
   if not coalesce(p_opt_in, false) then return jsonb_build_object('ok', false, 'why', 'consent'); end if;
+  perform set_config('plaza.chat_on', 'yes', true);
   insert into public.consent_events (user_id, purpose, action, notice_version, notice_hash, method, device_id, client_at)
     values (uid, 'plaza_chat', 'grant', greatest(coalesce(p_notice, 1), 1), left(coalesce(p_hash, ''), 64), 'jit', left(coalesce(p_device, ''), 64), now())
     returning id into last_ev;
+  perform set_config('plaza.chat_on', '', true);
   return jsonb_build_object('ok', true, 'recorded', '["plaza_chat"]'::jsonb, 'chat_event', last_ev);
 end $$;
 create or replace function public.plaza_chat_off(p_notice integer default 1, p_device text default null) returns jsonb
@@ -533,7 +567,7 @@ begin
     values (uid, me.handle, me.name, other, m.handle, m.name, m.look, null, 'message',
             left((select s.name from public.plaza_servers s where s.id = m.server) || ', ' || coalesce(rn, m.room) || ': ' || m.body, 400), p_reason, m.id, m.room);
   select count(distinct x.reporter) into n from staff.social_reports x where x.message_id = m.id and x.status = 'open';
-  if n >= 3 and m.status = 'shown' then update public.plaza_messages set status = 'held', held_why = 'reports' where id = m.id; end if;
+  if n >= 3 and m.status = 'shown' then update public.plaza_messages set status = 'held', held_why = 'reports', rev = nextval('public.plaza_messages_rev_seq') where id = m.id; end if;
   if coalesce(p_block, false) then perform social.block(uid, other); end if;
   return jsonb_build_object('ok', true, 'hidden', n >= 3);
 end $$;
@@ -549,7 +583,7 @@ begin
         'group', s.name, 'room', r.name, 'name', m.name, 'card', left(m.handle::text, 8),
         'reports', (select count(*) from staff.social_reports x where x.message_id = m.id and x.status = 'open')) as j
       from public.plaza_messages m join public.plaza_rooms r on r.id = m.room join public.plaza_servers s on s.id = m.server
-      where m.status = coalesce(p_status, 'held') order by m.id limit 200) x), '[]'::jsonb));
+      where m.status = 'held' order by m.id limit 200) x), '[]'::jsonb));
 end $$;
 create or replace function staff.plaza_decide(p_id bigint, p_decision text, p_actor uuid) returns jsonb
 language plpgsql security definer set search_path = '' as $$
@@ -562,7 +596,8 @@ begin
   select * into m from public.plaza_messages where id = p_id for update;
   if not found then return jsonb_build_object('ok', false, 'error', 'That message is gone (deleted, expired or withdrawn).'); end if;
   if p_decision = 'show' and m.status = 'shown' or p_decision = 'hide' and m.status = 'hidden' then return jsonb_build_object('ok', true, 'already', true); end if;
-  update public.plaza_messages set status = case when p_decision = 'show' then 'shown' else 'hidden' end, decided_at = now(), decided_by = p_actor where id = p_id;
+  update public.plaza_messages set status = case when p_decision = 'show' then 'shown' else 'hidden' end, decided_at = now(), decided_by = p_actor,
+    rev = nextval('public.plaza_messages_rev_seq') where id = p_id;
   if p_decision = 'hide' then
     update staff.social_reports set status = 'removed', decided_at = now(), decided_by = p_actor where message_id = p_id and status = 'open';
   else
@@ -575,7 +610,9 @@ language plpgsql security definer set search_path = '' as $$
 declare d jsonb;
 begin
   d := staff.require('admin_plaza_messages', jsonb_build_object('status', p_status)); if d is not null then return d; end if;
-  return staff.plaza_queue(p_status);
+  -- held messages only: staff read a room message when it waits for a person or someone reports it, never otherwise
+  if p_status is distinct from 'held' then return jsonb_build_object('error', 'Only messages waiting for a check are listed.'); end if;
+  return staff.plaza_queue('held');
 end $$;
 create or replace function public.admin_plaza_decide(p_id bigint, p_decision text) returns jsonb
 language plpgsql security definer set search_path = '' as $$
@@ -603,7 +640,7 @@ begin
 end $$;
 
 -- ---------- grants ----------
-revoke all on function plaza.chat_on(), plaza.live(), plaza.read_problem(uuid), plaza.can_read(uuid), plaza.here(uuid, text, uuid), plaza.room_count(text),
+revoke all on function plaza.guard_chat_grant(), plaza.chat_on(), plaza.live(), plaza.read_problem(uuid), plaza.can_read(uuid), plaza.here(uuid, text, uuid), plaza.room_count(text),
   plaza.flat(text), plaza.text_problem(text), plaza.hold_why(text, boolean), plaza.say_rate(uuid), plaza.sweep(), plaza.row(public.plaza_messages, uuid),
   plaza.shows(public.plaza_messages, uuid), plaza.on_consent() from public, anon, authenticated;
 revoke all on function staff.plaza_queue(text), staff.plaza_decide(bigint, text, uuid) from public, anon, authenticated;
@@ -623,11 +660,13 @@ select cron.schedule('rhythme-plaza-chat-sweep', '7 * * * *', 'select plaza.swee
 -- Undo:
 --   select cron.unschedule('rhythme-plaza-chat-sweep');
 --   drop trigger if exists consent_plaza_chat_withdraw on public.consent_events;
+--   drop trigger if exists consent_plaza_chat_grant_guard on public.consent_events;
 --   drop function if exists public.admin_plaza_decide(bigint, text), public.admin_plaza_messages(text), staff.plaza_decide(bigint, text, uuid),
 --     staff.plaza_queue(text), public.plaza_report_message(bigint, text, boolean), public.plaza_chat_off(integer, text),
 --     public.plaza_chat_on(integer, text, text, boolean, uuid, bigint), public.plaza_say(uuid, text, boolean), public.plaza_room_feed(text, uuid, text, bigint),
 --     public.plaza_room_leave(uuid), public.plaza_room_join(text, uuid, text), public.plaza_rooms_list(text, uuid);
 --   drop schema if exists plaza cascade;
+--   drop sequence if exists public.plaza_messages_rev_seq (after the table);
 --   drop table if exists public.plaza_messages, public.plaza_room_presence, public.plaza_rooms, public.plaza_hold_phrases, public.plaza_words, public.plaza_flags;
 --   restore plaza_join from 20261019110000_plaza_visits.sql and staff.social_reports_list from 20261019130000_plaza_friends.sql;
 --   delete the two new groups (after-a-loss, new-mothers) and their presence rows; set the old names (PCOS, Menopause) and

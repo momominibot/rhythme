@@ -33,13 +33,21 @@
   function num(v) { return v == null ? '–' : (Math.round(Number(v) * 10) / 10).toLocaleString('en-SG'); }
 
   /* ---------- server ---------- */
+  /* every request belongs to the account signed in when it left: a reply that comes back after another account signed in
+     (here or in another tab) is dropped, so one account's queue never shows under the next (Codex diff review, 22 Oct) */
+  var acct = null, acctGen = 0;
+  function who() { var s = A && A.session && A.session(); return s && s.user ? s.user.id : null; }
+  function cancelled() { var e = new Error('cancelled'); e.cancelled = true; return e; }
   function rpc(name, args) {
+    var a = who(), g = acctGen;
     return Promise.resolve(A.token()).then(function (t) {
       if (!t) throw new Error('signed out');
+      if (who() !== a || acctGen !== g) throw cancelled();
       return fetch(CFG.supabaseUrl + '/rest/v1/rpc/' + name, { method: 'POST', headers: { apikey: CFG.supabaseKey, Authorization: 'Bearer ' + t, 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(args || {}) })
-        .then(function (r) { return r.text().then(function (txt) { var j = null; try { j = txt ? JSON.parse(txt) : null; } catch (e) { } if (!r.ok) throw new Error((j && (j.message || j.hint || j.error)) || ('request failed (' + r.status + ')')); return j; }); });
+        .then(function (r) { return r.text().then(function (txt) { var j = null; try { j = txt ? JSON.parse(txt) : null; } catch (e) { } if (who() !== a || acctGen !== g) throw cancelled(); if (!r.ok) throw new Error((j && (j.message || j.hint || j.error)) || ('request failed (' + r.status + ')')); return j; }); });
     });
   }
+  function queueAgain() { if (tab === 'queue' && me) renderQueue(); }
   function denied(j) { return j && j.denied; }
 
   /* ---------- views ---------- */
@@ -142,7 +150,7 @@
     return '<div class="card" id="plazaCard"><h2>Plaza groups' + head + '</h2>' + (stale ? '<div class="note"><b>Not current.</b> The last refresh did not come back; the numbers below are from ' + esc(hm) + '. It tries again every 20 seconds.</div>' : '') + '<div class="tiles">' + tiles + '</div>' + chart + table +
       '<p class="srv">Counts only. A person is counted while her phone checks in (every 25 s). Leaving, closing the app, sleeping or signing out normally takes her out at once; if that message is lost she stops being counted after 75 s. Joins count arrivals, so someone who leaves and comes back counts twice. Daily counts are kept for a year. No names or account ids reach this page.</p></div>';
   }
-  function redrawPlaza() { if (tab === 'today' && doc.getElementById('plazaCard')) doc.getElementById('plazaCard').outerHTML = plazaCard(); }
+  function redrawPlaza() { if (me && tab === 'today' && doc.getElementById('plazaCard')) doc.getElementById('plazaCard').outerHTML = plazaCard(); }
   /* one refresh at a time, with a deadline, on its own timer; a reply older than what is shown is ignored */
   function deadline(p, ms) { return new Promise(function (res, rej) { var t = setTimeout(function () { rej(new Error('timeout')); }, ms); p.then(function (v) { clearTimeout(t); res(v); }, function (e) { clearTimeout(t); rej(e); }); }); }
   function loadPlaza() {
@@ -271,6 +279,7 @@
       if (denied(j) || !j || !Array.isArray(j.reports)) { reportsBad = true; reports = null; return; }
       reports = j.reports; reportsBad = false;
     }).catch(function (e) {
+      if (e && e.cancelled) return;
       if (/PGRST202|Could not find the function|\b404\b/i.test(String((e && e.message) || ''))) { reportsMissing = true; reportsBad = false; reports = null; return; }
       reportsBad = true; reports = null;
     });
@@ -296,6 +305,7 @@
       if (denied(j) || !j || !Array.isArray(j.messages)) { roomMsgsBad = true; roomMsgs = null; return; }
       roomMsgs = j; roomMsgsBad = false;
     }).catch(function (e) {
+      if (e && e.cancelled) return;
       if (/PGRST202|Could not find the function|\b404\b/i.test(String((e && e.message) || ''))) { roomMsgsMissing = true; roomMsgsBad = false; roomMsgs = null; return; }
       roomMsgsBad = true; roomMsgs = null;
     });
@@ -325,10 +335,10 @@
         rpc('admin_social_decide', { p_id: Number(b.dataset.id), p_decision: b.dataset.sdecide, p_days: b.dataset.sdecide === 'pause' ? 7 : null }).then(function (j) {
           if (j && (j.error || j.ok === false)) { m.textContent = j.error || 'Not done.'; m.className = 'msg bad'; }
           return loadReports();
-        }).catch(function (e) { m.textContent = e.message; m.className = 'msg bad'; }).then(function () { if (tab === 'queue') renderQueue(); });
+        }).catch(function (e) { m.textContent = e.message; m.className = 'msg bad'; }).then(function () { queueAgain(); });
       });
     });
-    var ra = doc.getElementById('reportsAll'); if (ra) ra.addEventListener('click', function () { reportsAll = !reportsAll; reports = null; renderQueue(); loadReports().then(function () { if (tab === 'queue') renderQueue(); }); });
+    var ra = doc.getElementById('reportsAll'); if (ra) ra.addEventListener('click', function () { reportsAll = !reportsAll; reports = null; renderQueue(); loadReports().then(function () { queueAgain(); }); });
     (roomMsgs && roomMsgs.messages || []).forEach(function (m) { var el = app.querySelector('[data-roommsg="' + m.id + '"] .why'); if (el) el.textContent = m.body; }); /* her words as text, never markup */
     app.querySelectorAll('[data-rdecide]').forEach(function (b) {
       b.addEventListener('click', function () {
@@ -336,14 +346,14 @@
         rpc('admin_plaza_decide', { p_id: Number(b.dataset.id), p_decision: b.dataset.rdecide }).then(function (j) {
           if (j && (j.error || j.ok === false)) { m.textContent = j.error || 'Not done.'; m.className = 'msg bad'; }
           return Promise.all([loadRoomMsgs(), loadReports()]);
-        }).catch(function (e) { m.textContent = e.message; m.className = 'msg bad'; }).then(function () { if (tab === 'queue') renderQueue(); });
+        }).catch(function (e) { m.textContent = e.message; m.className = 'msg bad'; }).then(function () { queueAgain(); });
       });
     });
     app.querySelectorAll('[data-clear]').forEach(function (b) { b.addEventListener('click', function () { b.disabled = true; rpc('admin_block_clear', { p_id: Number(b.dataset.clear) }).then(loadOverview).then(render); }); });
     app.querySelectorAll('[data-pol]').forEach(function (el) {
       el.addEventListener('change', function () {
         var key = el.dataset.pol, v = el.type === 'checkbox' ? el.checked : Number(el.value), m = doc.getElementById('polMsg');
-        rpc('admin_policy_set', { p_key: key, p_value: v }).then(function (j) { m.textContent = j && j.error ? j.error : 'Saved.'; m.className = 'msg' + (j && j.error ? ' bad' : ''); return loadOverview(); }).then(function () { if (tab === 'queue') renderQueue(); }).catch(function (e) { m.textContent = e.message; m.className = 'msg bad'; });
+        rpc('admin_policy_set', { p_key: key, p_value: v }).then(function (j) { m.textContent = j && j.error ? j.error : 'Saved.'; m.className = 'msg' + (j && j.error ? ' bad' : ''); return loadOverview(); }).then(function () { queueAgain(); }).catch(function (e) { m.textContent = e.message; m.className = 'msg bad'; });
       });
     });
   }
@@ -369,7 +379,7 @@
   }
 
   /* ---------- loading ---------- */
-  function loadOverview() { return rpc('admin_overview').then(function (j) { if (denied(j)) return bootStaffOnly(); ov = j; pill('on', 'live'); if (tab === 'today') renderToday(); if (tab === 'agents') renderAgents(); if (tab === 'queue') renderQueue(); }).catch(function (e) { pill('bad', 'offline'); }); }
+  function loadOverview() { return rpc('admin_overview').then(function (j) { if (denied(j)) return bootStaffOnly(); ov = j; pill('on', 'live'); if (tab === 'today') renderToday(); if (tab === 'agents') renderAgents(); queueAgain(); }).catch(function (e) { pill('bad', 'offline'); }); }
   function loadFeed(all) {
     var args = all || !feedTop ? { p_limit: 60 } : { p_limit: 60, p_after: feedTop };
     return rpc('admin_feed', args).then(function (rows) {
@@ -389,7 +399,7 @@
     if (tab === 'today') renderToday();
     else if (tab === 'feed') renderFeed();
     else if (tab === 'agents') renderAgents();
-    else if (tab === 'queue') { renderQueue(); if (!proposals) loadProposals().then(function () { if (tab === 'queue') renderQueue(); }); loadReports().then(function () { if (tab === 'queue') renderQueue(); }); loadRoomMsgs().then(function () { if (tab === 'queue') renderQueue(); }); }
+    else if (tab === 'queue') { renderQueue(); if (!proposals) loadProposals().then(function () { queueAgain(); }); loadReports().then(function () { queueAgain(); }); loadRoomMsgs().then(function () { queueAgain(); }); }
     else if (tab === 'staff') { renderStaff(); loadStaff().then(function () { if (tab === 'staff') renderStaff(); }); }
   }
   function stopTimers() { timers.forEach(clearInterval); timers = []; }
@@ -397,18 +407,31 @@
   function boot() {
     stopTimers();
     if (!A || !CFG.supabaseUrl) { app.innerHTML = '<div class="gate">' + LUNA + '<div class="card"><h2>Rhythme staff</h2><p class="msg bad">The sign-in module did not load.</p></div></div>'; return; }
+    acct = who(); var g = ++acctGen; /* an earlier boot still waiting for its answer stops here */
     if (!A.session()) return gate('');
     return rpc('admin_me').then(function (j) {
+      if (g !== acctGen) return;
       if (!j || !j.admin) return staffOnly();
       me = j; shell(); render();
       loadPlaza(); timers.push(setInterval(function () { if (!doc.hidden) loadPlaza(); }, 20000)); /* the groups card never holds up the rest */
       return Promise.all([loadOverview(), loadFeed(true)]).then(function () {
+        if (g !== acctGen) return;
         timers.push(setInterval(function () { if (!doc.hidden) loadFeed(false); }, 10000));
         timers.push(setInterval(function () { if (!doc.hidden) loadOverview(); }, 30000));
       });
-    }).catch(function (e) { gate('Could not check your account: ' + e.message, true); });
+    }).catch(function (e) { if (g === acctGen && !(e && e.cancelled)) gate('Could not check your account: ' + e.message, true); });
   }
-  doc.addEventListener('visibilitychange', function () { if (!doc.hidden && me) { loadFeed(false); loadOverview(); loadPlaza(); } });
+  /* another account signed in or out, in this tab or another: forget everything the last one loaded, then start again */
+  function accountChanged() {
+    if (who() === acct) return;
+    acctGen++; me = null; stopTimers();
+    reports = null; reportsBad = false; roomMsgs = null; roomMsgsBad = false; proposals = null; admins = null; audit = null; ov = null; feed = []; feedTop = 0; findings = null; plaza = null; plazaBad = false;
+    app.innerHTML = '';
+    boot();
+  }
+  if (A && A.subscribe) A.subscribe(accountChanged);
+  root.addEventListener('storage', function (e) { if (e.key === null || e.key === 'ovumind_auth_v1') accountChanged(); });
+  doc.addEventListener('visibilitychange', function () { if (doc.hidden) return; accountChanged(); if (me) { loadFeed(false); loadOverview(); loadPlaza(); } });
   /* finish a Google round trip (?code= in the URL) before deciding what to show */
   (A && A.init ? A.init() : Promise.resolve({})).then(function (r) { if (r && r.error && !A.session()) return gate('Sign-in did not finish: ' + r.error, true); boot(); }, function () { boot(); });
 })(window);

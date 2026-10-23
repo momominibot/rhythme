@@ -205,6 +205,7 @@
     watchers.forEach(function (f) { try { f(); } catch (e) { } }); /* Plaza friends follows her visit (ovu-friends.js) */
   }
   /* the rooms' own sentence once they exist on the server (ovu-rooms.js), the old one until then */
+  function staffRooms() { var X = root.OvuRooms; return !!(X && X.available && X.available()); }
   function chatLine() {
     var X = root.OvuRooms;
     return X && X.available && X.available() ? 'Each group has rooms, open in the Channel tab: reading them needs a shown plaza card, writing needs Room chat, and messages are kept for 24 hours.'
@@ -221,7 +222,7 @@
     }
     R.openSheet('plaza', 'Plaza groups', 'Choose a topic you want to connect around', 'groups',
       '<div class="plazalist" id="plazaList"><p class="help">Looking around…</p></div>' +
-      '<p class="help">Joining stores that your account is in this group, with the time you joined and last checked in, so you can be counted. The groups are about health, so joining one tells Rhythme something about you while you are in it. Anyone can join any group, and nothing in your profile chooses one for you. This phone remembers the group you chose and rejoins it when you come back to the plaza; tap Leave the group to forget it. Unless you turn on Plaza friends, other people see only the number, never who; Rhythme staff see only the number. Leaving the plaza, putting Rhythme away, going to sleep or signing out takes you out; if that message does not get through, you stop being counted after 75 seconds and the record is deleted the next time anyone uses the groups. Each group also keeps daily counts of joins and its busiest moment, with no account attached, for a year. ' + chatLine() + '</p>' +
+      '<p class="help">Joining stores that your account is in this group, with the time you joined and last checked in, so you can be counted. The groups are about health, so joining one tells Rhythme something about you while you are in it. Anyone can join any group, and nothing in your profile chooses one for you. This phone remembers the group you chose and rejoins it when you come back to the plaza; tap Leave the group to forget it. Unless you turn on Plaza friends, other people see only the number, never who; Rhythme staff see only the number' + (staffRooms() ? ', except for a room message held for a check or reported, which staff see with its card, its group and its room' : '') + '. Leaving the plaza, putting Rhythme away, going to sleep or signing out takes you out; if that message does not get through, you stop being counted after 75 seconds and the record is deleted the next time anyone uses the groups. Each group also keeps daily counts of joins and its busiest moment, with no account attached, for a year. ' + chatLine() + '</p>' +
       '<div id="plazaFriendsRow" class="frplaza"></div>' +
       '<div class="row" id="plazaLeaveRow" hidden><button type="button" class="btn soft" id="plazaLeave"><span class="ms">logout</span>Leave the group</button></div>');
     var list = doc.getElementById('plazaList');

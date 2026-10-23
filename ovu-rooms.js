@@ -45,7 +45,7 @@
   var PROBLEMS = {
     empty: 'Write something first.',
     long: 'Keep it to 280 characters.',
-    link: 'Links cannot be shared in the rooms.',
+    link: 'Links and web addresses cannot be shared in the rooms. If you did not mean one, add a space after the full stop.',
     contact: 'Contact details, handles and private chat apps cannot be shared here. Keep the talk in the room.',
     word: 'That word is not allowed in the rooms.'
   };
@@ -73,7 +73,7 @@
   function whyText(j) { var w = j && j.why; if (w === 'text') return PROBLEMS[j.problem] || PROBLEMS.word; return WHY[w] || 'That did not go through. Please try again.'; }
 
   /* the same rules the server keeps (plaza.text_problem); the core suite checks both against one list of cases */
-  var LINK_TLD = '(com|net|org|io|ly|gg|app|sg|uk|au|ph|info|xyz|link|site|online|shop|store|biz)';
+  var LINK = /(https?:|www\.|[a-z0-9-]+\.(com|net|org|io|ly|gg|app|info|xyz|link|site|online|shop|store|biz)\b|[a-z0-9-]{3,}\.(co|me|sg|uk|au|ph|my|in|id|us|ca|de|fr|tv|ai|so|to|cc)\b)/;
   var MSG_WORDS = { cunt: 'word', whore: 'word', slut: 'word', nudes: 'word', onlyfans: 'word', porn: 'word', nazi: 'word', hitler: 'word',
     telegram: 'contact', whatsapp: 'contact', kik: 'contact', wechat: 'contact', discord: 'contact', snapchat: 'contact' };
   function squash(s) { return String(s == null ? '' : s).replace(/\s+/g, ' ').replace(/^ | $/g, ''); }
@@ -83,7 +83,7 @@
     if (Array.from(t).length > MAX) return 'long';
     var low = straight(t).split('findahelpline.com').join(' ');
     if (/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/.test(low) || /(^|[^a-z0-9])@[a-z0-9_.]{2,}/.test(low)) return 'contact';
-    if (new RegExp('(https?:|www\\.|[a-z0-9-]+\\.' + LINK_TLD + '\\b)').test(low)) return 'link';
+    if (LINK.test(low)) return 'link';
     var runs = low.match(/\+?[0-9][0-9 ().-]{6,}[0-9]/g) || [];
     for (var i = 0; i < runs.length; i++) if (runs[i].replace(/[^0-9]/g, '').length >= 8 && !/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(runs[i])) return 'contact';
     if (/\b(dm|pm|message|add) me\b/.test(low) || /\bmy (number|handle|ig|insta) is\b/.test(low)) return 'contact';
@@ -99,16 +99,24 @@
       'overdose', 'no reason to live', 'better off without me', 'hurt my baby', 'harm my baby'],
     advice: ['stop your', 'stop taking your', 'come off your', 'double your', 'double the dose', 'instead of your doctor', "don't listen to your doctor",
       'dont listen to your doctor', 'no need for a doctor', "don't take your", 'dont take your', 'skip your', 'cures pcos', 'cure for', 'buy it from'],
+    /* a medicine named next to take, stop, start, buy... (a dose or a schedule holds on its own) */
+    med: ['ibuprofen', 'paracetamol', 'acetaminophen', 'panadol', 'aspirin', 'naproxen', 'mefenamic', 'ponstan', 'tranexamic', 'codeine', 'tramadol', 'metformin',
+      'letrozole', 'clomid', 'clomiphene', 'progesterone', 'estrogen', 'oestrogen', 'estradiol', 'oestradiol', 'testosterone', 'hrt', 'inositol', 'spironolactone',
+      'vitex', 'berberine', 'semaglutide', 'ozempic', 'wegovy', 'tirzepatide', 'mounjaro', 'sertraline', 'fluoxetine', 'antidepressant', 'antidepressants',
+      'the pill', 'supplement', 'supplements', 'pills', 'tablets', 'painkillers'],
     news: ["i'm pregnant", 'im pregnant', 'i am pregnant', "we're pregnant", 'we are pregnant', "i'm expecting", 'i am expecting', "we're expecting", 'we are expecting',
       'bfp', 'big fat positive', 'got my positive', "it's a girl", "it's a boy", 'its a girl', 'its a boy', 'gender reveal', 'pregnancy announcement',
       'birth announcement', 'baby is here']
   };
   function flat(s) { return ' ' + straight(String(s == null ? '' : s)).replace(/[^a-z0-9']+/g, ' ').replace(/\s+/g, ' ').trim() + ' '; }
   function hasPhrase(f, list) { return list.some(function (p) { return f.indexOf(' ' + p.replace(/-/g, ' ') + ' ') > -1; }); }
+  var DOSE = / [0-9]+ ?(mg|mcg|iu|ml|g|tablets?|pills?|capsules?|caps|drops?|puffs?|units?) /, EVERY = / every [0-9]+ ?(hours?|hrs?|h|days?) /,
+    TIMES = / ([0-9]+|once|twice|three|four) times? (a|per) day /, TIMES2 = / (once|twice) (a|per) day /,
+    ACT = / (take|taking|start|starting|stop|stopping|try|use|double|increase|up|skip|quit|buy|swap|switch) /;
   function holdWhy(s, noNews) {
     var f = flat(s);
     if (hasPhrase(f, HOLD.care)) return 'care';
-    if (hasPhrase(f, HOLD.advice) || / [0-9]+ ?(mg|mcg|iu|ml) /.test(f)) return 'advice';
+    if (hasPhrase(f, HOLD.advice) || DOSE.test(f) || EVERY.test(f) || TIMES.test(f) || TIMES2.test(f) || (hasPhrase(f, HOLD.med) && ACT.test(f))) return 'advice';
     if (noNews && hasPhrase(f, HOLD.news)) return 'news';
     return null;
   }
@@ -157,7 +165,7 @@
    * and nothing is asked again until the app is opened afresh. `broken`: an answer that is not what this phone expects;
    * the same, so an old feed never lingers. */
   var missing = false, broken = false, seen = false, probing = null, lastUid = null, wordsHash = '';
-  var groups = null, rooms = null, roomsVisit = null, view = null, feed = null, drafts = {}, busy = {}, gens = { groups: 0, rooms: 0, feed: 0 }, els = { groups: null, rooms: null };
+  var groups = null, rooms = null, view = null, feed = null, drafts = {}, busy = {}, gens = { groups: 0, rooms: 0, feed: 0 }, els = { groups: null, rooms: null };
   var timers = [];
 
   function esc(s) { return R.esc ? R.esc(s) : String(s == null ? '' : s); }
@@ -166,13 +174,36 @@
   function inPlaza() { var L = R.layout && R.layout(); return !!(L && L.id === 'plaza'); }
   function visit() { var P = root.OvuPlaza, st = P && P.state ? P.state() : null; return st && st.joined && st.joined.visit ? { server: st.joined.id, visit: st.joined.visit, name: st.joined.name } : null; }
   function shown() { var T = root.OvuToday; return !!(T && T.tab && T.tab() === 'channel' && els.rooms && doc.body && doc.body.contains(els.rooms)); }
-  function active() { return !!uid() && !doc.hidden && !missing && !broken && shown(); }
+  /* the rooms are for adults: a phone marked under 18 on its old age question never asks for them, whatever the account
+     holds on the server (the Plaza friends rule) */
+  function minor() {
+    try { if (root.OvuConsent && root.OvuConsent.legacyMinor) return !!root.OvuConsent.legacyMinor(); } catch (e) { return true; }
+    return ['under13', '13-16', '13-17', '17'].indexOf((S.profile() || {}).ageBand || '') > -1;
+  }
+  function allowed() { return !!uid() && !minor(); }
+  function active() { return allowed() && !doc.hidden && !missing && !broken && shown(); }
   function device() { try { return root.OvuConsent && root.OvuConsent.device ? root.OvuConsent.device() : ''; } catch (e) { return ''; } }
   function noticeV() { return (root.OvuConsent && root.OvuConsent.NOTICE_V) || 3; }
   (function hashWords() {
     try { root.crypto.subtle.digest('SHA-256', new root.TextEncoder().encode('Room chat. ' + WORDS)).then(function (h) { wordsHash = Array.prototype.map.call(new Uint8Array(h), function (b) { return ('0' + b.toString(16)).slice(-2); }).join(''); }, noop); } catch (e) { }
   })();
   function mutedList() { var m = S.state().roomsMuted; return m && m.uid === uid() && Array.isArray(m.handles) ? m.handles : []; }
+  function unmuted(rows) { var mute = mutedList(); return rows.filter(function (m) { return m.mine || mute.indexOf(m.handle) < 0; }); }
+  function setRows(rows) { feed.rows = rows; feed.msgs = unmuted(rows); }
+  /* the shapes this phone draws; anything else is a malformed answer and the rooms hide */
+  function okGroup(x) { return !!x && typeof x === 'object' && typeof x.id === 'string' && typeof x.name === 'string'; }
+  function okRoom(x) { return !!x && typeof x === 'object' && typeof x.id === 'string' && typeof x.name === 'string'; }
+  function okMsg(x) { return !!x && typeof x === 'object' && (typeof x.id === 'number' || (typeof x.id === 'string' && /^[0-9]+$/.test(x.id))) && typeof x.body === 'string'; }
+  /* her entry for this room only: what the latest look at the room said, else the rooms list */
+  function entryFor(room) {
+    var v = visit(); if (!room || !v) return null;
+    if (feed && feed.room === room && feed.visit === v.visit) return feed.joined ? feed.entry : null;
+    return rooms && rooms.room === room && typeof rooms.entry === 'string' ? rooms.entry : null;
+  }
+  /* reading stopped (signed out, card gone or hidden, paused, under 18): no messages, no writing, no late replies */
+  var DENIED = { signin: 1, card: 1, hidden: 1, paused: 1, adult: 1, off: 1 };
+  function dropFeed() { view = null; feed = null; gens.feed++; busy.feed = false; }
+  function forget() { if (groups || rooms || view || feed) { groups = null; rooms = null; dropFeed(); gens.groups++; gens.rooms++; busy = {}; paint(); } }
 
   /* one request for one account, with one deadline; cancelled if another account is signed in before it leaves or when
      its reply comes back (the Plaza friends pattern) */
@@ -199,53 +230,62 @@
     if (e && e.missing) { missing = true; groups = groups; rooms = null; view = null; feed = null; stop(); }
     paint();
   }
-  function malformed() { broken = true; rooms = null; view = null; feed = null; stop(); paint(); }
+  function malformed() { broken = true; rooms = null; dropFeed(); gens.rooms++; busy.rooms = false; stop(); try { paint(); } catch (e) { } }
 
   /* ---------- three polls, each with one request in flight ---------- */
   function loadGroups() {
-    if (busy.groups || !uid() || doc.hidden) return Promise.resolve();
+    if (busy.groups || !allowed() || doc.hidden) return Promise.resolve();
     var u = uid(), g = ++gens.groups; busy.groups = true;
     return rpc('plaza_list', {}, u).then(function (j) {
-      if (g !== gens.groups || uid() !== u) return;
-      groups = j && Array.isArray(j.servers) ? j.servers : null; paint();
-    }, failedQuiet).then(function () { busy.groups = false; });
+      if (g !== gens.groups || uid() !== u || minor()) return;
+      groups = j && Array.isArray(j.servers) ? j.servers.filter(okGroup) : null; paint();
+    }, failedQuiet).catch(malformed).then(function () { if (g === gens.groups) busy.groups = false; });
   }
   function failedQuiet(e) { if (e && e.cancelled) return; paint(); }
   function loadRooms() {
     var v = visit(), u = uid();
-    if (!v || !u || missing || broken || !inPlaza()) { if (rooms) { rooms = null; paint(); } return Promise.resolve(); }
+    if (!v || !allowed() || missing || broken || !inPlaza()) { if (rooms || view || feed) { rooms = null; dropFeed(); paint(); } return Promise.resolve(); }
     if (busy.rooms) return Promise.resolve();
     var g = ++gens.rooms; busy.rooms = true;
     return rpc('plaza_rooms_list', { p_server: v.server, p_visit: v.visit }, u).then(function (j) {
       var now = visit();
-      if (g !== gens.rooms || uid() !== u || !now || now.visit !== v.visit) return;
+      if (g !== gens.rooms || uid() !== u || !now || now.visit !== v.visit || minor()) return;
       if (!j || typeof j.ok !== 'boolean') { malformed(); return; }
       seen = true;
-      if (!j.ok) { rooms = null; if (j.why === 'not_here') { view = null; feed = null; } paint(); return; }
-      if (!Array.isArray(j.rooms)) { malformed(); return; }
-      rooms = j; roomsVisit = v.visit;
-      if (view && !j.rooms.some(function (r) { return r.id === view; })) { view = null; feed = null; }
+      if (!j.ok) { rooms = null; dropFeed(); paint(); return; }
+      if (!Array.isArray(j.rooms) || !j.rooms.every(okRoom)) { malformed(); return; }
+      rooms = j;
+      if (view && (!j.read || !j.rooms.some(function (r) { return r.id === view; }))) dropFeed();
       paint();
-    }, failed).then(function () { busy.rooms = false; });
+    }, failed).catch(malformed).then(function () { if (g === gens.rooms) busy.rooms = false; });
   }
   function loadFeed() {
     var v = visit(), u = uid(), room = view;
-    if (!v || !u || !room || !rooms || !rooms.read) return Promise.resolve();
+    if (!v || !allowed() || !room || !rooms || !rooms.read) return Promise.resolve();
     if (busy.feed) return Promise.resolve();
-    var g = ++gens.feed, after = feed && feed.room === room && feed.visit === v.visit && feed.msgs.length ? feed.msgs[feed.msgs.length - 1].id : null; busy.feed = true;
+    /* the cursor is the newest revision she has: a message shown after a check, or changed, comes back with a new one */
+    var g = ++gens.feed, had = feed && feed.room === room && feed.visit === v.visit ? feed : null, after = had && had.rev ? had.rev : null; busy.feed = true;
     return rpc('plaza_room_feed', { p_server: v.server, p_visit: v.visit, p_room: room, p_after: after }, u).then(function (j) {
       var now = visit();
-      if (g !== gens.feed || uid() !== u || view !== room || !now || now.visit !== v.visit) return;
+      if (g !== gens.feed || uid() !== u || view !== room || !now || now.visit !== v.visit || minor()) return;
       if (!j || typeof j.ok !== 'boolean') { malformed(); return; }
-      if (!j.ok) { if (j.why === 'not_here') { view = null; feed = null; } else if (feed) feed.why = j.why; paint(); return; }
-      if (!Array.isArray(j.ids) || !Array.isArray(j.messages)) { malformed(); return; }
-      var had = feed && feed.room === room && feed.visit === v.visit ? feed.msgs : [];
-      feed = { room: room, visit: v.visit, msgs: mergeFeed(had, j, mutedList()), joined: !!j.joined, entry: j.entry || null, people: j.people, capacity: j.capacity, open: j.open !== false, mode: j.mode === 'live' ? 'live' : 'review' };
+      if (!j.ok) {
+        if (DENIED[j.why]) { dropFeed(); if (rooms) { rooms.read = false; rooms.why = j.why; rooms.room = null; rooms.entry = null; rooms.talk = false; } }
+        else if (j.why === 'not_here' || j.why === 'closed') { dropFeed(); loadRooms(); }
+        else if (feed) feed.why = j.why;
+        paint(); return;
+      }
+      if (!Array.isArray(j.ids) || !Array.isArray(j.messages) || !j.messages.every(okMsg) || (j.entry != null && typeof j.entry !== 'string')) { malformed(); return; }
+      var rows = mergeFeed(had ? had.rows : [], j, []), rev = Math.max((had && had.rev) || 0, Number(j.rev) || 0);
+      if (rows.length < Math.min(j.ids.length, SHOWN)) rev = 0; /* a message came back into view below the cursor (an unblock): the whole window next time */
+      feed = { room: room, visit: v.visit, rows: rows, msgs: unmuted(rows), rev: rev, joined: !!j.joined && !!j.entry, entry: j.joined && j.entry ? j.entry : null,
+        people: j.people, capacity: j.capacity, open: j.open !== false, mode: j.mode === 'live' ? 'live' : 'review' };
       paint();
-    }, failed).then(function () { busy.feed = false; });
+    }, failed).catch(malformed).then(function () { if (g === gens.feed) busy.feed = false; });
   }
   function tick(which) {
     if (uid() !== lastUid) { authChanged(); return; }
+    if (minor()) { forget(); return; }
     if (!active()) return;
     if (which === 'groups') loadGroups(); else if (which === 'rooms') loadRooms(); else loadFeed();
   }
@@ -257,9 +297,9 @@
   /* once per session: do the rooms exist on the server at all (the call answers 'not_here' without a group)? Plaza
      friends and the plaza sheet use this to offer Room chat off and to describe the rooms, even away from the plaza */
   function probe() {
-    var u = uid(); if (seen || missing || broken || !u) return Promise.resolve();
+    var u = uid(); if (seen || missing || broken || !allowed()) return Promise.resolve();
     if (probing) return probing;
-    probing = rpc('plaza_rooms_list', { p_server: null, p_visit: null }, u).then(function (j) { if (uid() !== u) return; if (j && typeof j.ok === 'boolean') { seen = true; paint(); } else malformed(); }, failed).then(function () { probing = null; });
+    probing = rpc('plaza_rooms_list', { p_server: null, p_visit: null }, u).then(function (j) { if (uid() !== u) return; if (j && typeof j.ok === 'boolean') { seen = true; paint(); } else malformed(); }, failed).catch(malformed).then(function () { probing = null; });
     return probing;
   }
   /* the tab was shown, or she came back: ask now rather than wait for the next tick */
@@ -287,7 +327,7 @@
   }
   function paintGroups() {
     var el = els.groups; if (!el) return;
-    if (!uid() || !groups || !groups.length) { el.innerHTML = ''; el.hidden = true; return; }
+    if (!uid() || minor() || !groups || !groups.length) { el.removeAttribute('data-key'); el.innerHTML = ''; el.hidden = true; return; }
     var v = visit(), here = inPlaza();
     var key = JSON.stringify([groups, v && v.server, here]);
     if (el.getAttribute('data-key') === key) return;
@@ -304,7 +344,7 @@
   function paintRooms() {
     var el = els.rooms; if (!el) return;
     var v = visit();
-    if (missing || broken || !uid() || !v || !inPlaza() || !rooms || rooms.why === 'adult') { if (el.getAttribute('data-state') !== 'off') { el.setAttribute('data-state', 'off'); el.innerHTML = ''; } el.hidden = true; return; }
+    if (missing || broken || !uid() || minor() || !v || !inPlaza() || !rooms || rooms.why === 'adult') { if (el.getAttribute('data-state') !== 'off') { el.setAttribute('data-state', 'off'); el.innerHTML = ''; } el.hidden = true; return; }
     el.hidden = false;
     if (!view) {
       var key = JSON.stringify([rooms.rooms, rooms.read, rooms.why, rooms.room, rooms.mode, rooms.chat_on]);
@@ -321,8 +361,8 @@
       }).join('') + '</ul><p class="rmhint">Everyone in the group can read the rooms; a count says who joined to talk. ' + esc(MODE[rooms.mode] || MODE.review) + '</p>';
       el.innerHTML = h; return;
     }
-    var r = roomById(view); if (!r) { view = null; feed = null; paintRooms(); return; }
-    var f = feed && feed.room === view && feed.visit === v.visit ? feed : null, joined = f ? f.joined : rooms.room === view;
+    var r = roomById(view); if (!r) { dropFeed(); paintRooms(); return; }
+    var f = feed && feed.room === view && feed.visit === v.visit ? feed : null, joined = !!entryFor(view);
     if (el.getAttribute('data-state') !== 'room:' + view) {
       el.setAttribute('data-state', 'room:' + view); el.removeAttribute('data-key');
       el.innerHTML = '<div class="rmtop"><button type="button" class="btn ghost rmback" data-rmact="back"><span class="ms" aria-hidden="true">arrow_back</span>Rooms</button><div class="rmtitle"><span class="ms" aria-hidden="true">' + esc(kindIcon(r.kind)) + '</span><b>' + esc(r.name) + '</b><small class="rmcount"></small></div></div>' +
@@ -375,20 +415,21 @@
   function paint() { paintGroups(); paintRooms(); if (root.OvuToday && root.OvuToday.noteRooms) root.OvuToday.noteRooms(); }
 
   /* ---------- acting ---------- */
-  function openRoom(id) { if (!rooms || !rooms.read) return; view = id; feed = null; paint(); loadFeed(); }
-  function back() { view = null; feed = null; paint(); loadRooms(); }
+  function openRoom(id) { if (!rooms || !rooms.read || !roomById(id)) return; dropFeed(); view = id; paint(); loadFeed(); }
+  function back() { dropFeed(); paint(); loadRooms(); }
   function join() {
-    var v = visit(), u = uid(), room = view; if (!v || !u || !room) return;
+    var v = visit(), u = uid(), room = view; if (!v || !allowed() || !room) return;
     rpc('plaza_room_join', { p_server: v.server, p_visit: v.visit, p_room: room }, u).then(function (j) {
-      if (view !== room || uid() !== u) return;
-      if (!j || typeof j.ok !== 'boolean') { malformed(); return; }
-      if (j.ok) { if (rooms) { rooms.room = room; rooms.entry = j.entry; } if (feed) { feed.joined = true; feed.entry = j.entry; } R.chime && R.chime('tap'); paint(); loadFeed(); loadRooms(); var b = els.rooms && els.rooms.querySelector('#rmText'); if (b) try { b.focus({ preventScroll: true }); } catch (e) { } return; }
+      var now = visit();
+      if (view !== room || uid() !== u || !now || now.visit !== v.visit) return;
+      if (!j || typeof j.ok !== 'boolean' || (j.ok && typeof j.entry !== 'string')) { malformed(); return; }
+      if (j.ok) { if (rooms) { rooms.room = room; rooms.entry = j.entry; } if (feed && feed.room === room && feed.visit === v.visit) { feed.joined = true; feed.entry = j.entry; } R.chime && R.chime('tap'); paint(); loadFeed(); loadRooms(); var b = els.rooms && els.rooms.querySelector('#rmText'); if (b) try { b.focus({ preventScroll: true }); } catch (e) { } return; }
       R.toast(j.why === 'full' ? fullText(j) : whyText(j), 'forum');
-      if (j.why === 'not_here') { view = null; feed = null; paint(); }
-    }, function (e) { if (!(e && e.cancelled)) { failed(e); if (!(e && e.missing)) R.toast('Could not reach the rooms. Check the connection and try again.', 'cloud_off'); } });
+      if (j.why === 'not_here' || DENIED[j.why]) { dropFeed(); paint(); loadRooms(); }
+    }, function (e) { if (!(e && e.cancelled)) { failed(e); if (!(e && e.missing)) R.toast('Could not reach the rooms. Check the connection and try again.', 'cloud_off'); } }).catch(malformed);
   }
   function leave() {
-    var u = uid(), entry = (feed && feed.entry) || (rooms && rooms.entry); if (!u || !entry) return;
+    var u = uid(), entry = entryFor(view); if (!u || !entry) return;
     rpc('plaza_room_leave', { p_entry: entry }, u).then(function () {
       if (uid() !== u) return;
       if (rooms && rooms.entry === entry) { rooms.room = null; rooms.entry = null; }
@@ -400,48 +441,60 @@
   /* send: her words are checked here first, then her Room chat yes (asked once, just in time), then the care card or the
      hold notice when the words call for it; only then does anything leave the phone */
   function send() {
-    var el = els.rooms, box = el && el.querySelector('#rmText'), msg = el && el.querySelector('.rmmsg'); if (!box) return;
-    var text = box.value, room = view, r = roomById(room), p = textProblem(text);
+    var el = els.rooms, box = el && el.querySelector('#rmText'), msg = el && el.querySelector('.rmmsg'); if (!box || !allowed()) return;
+    var text = box.value, room = view, r = roomById(room), p = textProblem(text), v = visit();
     if (msg) msg.textContent = '';
     if (p) { if (msg) msg.textContent = PROBLEMS[p]; return; }
     if (!rooms || !rooms.talk) { askChat(function () { send(); }); return; }
+    /* what this message is for, fixed now: the account, the visit, the room and her entry to it. A sheet confirmed later
+       sends only if all four still hold (Codex diff review, 22 Oct, item 2) */
+    var ctx = { uid: uid(), visit: v && v.visit, room: room, entry: entryFor(room), text: text };
+    if (!ctx.visit || !ctx.entry) { if (msg) msg.textContent = WHY.not_in_room; return; }
     var u = root.OvuOrb && root.OvuOrb.urgent ? root.OvuOrb.urgent(text, S.profile()) : null, hw = holdWhy(text, r && r.no_news);
-    if ((u && u.level === 'emergency') || hw === 'care') { careFirst(u, text); return; }
-    if (hw === 'news' || hw === 'advice') { holdFirst(hw, text); return; }
-    say(text, false);
+    if ((u && u.level === 'emergency') || hw === 'care') { careFirst(u, ctx); return; }
+    if (hw === 'news' || hw === 'advice') { holdFirst(hw, ctx); return; }
+    say(ctx, false);
   }
-  function say(text, hold) {
-    var u = uid(), room = view, entry = (feed && feed.entry) || (rooms && rooms.entry), el = els.rooms, msg = el && el.querySelector('.rmmsg'), btn = el && el.querySelector('[data-rmact="send"]');
-    if (!u || !entry) { if (msg) msg.textContent = WHY.not_in_room; return; }
+  function still(ctx) { var v = visit(); return allowed() && uid() === ctx.uid && !!v && v.visit === ctx.visit && view === ctx.room && entryFor(ctx.room) === ctx.entry; }
+  function say(ctx, hold) {
+    var el = els.rooms, msg = el && el.querySelector('.rmmsg'), btn = el && el.querySelector('[data-rmact="send"]');
+    if (!still(ctx)) { R.toast(WHY.stale, 'forum'); return; }
     if (btn) btn.disabled = true;
-    rpc('plaza_say', { p_entry: entry, p_body: text, p_hold: !!hold }, u).then(function (j) {
-      if (uid() !== u) return;
-      if (!j || typeof j.ok !== 'boolean') { malformed(); return; }
-      if (!j.ok) { if (view === room && msg) msg.textContent = whyText(j); if (j.why === 'notice' && rooms) { rooms.talk = false; } if (j.why === 'not_in_room' || j.why === 'not_here') loadRooms(); return; }
-      drafts[room] = '';
-      if (view === room) {
-        var b = els.rooms.querySelector('#rmText'); if (b) b.value = ''; left();
-        if (feed && feed.room === room && j.message) { feed.msgs = mergeFeed(feed.msgs, { ids: feed.msgs.map(function (m) { return m.id; }).concat([j.message.id]), messages: [j.message] }, mutedList()); paint(); }
+    rpc('plaza_say', { p_entry: ctx.entry, p_body: ctx.text, p_hold: !!hold }, ctx.uid).then(function (j) {
+      if (uid() !== ctx.uid) return;
+      if (!j || typeof j.ok !== 'boolean' || (j.ok && j.message != null && !okMsg(j.message))) { malformed(); return; }
+      var here = still(ctx);
+      if (!j.ok) {
+        if (here && msg) msg.textContent = whyText(j); else R.toast(whyText(j), 'forum');
+        if (j.why === 'notice' && rooms) rooms.talk = false;
+        if (j.why === 'not_in_room' || j.why === 'not_here' || DENIED[j.why]) loadRooms();
+        return;
+      }
+      /* only the words that were sent are cleared: anything she typed while it was on its way stays */
+      if (drafts[ctx.room] === ctx.text) drafts[ctx.room] = '';
+      var b = here && els.rooms.querySelector('#rmText'); if (b && b.value === ctx.text) { b.value = ''; left(); }
+      if (here && feed && feed.room === ctx.room && feed.visit === ctx.visit && j.message) {
+        setRows(mergeFeed(feed.rows, { ids: feed.rows.map(function (m) { return m.id; }).concat([j.message.id]), messages: [j.message] }, [])); paint();
       }
       if (j.held) R.toast(j.held_why === 'review' ? 'Sent. It shows once someone on the Rhythme team has read it.' : 'Sent for a check. Only you can see it until someone on the Rhythme team has read it.', 'hourglass_top');
-    }, function (e) { if (!(e && e.cancelled)) { failed(e); if (view === room && msg) msg.textContent = 'Could not reach the rooms. Your words are still here; try again.'; } }).then(function () { if (btn) btn.disabled = false; });
+    }, function (e) { if (!(e && e.cancelled)) { failed(e); if (still(ctx) && msg) msg.textContent = 'Could not reach the rooms. Your words are still here; try again.'; } }).catch(malformed).then(function () { if (btn) btn.disabled = false; });
   }
   /* the care card for her own words: the profile-aware card from the diary's rules stays on this phone; she may send it
      for a person to read first, or keep it */
-  function careFirst(u, text) {
+  function careFirst(u, ctx) {
     var care = u && root.OvuOrb && root.OvuOrb.careHTML ? root.OvuOrb.careHTML(u) : '<b>Please look after yourself first</b><p>' + esc(HELP) + '</p><div class="row"><a class="btn primary" href="https://findahelpline.com" target="_blank" rel="noopener"><span class="ms">call</span>Find a helpline</a></div>';
     var sh = rmSheet('roomCare', 'Before it goes', 'Your words matter', 'health_and_safety',
       '<div class="rmcarecard">' + care + '</div><p class="help">The rooms are peer support, and nobody watches them around the clock. If you send this, a person on the Rhythme team reads it before it shows, which can take a while. This is not an emergency service: if you are in danger now, use the help above.</p>' +
       '<div class="row"><button type="button" class="btn primary" id="rmCareSend"><span class="ms" aria-hidden="true">hourglass_top</span>Send it for a check</button><button type="button" class="btn soft" id="rmCareKeep">Keep it here for now</button></div>');
-    sh.querySelector('#rmCareSend').addEventListener('click', function () { R.closeSheet(); say(text, true); });
+    sh.querySelector('#rmCareSend').addEventListener('click', function () { R.closeSheet(); say(ctx, true); });
     sh.querySelector('#rmCareKeep').addEventListener('click', function () { R.closeSheet(); });
   }
-  function holdFirst(kind, text) {
+  function holdFirst(kind, ctx) {
     var words = kind === 'news' ? 'This room keeps pregnancy and birth news out, for people who are grieving or still trying. If yours is news like that, Everyone, Wins is the place for it. If it is something else, send it and a person will read it first.'
-      : 'Messages that tell someone what to take, stop or buy wait for a person to read them first. Sharing what happened to you is welcome; your own doctor knows your history.';
+      : 'Messages about medicines, doses, or what to take, stop or buy wait for a person to read them first. Sharing what happened to you is still welcome; it may just take longer to show. Your own doctor knows your history.';
     var sh = rmSheet('roomHold', kind === 'news' ? 'A quiet room' : 'A gentle check', 'Before it goes', 'hourglass_top',
       '<p>' + esc(words) + '</p><div class="row"><button type="button" class="btn primary" id="rmHoldSend"><span class="ms" aria-hidden="true">hourglass_top</span>Send it for a check</button><button type="button" class="btn soft" id="rmHoldEdit">Edit it</button></div>');
-    sh.querySelector('#rmHoldSend').addEventListener('click', function () { R.closeSheet(); say(text, true); });
+    sh.querySelector('#rmHoldSend').addEventListener('click', function () { R.closeSheet(); say(ctx, true); });
     sh.querySelector('#rmHoldEdit').addEventListener('click', function () { R.closeSheet(); });
   }
   /* Room chat, asked once at her first message: the form names her card and the last Room chat event the server knew */
@@ -473,7 +526,7 @@
       if (uid() !== u || !j || !j.ok) return;
       try { if (root.OvuConsent && root.OvuConsent.withdraw) root.OvuConsent.withdraw('plaza_chat', 'you', { sent: true }); } catch (e) { }
       if (rooms) rooms.talk = false;
-      if (feed) feed.msgs = feed.msgs.filter(function (m) { return !m.mine; });
+      if (feed) setRows(feed.rows.filter(function (m) { return !m.mine; }));
       paint(); R.toast('Room chat is off. Your messages were deleted.', 'forum');
     });
   }
@@ -499,14 +552,14 @@
     sh.querySelector('#rmMute').addEventListener('click', function () {
       var list = mutedList().slice(); if (list.indexOf(m.handle) < 0) list.push(m.handle);
       S.setState({ roomsMuted: { uid: u, handles: list.slice(-200) } });
-      if (feed) feed.msgs = feed.msgs.filter(function (x) { return x.mine || x.handle !== m.handle; });
+      if (feed) setRows(feed.rows);
       R.closeSheet(); paint(); R.toast('Muted on this phone. She is not told.', 'volume_off');
     });
     sh.querySelector('#rmBlock').addEventListener('click', function () {
       rpc('social_block', { p_handle: m.handle }, u).then(function (j) {
         if (uid() !== u) return;
         if (j && j.ok === false) { say_(whyText(j)); return; }
-        R.closeSheet(); R.toast('Blocked. She is not told.', 'block'); if (feed) feed.msgs = feed.msgs.filter(function (x) { return x.mine || x.handle !== m.handle; }); paint(); loadFeed();
+        R.closeSheet(); R.toast('Blocked. She is not told.', 'block'); if (feed) setRows(feed.rows.filter(function (x) { return x.mine || x.handle !== m.handle; })); paint(); loadFeed();
       }, function (e) { if (!(e && e.cancelled)) say_('Could not reach the rooms. Check the connection and try again.'); });
     });
   }
@@ -527,7 +580,7 @@
       groupsEl.addEventListener('click', function (e) {
         var b = e.target.closest('[data-rmgroup]'); if (!b || !root.OvuPlaza || !root.OvuPlaza.join) return;
         if (R.chime) R.chime('tap');
-        view = null; feed = null; rooms = null; paint(); root.OvuPlaza.join(b.dataset.rmgroup);
+        dropFeed(); rooms = null; paint(); root.OvuPlaza.join(b.dataset.rmgroup);
       });
     }
     paint(); kick();
@@ -550,7 +603,7 @@
   }
   R.on('boot', mount);
   X.attach = attach; X.kick = kick; X.chatOff = chatOff; X.openRoom = openRoom; X.probe = probe; /* Plaza friends asks before it draws its Room chat row */
-  X.available = function () { return !missing && !broken && seen; };
-  X.state = function () { return { missing: missing, broken: broken, groups: groups ? groups.slice() : null, rooms: rooms, view: view, feed: feed ? { room: feed.room, joined: feed.joined, entry: feed.entry, msgs: feed.msgs.slice(), mode: feed.mode } : null, timers: timers.length }; };
+  X.available = function () { return !missing && !broken && seen && !minor(); };
+  X.state = function () { return { missing: missing, broken: broken, groups: groups ? groups.slice() : null, rooms: rooms, view: view, feed: feed ? { room: feed.room, joined: feed.joined, entry: feed.entry, msgs: feed.msgs.slice(), rev: feed.rev, mode: feed.mode } : null, timers: timers.length }; };
   X.poll = function () { lastKick = 0; return Promise.all([loadGroups(), loadRooms()]).then(function () { return loadFeed(); }); }; /* what the timers do, for the smoke suite */
 })(typeof window !== 'undefined' ? window : this);
