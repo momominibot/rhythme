@@ -127,7 +127,7 @@ def main():
     mets = sorted(f['metric'] for f in pl.get('findings', []))
     keys = sorted(pl.keys())
     check('stages are admitted in order only, and a stage cannot be admitted twice (one attempt per stage)', oo.get('error') == 'out_of_order' and oo.get('expected') == 'cycle' and again.get('error') == 'already_admitted', {'oo': oo, 'again': again})
-    check("the cycle payload holds only cycle findings (and the eligibility count), the registry entries for them, the floor and window, and nothing else", keys == ['findings', 'floor', 'kinds', 'metric_version', 'registry', 'report_tz', 'targets', 'window_end_exclusive', 'window_start']
+    check("the cycle payload holds only cycle findings (and the eligibility count), the registry entries for them, the floor and window, and nothing else", keys == ['findings', 'floor', 'matrix', 'metric_version', 'registry', 'report_tz', 'window_end_exclusive', 'window_start'] and set(pl['matrix']) == {'prompt_copy', 'surface_order', 'reminder_timing', 'measurement_gap'} and 'bed_tap' not in json.dumps(pl['matrix'])
           and 'eligible_people' in mets and 'period_days' in mets and 'nights_recorded' not in mets and all(set(f) == {'metric', 'window', 'value', 'people', 'suppressed', 'state'} for f in pl['findings']), {'keys': keys, 'mets': mets})
     blob = json.dumps(pl)
     check('the payload carries no account ids, emails, entry ids or diary fields', not any(str(q['id']) in blob for q in people) and 'example.invalid' not in blob and '"flow"' not in blob and 'e-' not in blob.replace('"metric_version"', ''), blob[:300])
@@ -141,12 +141,27 @@ def main():
         'proposal_target': {'summary': 's', 'notes': [], 'proposals': [dict(PROPOSAL, target='payments')]},
         'proposal_metric': {'summary': 's', 'notes': [], 'proposals': [dict(PROPOSAL, metric='nights_recorded')]},
         'proposal_change': {'summary': 's', 'notes': [], 'proposals': [dict(PROPOSAL, change={'a': {'b': {'c': 1}}})]},
+        'missing_key': {'summary': 's', 'notes': []},
         'proposal_keys': {'summary': 's', 'notes': [], 'proposals': [dict(PROPOSAL, apply=True)]},
         'summary': {'summary': '', 'notes': [], 'proposals': []},
         'notes': {'summary': 's', 'notes': ['x' * 201], 'proposals': []},
     }
     got = {k: (bad_post(v) or {}).get('why') for k, v in cases.items()}
-    check('the server refuses every malformed report with its own reason: unknown keys, kinds, targets, another agent\'s metric, deep changes, extra proposal keys, empty summary, long notes', all(got[k] == k for k in cases), got)
+    check('the server refuses every malformed report with its own reason: unknown keys, kinds, targets, another agent\'s metric, deep changes, extra proposal keys, a missing key, empty summary, long notes', all(got[k] == k for k in cases), got)
+    more = {
+        'pair': dict(PROPOSAL, kind='reminder_timing'),  # a real kind and a real target, but not a pair the matrix allows
+        'other_agent_target': dict(PROPOSAL, target='bed_tap'),
+        'empty_change': dict(PROPOSAL, change={}),
+        'number_change': dict(PROPOSAL, change={'line': 3}),
+        'bad_change_key': dict(PROPOSAL, change={'Line': 'x'}),
+        'gap_without_metric': dict(PROPOSAL, kind='measurement_gap', target='metric_registry', metric=None),
+    }
+    want = {'pair': 'proposal_target', 'other_agent_target': 'proposal_target', 'empty_change': 'proposal_change', 'number_change': 'proposal_change',
+            'bad_change_key': 'proposal_change', 'gap_without_metric': 'proposal_metric'}
+    got2 = {k: (bad_post({'summary': 's', 'notes': [], 'proposals': [v]}) or {}).get('why') for k, v in more.items()}
+    long = (bad_post({'summary': 'x' * 281, 'notes': [], 'proposals': []}) or {}).get('why')
+    norank = worker(c, 'worker_post', KEY, job1, tok, 'orchestrator', report(), '{}')
+    check('the matrix, change and length rules hold on the server too: pairs per agent, 1 to 4 short text values, a metric for measurement gaps, a 280-character summary', got2 == want and long == 'summary', {'got': got2, 'long': long})
     ok = worker(c, 'worker_post', KEY, job1, tok, 'cycle', report(proposals=[PROPOSAL]), json.dumps({'cli': 'codex-cli 0.160.0', 'model': 'gpt-6-astra', 'secret': 'x'}))
     rep = worker(c, 'worker_post', KEY, job1, tok, 'cycle', report(proposals=[PROPOSAL]), '{}')
     diff = worker(c, 'worker_post', KEY, job1, tok, 'cycle', report('Something else.'), '{}')
@@ -223,6 +238,87 @@ def main():
     empty = j(c, "insert into staff.agent_runs (kind, trigger, status, finished_at, summary) values ('run_now', 'staff', 'ok', now(), '{}'::jsonb) returning id")
     c.execute("insert into staff.agent_findings (run_id, agent, metric, \"window\", value, people, suppressed, state) values (%s, 'cycle', 'eligible_people', 'now', 20, 20, false, 'measured'), (%s, 'cycle', 'period_days', 'w', null, null, true, 'insufficient')", [empty, empty])
     check('a run with no measured finding beyond eligibility is not worth a model call', j(c, "select staff.review_worth(%s)", [empty]) is False and j(c, "select staff.review_worth(%s)", [r3['run_id']]) is True)
+
+    # 8b. a beat notices a switch turned off mid-stage; finish refuses after the switch went off; prune keeps proposals
+    r6 = refresh(c, owner); cl = worker(c, 'worker_claim', KEY, None); job6, tok6 = cl['job'], cl['token']
+    worker(c, 'worker_stage_begin', KEY, job6, tok6, 'cycle')
+    staff(c, owner, "select public.admin_policy_set('review_on', 'false'::jsonb)")
+    bt = worker(c, 'worker_beat', KEY, job6, tok6, 'cycle')
+    js6 = j(c, "select state || ':' || code from staff.review_jobs where id = %s", [job6])
+    check('a heartbeat during a stage stops the call as soon as review is switched off, and the job is dropped', bt.get('stop') == 'review_off' and js6 == 'dropped:review_off', {'bt': bt, 'job': js6})
+    staff(c, owner, "select public.admin_policy_set('review_on', 'true'::jsonb)")
+    r7 = refresh(c, owner); cl = worker(c, 'worker_claim', KEY, None); job7, tok7 = cl['job'], cl['token']
+    run_all_stages(c, job7, tok7)
+    staff(c, owner, "select public.admin_policy_set('review_on', 'false'::jsonb)")
+    fz = worker(c, 'worker_finish', KEY, job7, tok7)
+    check('a delayed finish after the switch went off is refused, not marked done', fz.get('stop') == 'review_off' and j(c, "select state from staff.review_jobs where id = %s", [job7]) == 'dropped', fz)
+    staff(c, owner, "select public.admin_policy_set('review_on', 'true'::jsonb)")
+    np0 = j(c, "select count(*) from staff.agent_proposals where job_id = %s", [job1])
+    c.execute("update staff.review_jobs set requested_at = now() - interval '100 days' where id = %s", [job1])
+    pr0 = j(c, "select staff.prune(365)")
+    np1 = j(c, "select count(*) from staff.agent_proposals where ref = 'cycle-1'")
+    check('pruning a 90-day-old job keeps its proposals and decisions (the link is cleared, the proposal stays)', np0 == 1 and np1 >= 1 and pr0['review_jobs_removed'] >= 1 and j(c, "select count(*) from staff.review_jobs where id = %s", [job1]) == 0, {'np0': np0, 'np1': np1, 'pr': pr0})
+
+    # 8c. key revocation and rotation
+    r8 = refresh(c, owner); cl = worker(c, 'worker_claim', KEY, None); job8, tok8 = cl['job'], cl['token']
+    worker(c, 'worker_stage_begin', KEY, job8, tok8, 'cycle')
+    c.execute("update staff.worker_keys set revoked_at = now() where key_hash = %s", [hashlib.sha256(KEY.encode()).hexdigest()])
+    rv = worker(c, 'worker_beat', KEY, job8, tok8, 'cycle'); rp = worker(c, 'worker_post', KEY, job8, tok8, 'cycle', report(), '{}')
+    KEY2 = 'r' * 8 + uuid.uuid4().hex + uuid.uuid4().hex
+    c.execute("insert into staff.worker_keys (key_hash, label) values (%s, 'rotated')", [hashlib.sha256(KEY2.encode()).hexdigest()])
+    nf = worker(c, 'worker_fail', KEY2, job8, tok8, 'uncertain')
+    nb = worker(c, 'worker_stage_begin', KEY2, job8, tok8, 'sleep')
+    wrongtok = worker(c, 'worker_fail', KEY2, job8, str(uuid.uuid4()), 'uncertain')
+    check('a revoked key is refused on every call; after rotation the new key can record the old claim as a block (with its token) but cannot run it', rv == {'error': 'denied'} and rp == {'error': 'denied'} and nf.get('block') and nb.get('error') == 'no_such_claim' and wrongtok.get('error') == 'no_such_claim', {'rv': rv, 'rp': rp, 'nf': nf, 'nb': nb})
+    staff(c, owner, "select public.admin_block_clear(%s)", [nf['block']])
+    c.execute("update staff.worker_keys set revoked_at = null where key_hash = %s", [hashlib.sha256(KEY.encode()).hexdigest()])
+
+    # 8c2. a key revoked while a beat waits on the worker lock: the beat rechecks after the lock and is refused (two sessions)
+    r9 = refresh(c, owner); cl = worker(c, 'worker_claim', KEY, None); job9, tok9 = cl['job'], cl['token']
+    worker(c, 'worker_stage_begin', KEY, job9, tok9, 'cycle')
+    hold = psycopg.connect(tp.DSN + ' dbname=' + tp.DB, autocommit=False)
+    hold.execute("select pg_advisory_xact_lock(hashtext('staff.run_begin'))")
+    got9 = {}
+    def beat_wait():
+        cc = psycopg.connect(tp.DSN + ' dbname=' + tp.DB, autocommit=True)
+        try:
+            cc.execute("select set_config('request.jwt.claims', %s, false)", [json.dumps({'role': 'anon'})]); cc.execute("set role anon")
+            got9['r'] = cc.execute("select public.worker_beat(%s, %s, %s, 'cycle')", [KEY, job9, tok9]).fetchone()[0]
+        finally:
+            cc.close()
+    tw = threading.Thread(target=beat_wait); tw.start()
+    for _ in range(100):
+        time.sleep(0.05)
+        if j(c, "select count(*) from pg_stat_activity where wait_event_type = 'Lock' and query like '%%worker_beat%%'") >= 1: break
+    hold.execute("update staff.worker_keys set revoked_at = now() where key_hash = %s", [hashlib.sha256(KEY.encode()).hexdigest()])
+    hold.commit(); hold.close(); tw.join(15)
+    check('a key revoked while a call waits for the worker lock is refused once the lock is free (two real sessions)', got9.get('r') == {'error': 'denied'}, got9)
+    c.execute("update staff.worker_keys set revoked_at = null where key_hash = %s", [hashlib.sha256(KEY.encode()).hexdigest()])
+    worker(c, 'worker_fail', KEY, job9, tok9, 'uncertain'); b9 = j(c, "select id from staff.provider_blocks where job_id = %s", [job9])
+    staff(c, owner, "select public.admin_block_clear(%s)", [b9])
+
+    # 8d. two identical refreshes at once: the second waits for the lock, then replays the first answer
+    owner_conn = []
+    res = {}
+    def press(name):
+        cc = psycopg.connect(tp.DSN + ' dbname=' + tp.DB, autocommit=True)
+        try:
+            cc.execute("select set_config('request.jwt.claims', %s, false)", [json.dumps({'sub': str(owner['id']), 'role': 'authenticated'})]); cc.execute("set role authenticated")
+            res[name] = cc.execute("select public.admin_refresh(28, 'same-tap')").fetchone()[0]
+        except Exception as e:
+            res[name] = {'exception': str(e)[:200]}
+        finally:
+            cc.close()
+    hold = psycopg.connect(tp.DSN + ' dbname=' + tp.DB, autocommit=False)
+    hold.execute("select pg_advisory_xact_lock(hashtext('staff.run_begin'))")
+    ta = threading.Thread(target=press, args=('a',)); tb = threading.Thread(target=press, args=('b',)); ta.start(); tb.start()
+    for _ in range(100):
+        time.sleep(0.05)
+        if j(c, "select count(*) from pg_stat_activity where wait_event_type = 'Lock' and query like '%%admin_refresh%%'") >= 2: break
+    hold.commit(); hold.close(); ta.join(30); tb.join(30)
+    a_, b_ = res.get('a') or {}, res.get('b') or {}
+    one = [x for x in (a_, b_) if not x.get('replayed')]; two = [x for x in (a_, b_) if x.get('replayed')]
+    check('two identical refreshes at once: one runs, the other waits and replays the same answer instead of failing', len(one) == 1 and len(two) == 1 and one[0].get('run_id') == two[0].get('run_id'), res)
 
     # 9. two sessions: a withdrawal in flight holds the worker lock; a stage admission waits for it and then stops
     r5 = refresh(c, owner); cl = worker(c, 'worker_claim', KEY, None); job5, tok5 = cl['job'], cl['token']

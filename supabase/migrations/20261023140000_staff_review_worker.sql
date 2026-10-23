@@ -12,8 +12,11 @@
 insert into staff.agent_policy (key, value) values
   ('review_on', 'false'::jsonb),
   ('review_transfer_cleared', 'false'::jsonb),
-  ('review_kinds', '["prompt_copy", "reminder_timing", "surface_order", "measurement_gap"]'::jsonb),
-  ('review_targets', '["calendar_tap", "symptom_chips", "period_question", "bed_tap", "sleep_import", "food_tab_mode", "portion_prompt", "meal_tags", "mat_first_practice", "bench_order", "reminder_time", "metric_registry"]'::jsonb)
+  -- for each agent, each kind it may propose and the targets that kind may touch; one contract for the worker and this server
+  ('review_matrix', '{"cycle": {"prompt_copy": ["calendar_tap", "symptom_chips", "period_question"], "surface_order": ["symptom_chips"], "reminder_timing": ["reminder_time"], "measurement_gap": ["metric_registry"]},
+    "sleep": {"prompt_copy": ["bed_tap", "sleep_import"], "reminder_timing": ["reminder_time"], "measurement_gap": ["metric_registry"]},
+    "food": {"prompt_copy": ["portion_prompt", "meal_tags"], "surface_order": ["food_tab_mode", "meal_tags"], "measurement_gap": ["metric_registry"]},
+    "mind": {"prompt_copy": ["mat_first_practice"], "surface_order": ["bench_order"], "reminder_timing": ["reminder_time"], "measurement_gap": ["metric_registry"]}}'::jsonb)
 on conflict (key) do nothing;
 
 -- ---------- 2. tables ----------
@@ -71,7 +74,7 @@ create table if not exists staff.refresh_receipts (
   answer jsonb not null,
   primary key (user_id, request_id)
 );
-alter table staff.agent_proposals add column if not exists job_id uuid references staff.review_jobs (id) on delete cascade;
+alter table staff.agent_proposals add column if not exists job_id uuid references staff.review_jobs (id) on delete set null; -- pruning old jobs never removes a proposal or its decision
 alter table staff.agent_proposals add column if not exists ref text;
 create unique index if not exists agent_proposals_job_ref on staff.agent_proposals (job_id, ref) where job_id is not null;
 alter table staff.provider_blocks add column if not exists code text;
@@ -115,9 +118,22 @@ $$;
 
 -- stale jobs end on their own: queued ones after 10 minutes unclaimed, claimed ones when the lease or deadline passes
 create or replace function staff.review_expire() returns void language sql security definer set search_path = '' as $$
-  update staff.review_jobs set state = 'expired', code = 'queue_expired', finished_at = now() where state = 'queued' and requested_at < now() - interval '10 minutes';
-  update staff.review_jobs set state = 'dropped', code = 'lease_lost', finished_at = now() where state = 'claimed' and (lease_until < now() or deadline < now());
+  update staff.review_jobs set state = 'expired', code = 'queue_expired', finished_at = clock_timestamp() where state = 'queued' and requested_at < clock_timestamp() - interval '10 minutes';
+  update staff.review_jobs set state = 'dropped', code = 'lease_lost', finished_at = clock_timestamp() where state = 'claimed' and (lease_until < clock_timestamp() or deadline < clock_timestamp());
+$$; -- clock_timestamp, not now(): callers take the worker lock first, and a wait for it must not stretch a lease
+
+-- a key checked before the lock is checked again after it, so a key revoked meanwhile admits nothing
+create or replace function staff.key_active(p_kid bigint) returns boolean language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from staff.worker_keys where id = p_kid and revoked_at is null)
 $$;
+
+-- a claimed job whose switches, block or run no longer allow it is dropped here; returns the reason or null
+create or replace function staff.review_gate(p_job uuid, p_run uuid) returns text language plpgsql security definer set search_path = '' as $$
+declare why text := staff.review_why_not(p_run);
+begin
+  if why is not null then update staff.review_jobs set state = 'dropped', code = why, finished_at = clock_timestamp() where id = p_job and state = 'claimed'; end if;
+  return why;
+end $$;
 
 -- the claimed job a worker names, or null; never extends anything
 create or replace function staff.review_claimed(p_kid bigint, p_job uuid, p_token uuid) returns staff.review_jobs language sql stable security definer set search_path = '' as $$
@@ -135,6 +151,7 @@ declare d jsonb; uid uuid := staff.caller(); rid text := nullif(left(coalesce(p_
 begin
   d := staff.require('admin_refresh', jsonb_build_object('days', p_days, 'request', rid)); if d is not null then return d; end if;
   if rid is null then return jsonb_build_object('error', 'A refresh needs a request id.'); end if;
+  perform pg_advisory_xact_lock(hashtext('staff.run_begin')); /* before the receipt: a second identical request waits, then replays */
   select rr.answer into prior from staff.refresh_receipts rr where rr.user_id = uid and rr.request_id = rid;
   if found then return prior || jsonb_build_object('replayed', true); end if;
   run_id := staff.run_begin('run_now', 'staff', uid); /* takes the worker lock for the rest of this transaction */
@@ -284,17 +301,18 @@ begin
     return jsonb_build_object('local_block', p_local_block, 'cleared', exists (select 1 from staff.provider_blocks where id = p_local_block and cleared_at is not null));
   end if;
   perform pg_advisory_xact_lock(hashtext('staff.run_begin'));
+  if not staff.key_active(kid) then return jsonb_build_object('error', 'denied'); end if;
   perform staff.review_expire();
   select * into j from staff.review_jobs where state = 'queued' order by requested_at limit 1 for update;
   if not found then return jsonb_build_object('job', null); end if;
   why := staff.review_why_not(j.run_id);
   if why is not null then
-    update staff.review_jobs set state = 'dropped', code = why, finished_at = now() where id = j.id;
+    update staff.review_jobs set state = 'dropped', code = why, finished_at = clock_timestamp() where id = j.id;
     return jsonb_build_object('job', null, 'dropped', why);
   end if;
-  update staff.review_jobs set state = 'claimed', claim_token = gen_random_uuid(), key_id = kid, claimed_at = now(),
-    lease_until = now() + interval '30 minutes', deadline = now() + interval '25 minutes' where id = j.id returning * into j;
-  insert into staff.worker_heartbeats (agent, job_id, state, at) values ('worker', j.id, 'claimed', now())
+  update staff.review_jobs set state = 'claimed', claim_token = gen_random_uuid(), key_id = kid, claimed_at = clock_timestamp(),
+    lease_until = clock_timestamp() + interval '30 minutes', deadline = clock_timestamp() + interval '25 minutes' where id = j.id returning * into j;
+  insert into staff.worker_heartbeats (agent, job_id, state, at) values ('worker', j.id, 'claimed', clock_timestamp())
     on conflict (agent) do update set job_id = excluded.job_id, state = excluded.state, at = excluded.at;
   return jsonb_build_object('job', j.id, 'token', j.claim_token, 'run', j.run_id, 'deadline', j.deadline, 'stages', to_jsonb(staff.review_order()));
 end $$;
@@ -306,15 +324,13 @@ declare kid bigint := staff.worker_key(p_key); j staff.review_jobs; why text; ex
 begin
   if kid is null then return jsonb_build_object('error', 'denied'); end if;
   perform pg_advisory_xact_lock(hashtext('staff.run_begin'));
+  if not staff.key_active(kid) then return jsonb_build_object('error', 'denied'); end if;
   perform staff.review_expire();
   j := staff.review_claimed(kid, p_job, p_token);
   if j.id is null then return jsonb_build_object('error', 'no_such_claim'); end if;
   if j.state <> 'claimed' then return jsonb_build_object('stop', coalesce(j.code, j.state)); end if;
-  why := staff.review_why_not(j.run_id);
-  if why is not null then
-    update staff.review_jobs set state = 'dropped', code = why, finished_at = now() where id = j.id;
-    return jsonb_build_object('stop', why);
-  end if;
+  why := staff.review_gate(j.id, j.run_id);
+  if why is not null then return jsonb_build_object('stop', why); end if;
   select a into expected from unnest(staff.review_order()) with ordinality as o(a, i)
     where not exists (select 1 from staff.review_stages st where st.job_id = j.id and st.agent = o.a and st.state = 'accepted') order by i limit 1;
   if expected is null or p_agent is distinct from expected then return jsonb_build_object('error', 'out_of_order', 'expected', expected); end if;
@@ -332,60 +348,73 @@ begin
         from staff.agent_findings f where f.run_id = j.run_id and f.agent = p_agent),
       'registry', (select coalesce(jsonb_agg(jsonb_build_object('metric', m.metric, 'unit', m.unit, 'denominator', m.denominator, 'people_rule', m.people_rule, 'window_rule', m.window_rule, 'computation_version', m.computation_version, 'note', m.note) order by m.metric), '[]'::jsonb)
         from staff.metric_registry m where m.agent = p_agent or m.metric = 'eligible_people'),
-      'kinds', staff.policy('review_kinds'), 'targets', staff.policy('review_targets'));
+      'matrix', staff.policy('review_matrix') -> p_agent);
   end if;
   select count(*) into n from staff.review_stages where job_id = j.id;
   insert into staff.review_stages (job_id, agent, seq, state, input_hash) values (j.id, p_agent, n + 1, 'admitted', md5(payload::text));
-  update staff.review_jobs set lease_until = least(now() + interval '30 minutes', deadline + interval '5 minutes') where id = j.id;
-  insert into staff.worker_heartbeats (agent, job_id, state, at) values (p_agent, j.id, 'reading', now())
+  update staff.review_jobs set lease_until = least(clock_timestamp() + interval '30 minutes', deadline + interval '5 minutes') where id = j.id;
+  insert into staff.worker_heartbeats (agent, job_id, state, at) values (p_agent, j.id, 'reading', clock_timestamp())
     on conflict (agent) do update set job_id = excluded.job_id, state = excluded.state, at = excluded.at;
   return jsonb_build_object('agent', p_agent, 'run', j.run_id, 'payload', payload, 'input_hash', md5(payload::text));
 end $$;
 
 create or replace function public.worker_beat(p_key text, p_job uuid, p_token uuid, p_agent text) returns jsonb
 language plpgsql security definer set search_path = '' as $$
-declare kid bigint := staff.worker_key(p_key); j staff.review_jobs;
+declare kid bigint := staff.worker_key(p_key); j staff.review_jobs; why text;
 begin
   if kid is null then return jsonb_build_object('error', 'denied'); end if;
   if p_agent not in ('worker', 'cycle', 'sleep', 'food', 'mind', 'orchestrator') then return jsonb_build_object('error', 'bad_agent'); end if;
+  perform pg_advisory_xact_lock(hashtext('staff.run_begin'));
+  if not staff.key_active(kid) then return jsonb_build_object('error', 'denied'); end if;
+  perform staff.review_expire();
   j := staff.review_claimed(kid, p_job, p_token);
   if j.id is null then return jsonb_build_object('error', 'no_such_claim'); end if;
   if j.state <> 'claimed' then return jsonb_build_object('stop', coalesce(j.code, j.state)); end if;
-  if j.lease_until < now() or j.deadline < now() then return jsonb_build_object('stop', 'lease_lost'); end if; /* the next locked call drops it */
-  update staff.review_jobs set lease_until = least(now() + interval '30 minutes', deadline + interval '5 minutes') where id = j.id;
-  update staff.worker_heartbeats set at = now() where agent in ('worker', p_agent) and job_id = j.id;
+  why := staff.review_gate(j.id, j.run_id); /* switched off, blocked or held mid-stage: the worker stops the call now */
+  if why is not null then return jsonb_build_object('stop', why); end if;
+  update staff.review_jobs set lease_until = least(clock_timestamp() + interval '30 minutes', deadline + interval '5 minutes') where id = j.id;
+  update staff.worker_heartbeats set at = clock_timestamp() where agent in ('worker', p_agent) and job_id = j.id;
   return jsonb_build_object('ok', true);
 end $$;
 
 -- the report contract, checked on the server whatever the worker checked
 create or replace function staff.review_report_error(p_agent text, p_report jsonb) returns text language plpgsql stable security definer set search_path = '' as $$
-declare p jsonb; k text; kinds jsonb := staff.policy('review_kinds'); targets jsonb := staff.policy('review_targets'); n integer := 0;
+declare p jsonb; k text; v jsonb; m jsonb := staff.policy('review_matrix') -> p_agent; want text[];
 begin
-  if jsonb_typeof(p_report) <> 'object' then return 'not_object'; end if;
+  if jsonb_typeof(p_report) is distinct from 'object' then return 'not_object'; end if;
+  want := case when p_agent = 'orchestrator' then array['summary', 'notes', 'proposals', 'ranking'] else array['summary', 'notes', 'proposals'] end;
   for k in select jsonb_object_keys(p_report) loop
-    if k not in ('summary', 'notes', 'proposals', 'ranking') or (k = 'ranking' and p_agent <> 'orchestrator') then return 'unknown_key'; end if;
+    if not (k = any (want)) then return 'unknown_key'; end if;
   end loop;
-  if jsonb_typeof(p_report -> 'summary') <> 'string' or length(p_report ->> 'summary') not between 1 and 400 then return 'summary'; end if;
-  if jsonb_typeof(p_report -> 'notes') <> 'array' or jsonb_array_length(p_report -> 'notes') > 5 then return 'notes'; end if;
-  if exists (select 1 from jsonb_array_elements(p_report -> 'notes') x where jsonb_typeof(x) <> 'string' or length(x #>> '{}') > 200) then return 'notes'; end if;
-  if jsonb_typeof(p_report -> 'proposals') <> 'array' or jsonb_array_length(p_report -> 'proposals') > 3 then return 'proposals'; end if;
-  if p_agent = 'orchestrator' and jsonb_array_length(p_report -> 'proposals') > 0 then return 'orchestrator_proposes'; end if;
-  for p in select * from jsonb_array_elements(p_report -> 'proposals') loop
-    n := n + 1;
-    if jsonb_typeof(p) <> 'object' then return 'proposal_shape'; end if;
-    if (select count(*) from jsonb_object_keys(p)) <> 5 or not (p ?& array['kind', 'target', 'metric', 'change', 'rationale']) then return 'proposal_keys'; end if;
-    if jsonb_typeof(p -> 'kind') <> 'string' or not (kinds ? (p ->> 'kind')) then return 'proposal_kind'; end if;
-    if jsonb_typeof(p -> 'target') <> 'string' or not (targets ? (p ->> 'target')) then return 'proposal_target'; end if;
-    if jsonb_typeof(p -> 'metric') <> 'null' and (jsonb_typeof(p -> 'metric') <> 'string'
-       or not exists (select 1 from staff.metric_registry m where m.metric = p ->> 'metric' and (m.agent = p_agent or m.metric = 'eligible_people'))) then return 'proposal_metric'; end if;
-    if jsonb_typeof(p -> 'change') <> 'object' or octet_length((p -> 'change')::text) > 1024 or jsonb_path_exists(p -> 'change', 'strict $.*.*.*', '{}', true) then return 'proposal_change'; end if;
-    if jsonb_typeof(p -> 'rationale') <> 'string' or length(p ->> 'rationale') not between 1 and 300 then return 'proposal_rationale'; end if;
-  end loop;
+  if not (p_report ?& want) then return 'missing_key'; end if; /* every key present: a missing one is not a NULL that slips past */
+  if jsonb_typeof(p_report -> 'summary') is distinct from 'string' or length(p_report ->> 'summary') not between 1 and 280 then return 'summary'; end if;
+  if jsonb_typeof(p_report -> 'notes') is distinct from 'array' or jsonb_array_length(p_report -> 'notes') > 5 then return 'notes'; end if;
+  if exists (select 1 from jsonb_array_elements(p_report -> 'notes') x where jsonb_typeof(x) is distinct from 'string' or length(x #>> '{}') not between 1 and 200) then return 'notes'; end if;
+  if jsonb_typeof(p_report -> 'proposals') is distinct from 'array' or jsonb_array_length(p_report -> 'proposals') > 3 then return 'proposals'; end if;
   if p_agent = 'orchestrator' then
-    if jsonb_typeof(p_report -> 'ranking') <> 'array' then return 'ranking'; end if;
-    if exists (select 1 from jsonb_array_elements(p_report -> 'ranking') x where jsonb_typeof(x) <> 'string') then return 'ranking'; end if;
+    if jsonb_array_length(p_report -> 'proposals') > 0 then return 'orchestrator_proposes'; end if;
+    if jsonb_typeof(p_report -> 'ranking') is distinct from 'array' then return 'ranking'; end if;
+    if exists (select 1 from jsonb_array_elements(p_report -> 'ranking') x where jsonb_typeof(x) is distinct from 'string') then return 'ranking'; end if;
     if (select count(*) from jsonb_array_elements_text(p_report -> 'ranking')) <> (select count(distinct x) from jsonb_array_elements_text(p_report -> 'ranking') x) then return 'ranking_duplicate'; end if;
+    return null;
   end if;
+  if m is null then return 'proposal_kind'; end if;
+  for p in select * from jsonb_array_elements(p_report -> 'proposals') loop
+    if jsonb_typeof(p) is distinct from 'object' then return 'proposal_shape'; end if;
+    if (select count(*) from jsonb_object_keys(p)) <> 5 or not (p ?& array['kind', 'target', 'metric', 'change', 'rationale']) then return 'proposal_keys'; end if;
+    if jsonb_typeof(p -> 'kind') is distinct from 'string' or not (m ? (p ->> 'kind')) then return 'proposal_kind'; end if;
+    if jsonb_typeof(p -> 'target') is distinct from 'string' or not ((m -> (p ->> 'kind')) ? (p ->> 'target')) then return 'proposal_target'; end if;
+    if jsonb_typeof(p -> 'metric') = 'null' then
+      if p ->> 'kind' = 'measurement_gap' then return 'proposal_metric'; end if;
+    elsif jsonb_typeof(p -> 'metric') is distinct from 'string'
+       or not exists (select 1 from staff.metric_registry r where r.metric = p ->> 'metric' and (r.agent = p_agent or r.metric = 'eligible_people')) then return 'proposal_metric';
+    end if;
+    if jsonb_typeof(p -> 'change') is distinct from 'object' or (select count(*) from jsonb_object_keys(p -> 'change')) not between 1 and 4 then return 'proposal_change'; end if;
+    for k, v in select * from jsonb_each(p -> 'change') loop
+      if k !~ '^[a-z][a-z_]{0,29}$' or jsonb_typeof(v) is distinct from 'string' or length(v #>> '{}') not between 1 and 120 then return 'proposal_change'; end if;
+    end loop;
+    if jsonb_typeof(p -> 'rationale') is distinct from 'string' or length(p ->> 'rationale') not between 1 and 300 then return 'proposal_rationale'; end if;
+  end loop;
   return null;
 end $$;
 
@@ -395,6 +424,7 @@ declare kid bigint := staff.worker_key(p_key); j staff.review_jobs; st staff.rev
 begin
   if kid is null then return jsonb_build_object('error', 'denied'); end if;
   perform pg_advisory_xact_lock(hashtext('staff.run_begin'));
+  if not staff.key_active(kid) then return jsonb_build_object('error', 'denied'); end if;
   perform staff.review_expire();
   j := staff.review_claimed(kid, p_job, p_token);
   if j.id is null then return jsonb_build_object('error', 'no_such_claim'); end if;
@@ -408,11 +438,8 @@ begin
     return jsonb_build_object('error', 'report_differs');
   end if;
   if j.state <> 'claimed' then return jsonb_build_object('stop', coalesce(j.code, j.state)); end if;
-  why := staff.review_why_not(j.run_id);
-  if why is not null then
-    update staff.review_jobs set state = 'dropped', code = why, finished_at = now() where id = j.id;
-    return jsonb_build_object('stop', why);
-  end if;
+  why := staff.review_gate(j.id, j.run_id);
+  if why is not null then return jsonb_build_object('stop', why); end if;
   err := staff.review_report_error(p_agent, p_report);
   if err is not null then return jsonb_build_object('error', 'bad_report', 'why', err); end if;
   if p_agent = 'orchestrator' then
@@ -434,14 +461,15 @@ begin
   end if;
   prov := (select coalesce(jsonb_object_agg(key, left(value #>> '{}', 40)), '{}'::jsonb) from jsonb_each(coalesce(p_provenance, '{}'::jsonb))
     where key in ('cli', 'model', 'prompt_v', 'schema_v', 'output_hash') and jsonb_typeof(value) = 'string');
-  update staff.review_stages set state = 'accepted', accepted_at = now(), report = p_report, report_hash = h, provenance = prov where job_id = j.id and agent = p_agent;
-  perform staff.event(j.run_id, p_agent, 'review', p_agent || ': ' || left(p_report ->> 'summary', 280),
+  update staff.review_stages set state = 'accepted', accepted_at = clock_timestamp(), report = p_report, report_hash = h, provenance = prov where job_id = j.id and agent = p_agent;
+  perform staff.event(j.run_id, p_agent, 'review', p_agent || ': ' || (p_report ->> 'summary'), /* at most 280 by the contract: shown whole */
     jsonb_build_object('job', j.id, 'notes', p_report -> 'notes', 'refs', refs, 'ranking', p_report -> 'ranking'));
-  update staff.worker_heartbeats set state = 'posted', at = now() where agent = p_agent and job_id = j.id;
+  update staff.worker_heartbeats set state = 'posted', at = clock_timestamp() where agent = p_agent and job_id = j.id;
   return jsonb_build_object('ok', true, 'refs', refs);
 end $$;
 
--- a failure is recorded for the exact claim even after its lease or a drop, so the shared block always lands; idempotent
+-- a failure is recorded for the exact claim even after its lease, a drop, or a key rotation (any active key with the
+-- job's secret token may record it; recording a block gives no power to run anything); idempotent
 create or replace function public.worker_fail(p_key text, p_job uuid, p_token uuid, p_code text) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare kid bigint := staff.worker_key(p_key); j staff.review_jobs; b bigint;
@@ -449,13 +477,14 @@ begin
   if kid is null then return jsonb_build_object('error', 'denied'); end if;
   if p_code not in ('timeout', 'provider_limit', 'provider_error', 'bad_output', 'crash', 'uncertain', 'lease_lost', 'transport') then return jsonb_build_object('error', 'bad_code'); end if;
   perform pg_advisory_xact_lock(hashtext('staff.run_begin'));
-  j := staff.review_claimed(kid, p_job, p_token);
+  if not staff.key_active(kid) then return jsonb_build_object('error', 'denied'); end if;
+  select * into j from staff.review_jobs where id = p_job and claim_token = p_token;
   if j.id is null then return jsonb_build_object('error', 'no_such_claim'); end if;
   select id into b from staff.provider_blocks where job_id = j.id;
   if found then return jsonb_build_object('ok', true, 'block', b, 'replayed', true); end if;
-  update staff.review_jobs set state = 'blocked', code = p_code, finished_at = coalesce(finished_at, now()) where id = j.id;
+  update staff.review_jobs set state = 'blocked', code = p_code, finished_at = coalesce(finished_at, clock_timestamp()) where id = j.id;
   insert into staff.provider_blocks (source, error, code, run_id, job_id) values ('codex-worker', p_code, p_code, j.run_id, j.id) returning id into b;
-  update staff.worker_heartbeats set state = 'stopped', at = now() where job_id = j.id;
+  update staff.worker_heartbeats set state = 'stopped', at = clock_timestamp() where job_id = j.id;
   perform staff.event(j.run_id, 'orchestrator', 'blocked', 'orchestrator: the review stopped (' || p_code || '); nothing runs again until an owner clears block #' || b, jsonb_build_object('job', j.id, 'block', b, 'code', p_code));
   return jsonb_build_object('ok', true, 'block', b);
 end $$;
@@ -466,13 +495,16 @@ declare kid bigint := staff.worker_key(p_key); j staff.review_jobs;
 begin
   if kid is null then return jsonb_build_object('error', 'denied'); end if;
   perform pg_advisory_xact_lock(hashtext('staff.run_begin'));
+  if not staff.key_active(kid) then return jsonb_build_object('error', 'denied'); end if;
+  perform staff.review_expire();
   j := staff.review_claimed(kid, p_job, p_token);
   if j.id is null then return jsonb_build_object('error', 'no_such_claim'); end if;
   if j.state = 'done' then return jsonb_build_object('ok', true, 'replayed', true); end if;
   if j.state <> 'claimed' then return jsonb_build_object('stop', coalesce(j.code, j.state)); end if;
+  if staff.review_gate(j.id, j.run_id) is not null then return jsonb_build_object('stop', staff.review_why_not(j.run_id)); end if;
   if (select count(*) from staff.review_stages where job_id = j.id and state = 'accepted') <> 5 then return jsonb_build_object('error', 'stages_missing'); end if;
-  update staff.review_jobs set state = 'done', code = 'done', finished_at = now() where id = j.id;
-  update staff.worker_heartbeats set state = 'done', at = now() where job_id = j.id;
+  update staff.review_jobs set state = 'done', code = 'done', finished_at = clock_timestamp() where id = j.id;
+  update staff.worker_heartbeats set state = 'done', at = clock_timestamp() where job_id = j.id;
   perform staff.event(j.run_id, 'orchestrator', 'review', 'orchestrator: the team review is done', jsonb_build_object('job', j.id, 'state', 'done'));
   return jsonb_build_object('ok', true);
 end $$;
@@ -482,10 +514,14 @@ do $$
 declare f text;
 begin
   foreach f in array array['staff.worker_key(text)', 'staff.review_why_not(uuid)', 'staff.review_worth(uuid)', 'staff.review_expire()',
-    'staff.review_claimed(bigint, uuid, uuid)', 'staff.review_order()', 'staff.review_report_error(text, jsonb)', 'staff.prune(integer)'] loop
+    'staff.review_claimed(bigint, uuid, uuid)', 'staff.review_order()', 'staff.review_report_error(text, jsonb)',
+    'staff.key_active(bigint)', 'staff.review_gate(uuid, uuid)'] loop
     execute 'alter function ' || f || ' owner to rhythme_staff_fn';
     execute 'revoke all on function ' || f || ' from public, anon, authenticated';
   end loop;
+  -- prune keeps the owner it had (it deletes audit rows the staff role may not touch); only who may call it is restated
+  revoke all on function staff.prune(integer) from public, anon, authenticated;
+  grant execute on function staff.prune(integer) to rhythme_staff_fn;
   foreach f in array array['public.admin_refresh(integer, text)', 'public.admin_review_status()', 'public.admin_proposals(text)',
     'public.admin_decide(bigint, text, text)', 'public.admin_policy_set(text, jsonb)', 'public.admin_block_clear(bigint)'] loop
     execute 'alter function ' || f || ' owner to rhythme_staff_fn';
