@@ -620,8 +620,8 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
       p.call('stopPractice()'); p.call('runPractice("teeth", 0)'); var nextP = p.c.practice; if (fin) fin(); if (meta) meta();
       return flush().then(function () {
         check('Everyday callbacks and captions belong to the originating practice, with the old audio and wait cancelled', p.c.practice === nextP && oldP.audio.paused && oldP.cancelWait === null && p.clips.length === 2 && p.clips[0].indexOf('plants-0-0') > -1 && p.clips[1].indexOf('teeth-0-0') > -1 && p.captions.length === 2, p.clips.join(' | '));
-        var b = env(); b.call('runSession("erin", 3)'); var bedRun = b.c.session; b.advance(5000); var openingPaused = false; b.c.erinAudio = { pause: function () { openingPaused = true; } }; b.call('stopEverything()');
-        check('bedtime stops the session audio and pending callbacks, saving nothing below a full minute', b.c.session === null && bedRun.audio.paused && openingPaused && bedRun.cancelWait === null && !b.timers.some(function (t) { return t.live; }) && b.w.OvuStore.list('mindfulness').length === 0 && !b.c.clock);
+        var b = env(); b.call('runSession("erin", 3)'); var bedRun = b.c.session; b.advance(5000); b.call('stopEverything()'); /* no opening action line to pause since 23 Oct: Erin's action clips are gone */
+        check('bedtime stops the session audio and pending callbacks, saving nothing below a full minute', b.c.session === null && bedRun.audio.paused && bedRun.cancelWait === null && !b.timers.some(function (t) { return t.live; }) && b.w.OvuStore.list('mindfulness').length === 0 && !b.c.clock);
         var long = env(); long.call('runSession("erin", 3)'); var lr = long.c.session; long.advance(61000); long.call('stopEverything()');
         check('bedtime and Stop share the one-minute rule and stopped-session duration, with no delayed fade into night', long.c.session === null && lr.audio.paused && long.w.OvuStore.list('mindfulness').length === 1 && long.w.OvuStore.list('mindfulness')[0].data.minutes === 1 && !long.timers.some(function (t) { return t.live; }));
         var failed = env(); failed.call('runSession("erin", 3)'); var fr = failed.c.session; failed.advance(61000); failed.w.localStorage.setItem = function () { throw new Error('quota'); }; failed.call('stopEverything()');
@@ -648,17 +648,13 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   }).then(function () { finished = true; }).catch(function (e) { check('runner regression chain completes', false, e.stack); finished = true; });
 })();
 
-(function erinOnEveryAction() {
-  console.log('2k3c. Erin speaks for every action (Jamie, 22 Oct): one clip per action, each one on disk with its script');
-  var rj = fs.readFileSync(path.join(root, 'room.js'), 'utf8'), lines = JSON.parse(fs.readFileSync(path.join(root, 'assets/audio/erin-actions/lines.json'), 'utf8'));
-  var ids = lines.map(function (l) { return l.id; }), m = /var MOMENT_ERIN = (\{[^}]*\});/.exec(rj), map = m ? (new Function('return ' + m[1]))() : {};
-  var used = Object.keys(map).map(function (k) { return map[k]; }).concat(['brush-hen']);
+(function erinNoActionLines() {
+  console.log('2k3c. no Erin voice on everyday actions (Jamie, 23 Oct: "remove all erin voice for activities"): her practices keep their own');
+  var rj = fs.readFileSync(path.join(root, 'room.js'), 'utf8');
   var src = fs.readdirSync(root).filter(function (f) { return /^ovu-.*\.js$/.test(f); }).map(function (f) { return fs.readFileSync(path.join(root, f), 'utf8'); }).join('\n') + rj;
-  (src.match(/\.erin\('([a-z-]+)'\)/g) || []).forEach(function (x) { used.push(/'([a-z-]+)'/.exec(x)[1]); });
-  var missing = used.filter(function (id) { return ids.indexOf(id) < 0 || !fs.existsSync(path.join(root, 'assets/audio/erin-actions', id + '.mp3')); });
-  check('every Erin line the app plays has a script and an mp3', m && Object.keys(map).length > 40 && missing.length === 0, missing.join());
-  check('every scripted line has its clip, and no script has an em dash', lines.every(function (l) { return fs.existsSync(path.join(root, 'assets/audio/erin-actions', l.id + '.mp3')) && l.text.indexOf('\u2014') < 0; }));
-  check('moment() plays her line before any early return, and stays quiet while her guided practice speaks', /if \(!opt\.tries && !mindfulQuick\(\)\) erin\(/.test(rj) && /function erin\(id\) \{\n    if \(!id \|\| !erinCuesOn\(\) \|\| !soundOn\(\) \|\| asleep\(\) \|\| session \|\| practice \|\| meditating/.test(rj));
+  check('erin() is a no-op and nothing maps an action to a line any more', /function erin\(\) \{ return false; \}/.test(rj) && !/MOMENT_ERIN/.test(rj) && !/erinAudio/.test(rj));
+  check('the action clips and their scripts are gone, and no page or module asks for one', !fs.existsSync(path.join(root, 'assets/audio/erin-actions')) && !/erin-actions\//.test(src));
+  check('saving a log plays no line: the "thank you for taking a moment to notice" clip is gone (Jamie, 23 Oct)', !/thank you for taking a moment to notice/i.test(src));
 })();
 
 (function scoresAndVillagers() {
@@ -3133,7 +3129,8 @@ function scenes(todayIso) {
   check('an old numeric asleep value (1) within one date is a night of its own', r.sleep[1] && r.sleep[1].date === '2025-06-03' && r.sleep[1].bedTime === '00:40' && r.sleep[1].wakeTime === '07:25' && r.sleep[1].hours === 6.8, JSON.stringify(r.sleep[1]));
   check('body mass: pounds convert to kg and the later weigh-in of the day wins', r.weight.length === 1 && r.weight[0].date === '2025-06-02' && r.weight[0].kg === 58.1, JSON.stringify(r.weight));
   check('menstrual flow: a named Medium with a metadata child and a numeric 2 (light) become period days; None is skipped', r.period.length === 2 && r.period[0].flow === 'medium' && r.period[0].date === '2025-06-04' && r.period[1].flow === 'light' && r.counts.flowNone === 1, JSON.stringify(r.period));
-  check('steps, heart rate, night sweats and a workout are skipped and counted by kind', r.skipped.HKQuantityTypeIdentifierStepCount === 5 && r.skipped.HKQuantityTypeIdentifierHeartRate === 3 && r.skippedTotal === 10 && r.skippedKinds === 4, JSON.stringify(r.skipped));
+  check('heart rate and night sweats are skipped and counted by kind; steps and the walk are read now (23 Oct)', r.skipped.HKQuantityTypeIdentifierHeartRate === 3 && r.skipped.HKCategoryTypeIdentifierNightSweats === 1 && !r.skipped.HKQuantityTypeIdentifierStepCount && !r.skipped.HKWorkout && r.skippedTotal === 4 && r.skippedKinds === 2, JSON.stringify(r.skipped));
+  check('five step records from one phone on one day add up to one daily total (120 + 121 + 122 + 123 + 124)', JSON.stringify(r.steps) === JSON.stringify([{ date: '2025-06-02', steps: 610 }]), JSON.stringify(r.steps));
   check('friendly names for skipped kinds', H.friendlyType('HKQuantityTypeIdentifierStepCount') === 'steps' && H.friendlyType('HKQuantityTypeIdentifierSomethingNew') === 'something new');
   var sc = H.appleScanner(), cut = xml.indexOf('startDate="2025-06-02 02:50');
   sc.push(xml.slice(0, cut - 7), false); sc.push(xml.slice(cut - 7, cut + 40), false); sc.push(xml.slice(cut + 40), true);
@@ -3148,7 +3145,8 @@ function scenes(todayIso) {
   var g = gb.result();
   check('Takeout sleep session: stage segments add up, the awake segment is excluded, night on the morning date', g.sleep.length === 1 && g.sleep[0].date === '2025-05-11' && g.sleep[0].bedTime === '23:12' && g.sleep[0].wakeTime === '06:58' && g.sleep[0].asleepMin === 446, JSON.stringify(g.sleep));
   check('Takeout weights: the dated summary CSV and a per-day file named by date both give one weigh-in per day; empty cells skipped', JSON.stringify(g.weight) === JSON.stringify([{ date: '2025-05-11', kg: 57.8 }, { date: '2025-05-12', kg: 58.4 }]), JSON.stringify(g.weight));
-  check('a walk is counted as another kind, not a night', g.skipped.walking === 1 && g.counts.sleepSessions === 1);
+  check('a Takeout walk becomes a workout, not a night (23 Oct)', g.workouts.length === 1 && g.workouts[0].activity === 'walk' && g.workouts[0].minutes === 30 && !g.skipped.walking && g.counts.sleepSessions === 1, JSON.stringify(g.workouts));
+  check('Takeout steps: the dated summary wins over a per-day file for the same date', JSON.stringify(g.steps) === JSON.stringify([{ date: '2025-05-10', steps: 4800 }, { date: '2025-05-11', steps: 6100 }, { date: '2025-05-12', steps: 2900 }]), JSON.stringify(g.steps));
   check('CSV cells with quotes and commas parse', JSON.stringify(H.parseCsv('a,"b,c","d ""e"" f"\n1,2,3\n')) === JSON.stringify([['a', 'b,c', 'd "e" f'], ['1', '2', '3']]));
 })();
 
@@ -3184,12 +3182,12 @@ function scenes(todayIso) {
   check('spotting on a day with recorded flow is dropped; spotting on its own day is kept', JSON.stringify(r.spotting) === JSON.stringify([{ date: '2025-06-07', flow: 'spotting' }]), JSON.stringify(r.spotting));
   check('Apple symptoms map to Rhythme chips, repeats merge, NotPresent is skipped, unmapped ones are not guessed', JSON.stringify(r.symptoms) === JSON.stringify([{ date: '2025-06-04', symptoms: ['cramps', 'headache'] }]) && r.counts.symptomAbsent === 1 && r.skipped.HKCategoryTypeIdentifierNightSweats === 1, JSON.stringify({ s: r.symptoms, c: r.counts }));
   check('mindful sessions add up per day (10 + 5 minutes, 2 sessions)', JSON.stringify(r.mindful) === JSON.stringify([{ date: '2025-06-02', minutes: 15, sessions: 2 }]), JSON.stringify(r.mindful));
-  check('a Workout element is counted as a kind not in Rhythme yet, its child elements are not Records', r.skipped.HKWorkout === 1 && r.counts.workouts === 1 && r.counts.records === 29, JSON.stringify(r.counts));
+  check('a Workout element becomes one walk on its own date and start time, pace not recorded; its child elements are not Records', r.counts.workouts === 1 && r.counts.records === 29 && r.workouts.length === 1 && r.workouts[0].date === '2025-06-03' && r.workouts[0].start === '18:00' && r.workouts[0].activity === 'walk' && r.workouts[0].variant === 'steady' && r.workouts[0].paced === false && r.workouts[0].minutes === 30, JSON.stringify([r.counts, r.workouts]));
   var k = H.kinds(r);
-  check('the picker lists the six kinds Rhythme has a place for, in order, with counts and date ranges', k.ready.map(function (x) { return x.id + ':' + x.count + ':' + x.from + ':' + x.to; }).join(' ') === 'sleep:2:2025-06-02:2025-06-03 period:2:2025-06-04:2025-06-05 spotting:1:2025-06-07:2025-06-07 symptoms:1:2025-06-04:2025-06-04 weight:1:2025-06-02:2025-06-02 mindful:1:2025-06-02:2025-06-02', JSON.stringify(k.ready));
-  check('kinds with no place yet are listed by friendly name with counts and dates, most first', k.later.map(function (x) { return x.name + ':' + x.count; }).join(',') === 'steps:5,heart rate:3,night sweats:1,workouts:1' && k.later[3].from === '2025-06-03', JSON.stringify(k.later));
+  check('the picker lists the kinds found that Rhythme has a place for, in order, with counts and date ranges', k.ready.map(function (x) { return x.id + ':' + x.count + ':' + x.from + ':' + x.to; }).join(' ') === 'sleep:2:2025-06-02:2025-06-03 period:2:2025-06-04:2025-06-05 spotting:1:2025-06-07:2025-06-07 symptoms:1:2025-06-04:2025-06-04 weight:1:2025-06-02:2025-06-02 mindful:1:2025-06-02:2025-06-02 steps:1:2025-06-02:2025-06-02 workouts:1:2025-06-03:2025-06-03', JSON.stringify(k.ready));
+  check('kinds with no place yet are listed by friendly name with counts and dates, most first', k.later.map(function (x) { return x.name + ':' + x.count; }).join(',') === 'heart rate:3,night sweats:1' && k.later[0].from === '2025-06-02', JSON.stringify(k.later));
   var kr = H.kinds(r, { from: '2025-06-04' });
-  check('a date range narrows the counts; kinds with nothing in it stay listed with zero', kr.ready.filter(function (x) { return x.id === 'sleep'; })[0].count === 0 && kr.ready.filter(function (x) { return x.id === 'period'; })[0].count === 2 && kr.ready.length === 6);
+  check('a date range narrows the counts; kinds with nothing in it stay listed with zero', kr.ready.filter(function (x) { return x.id === 'sleep'; })[0].count === 0 && kr.ready.filter(function (x) { return x.id === 'period'; })[0].count === 2 && kr.ready.length === 8);
   S.add('symptom', '2025-06-04', { symptoms: ['acne'], pain: 2, mood: '', notes: 'mine' });
   var preview = H.plan(r, S, { kinds: ['symptoms', 'period'] });
   check('the plan for ticked kinds says which days she logged herself (keptBy)', preview.keptBy.symptoms === 1 && preview.keptBy.period === 0 && preview.counts.symptoms === 0 && preview.counts.period === 2);
@@ -3224,7 +3222,7 @@ function scenes(todayIso) {
   gb.csv(fs.readFileSync(path.join(root, 'tools/fixtures/fit-daily-metrics.csv'), 'utf8'), 'Daily activity metrics.csv');
   var g = gb.result(), gk = H.kinds(g);
   var ln = {}; gk.later.forEach(function (x) { ln[x.name] = x; });
-  check('Takeout meditation sessions become mindful minutes; running and every other daily column are listed as not in Rhythme yet, weight columns are not', JSON.stringify(g.mindful) === JSON.stringify([{ date: '2025-05-11', minutes: 12, sessions: 1 }]) && ln.steps && ln.steps.count === 3 && ln.steps.from === '2025-05-10' && ln.calories && ln['heart points'] && ln.running && ln.running.count === 1 && !Object.keys(ln).some(function (n) { return /weight|date|time/.test(n); }), JSON.stringify(Object.keys(ln)));
+  check('Takeout meditation sessions become mindful minutes, running a workout and the step column steps; every other daily column is listed as not in Rhythme yet, weight columns are not', JSON.stringify(g.mindful) === JSON.stringify([{ date: '2025-05-11', minutes: 12, sessions: 1 }]) && !ln.steps && g.steps.length === 3 && !ln.running && g.workouts.length === 1 && g.workouts[0].activity === 'run' && ln.calories && ln['heart points'] && !Object.keys(ln).some(function (n) { return /weight|date|time/.test(n); }), JSON.stringify(Object.keys(ln)));
 })();
 
 (function healthImportReviewFixes() {
@@ -3264,7 +3262,7 @@ function scenes(todayIso) {
     check('progress was reported and ended at 1', progress.length >= 1 && progress[progress.length - 1] === 1, JSON.stringify(progress));
     return H.importFiles([takeout], { onProgress: function () { } });
   }).then(function (g) {
-    check('the Takeout zip is recognised by its Fit folder: two nights and two weigh-ins, the walk skipped, no period data', g.source === 'google-fit' && g.sleep.length === 2 && g.weight.length === 2 && g.period.length === 0 && g.skipped.walking === 1, JSON.stringify({ s: g.sleep, w: g.weight }));
+    check('the Takeout zip is recognised by its Fit folder: two nights and two weigh-ins, the walk a workout, no period data', g.source === 'google-fit' && g.sleep.length === 2 && g.weight.length === 2 && g.period.length === 0 && g.workouts.length === 1 && g.workouts[0].activity === 'walk' && !g.skipped.walking, JSON.stringify({ s: g.sleep, w: g.weight, wo: g.workouts }));
     return H.importFiles([new File([Buffer.from('not a zip at all, just text that is long enough to pass the size check')], 'random.zip')], {}).then(function () { return 'resolved'; }, function (e) { return e.message; });
   }).then(function (msg) {
     check('a non-zip named .zip fails with a plain-words message', /does not look like a zip/.test(msg), msg);
@@ -4081,8 +4079,8 @@ var summarised = false;
   S.add('period', '2026-10-02', { flow: 'medium' }, 'room');
   N.connectAndRead({ days: 90, now: NOW }).then(function (res) {
     var auth = sh.calls.filter(function (c) { return c.method === 'requestAuthorization'; })[0], reads = sh.calls.filter(function (c) { return c.method === 'readSamples'; });
-    check('Apple is asked to read the three types and nothing else, and no write is ever asked', auth && JSON.stringify(auth.o) === JSON.stringify({ types: ['sleep', 'menstrualFlow', 'intermenstrualBleeding'] }) && sh.calls.every(function (c) { return c.plugin === 'RhythmeHealth' && !/save|write|share/i.test(c.method); }), JSON.stringify(sh.calls.map(function (c) { return c.method; })));
-    check('one read per type over exactly the last 90 days', reads.length === 3 && reads.every(function (c) { return c.o.to === NOW && c.o.to - c.o.from === 90 * 86400000; }), JSON.stringify(reads.map(function (c) { return c.o; })));
+    check('Apple is asked to read the eight named types and nothing else, and no write is ever asked', auth && JSON.stringify(auth.o) === JSON.stringify({ types: ['sleep', 'menstrualFlow', 'intermenstrualBleeding', 'steps', 'workouts', 'restingHeartRate', 'wristTemperature', 'basalTemperature'] }) && sh.calls.every(function (c) { return c.plugin === 'RhythmeHealth' && !/save|write|share/i.test(c.method); }), JSON.stringify(sh.calls.map(function (c) { return c.method; })));
+    check('one read per type over exactly the last 90 days', reads.length === 8 && reads.every(function (c) { return c.o.to === NOW && c.o.to - c.o.from === 90 * 86400000; }), JSON.stringify(reads.map(function (c) { return c.o; })));
     check('the result is an Apple Health result marked as a direct read', res.source === 'apple-health' && res.origin === 'healthkit' && res.window.days === 90 && res.empty === false);
     var n = res.sleep[0];
     check('stages add up to one night on the morning it ended, at the phone clock time; awake minutes are left out', res.sleep.length === 2 && n.date === '2026-10-15' && n.bedTime === '23:10' && n.wakeTime === '06:50' && n.asleepMin === 460 && n.basis === 'asleep', JSON.stringify(res.sleep));
@@ -6007,8 +6005,7 @@ var summarised = false;
     check('the sea animals keep one plain fact and no citation, on screen or in the data (Jamie, 22 Oct)', !/class="fishsrc"/.test(hb) && !/source: '/.test(hb) && !/url: 'https/.test(hb));
   })();
   check('the PULSE flow asks before saving, ends the break when she leaves the sheet or the app, and joins the one-activity rule', /Log what I did/.test(rs) && /current !== 'pulse' \|\| document\.hidden/.test(rs) && /function openPulse\(id\) \{[\s\S]{0,200}refuseBusy\(\)/.test(rs));
-  var lines = JSON.parse(fs.readFileSync(path.join(root, 'assets/audio/erin-actions/lines.json'), 'utf8')).map(function (x) { return x.id; });
-  check("Erin's voice for before, start, stop and log, each with its clip", ['pulse-before', 'pulse-start', 'pulse-stop', 'pulse-log'].every(function (id) { return lines.indexOf(id) > -1 && fs.existsSync(path.join(root, 'assets/audio/erin-actions/' + id + '.mp3')); }));
+  check('PULSE plays no Erin action line (23 Oct)', !/erin\('pulse-/.test(rs) || /function erin\(\) \{ return false; \}/.test(fs.readFileSync(path.join(root, 'room.js'), 'utf8')));
 })();
 
 (function () {
@@ -6074,7 +6071,7 @@ var summarised = false;
   check('a full dish shelf refuses before anything is used: tomatoes, rice and the egg all stay', !full.ok && /99/.test(full.why) && fa.harvest.tomato === 2 && fa.kitchen.rice === 1 && fa.pantry.egg === 1 && fa.dishes.tomatoegg === 99);
   var bought = Kb.buyStaple(Sb, wb.OvuRewards, 'egg');
   check('a grocer egg joins the mix as a small one', !bought.ok || Rb.ranchOf(Fb.farmState(Sb)).sizes.egg.small >= 1);
-  check('every Erin ranch line has its script and clip', ['ranch-open', 'ranch-room', 'ranch-arrive', 'ranch-egg', 'ranch-hatch', 'ranch-calf', 'ranch-born', 'ranch-grown'].every(function (id) { return fs.existsSync(path.join(root, 'assets/audio/erin-actions/' + id + '.mp3')); }));
+  check('the ranch plays no Erin action line (23 Oct)', !fs.existsSync(path.join(root, 'assets/audio/erin-actions')));
   check('the farm keeps every animal\'s collection day, not only the three starters, and the ranch record rides along in farmState', /Object\.keys\(f\.animals/.test(fs.readFileSync(path.join(root, 'ovu-farm.js'), 'utf8')) && /ranch: f\.ranch/.test(fs.readFileSync(path.join(root, 'ovu-farm.js'), 'utf8')));
   /* Codex, 22 Oct (second review): a care save read before another tab's purchase overwrote the purchase. Two tabs share
      one storage and one lock; the care runs inside the lock, so it reads the farm after the hen was bought. */
@@ -6349,5 +6346,94 @@ var summarised = false;
     check('later presses go straight to the plain report, never the missing refresh', refs === 0 && runs === 2, sent);
     delete openHarness.dashboardBeforeMigration;
   }).catch(function (e) { check('before-migration harness ran', false, String(e && e.stack || e)); });
+})();
+(function healthSignals() {
+  console.log('health import: steps, workouts, resting heart rate and temperature (23 Oct): synced only, counted once, no target or score');
+  var w = fresh('2026-10-23'), H = w.OvuHealth, S = w.OvuStore, EX = w.OvuExercise;
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-signals.js'), 'utf8'), w, { filename: 'ovu-signals.js' });
+  var G = w.OvuSignals;
+  var rec = function (type, src, a, b, v, unit) { return '<Record type="' + type + '" sourceName="' + src + '" unit="' + (unit || 'count') + '" startDate="' + a + '" endDate="' + (b || a) + '" value="' + v + '"/>'; };
+  var ST = 'HKQuantityTypeIdentifierStepCount', HR = 'HKQuantityTypeIdentifierRestingHeartRate', WT = 'HKQuantityTypeIdentifierAppleSleepingWristTemperature', BT = 'HKQuantityTypeIdentifierBasalBodyTemperature';
+  var xml = '<HealthData>' + [
+    /* the phone and the watch both counted 09:00 to 10:00; the watch alone counted 18:00 */
+    rec(ST, 'iPhone', '2026-10-20 09:00:00 +0800', '2026-10-20 09:30:00 +0800', 800), rec(ST, 'iPhone', '2026-10-20 09:30:00 +0800', '2026-10-20 10:00:00 +0800', 400),
+    rec(ST, 'Watch', '2026-10-20 09:00:00 +0800', '2026-10-20 10:00:00 +0800', 1500), rec(ST, 'Watch', '2026-10-20 18:00:00 +0800', '2026-10-20 18:40:00 +0800', 2000),
+    rec(ST, 'iPhone', '2026-10-20 21:00:00 +0800', '2026-10-20 21:10:00 +0800', 300),
+    rec(HR, 'Watch', '2026-10-20 08:00:00 +0800', '', 61, 'count/min'), rec(HR, 'Watch', '2026-10-20 20:00:00 +0800', '', 64, 'count/min'), rec(HR, 'Watch', '2026-10-21 08:00:00 +0800', '', 300, 'count/min'),
+    rec(WT, 'Watch', '2026-10-20 23:30:00 +0800', '2026-10-21 06:40:00 +0800', 35.62, 'degC'), rec(BT, 'Thermometer', '2026-10-21 06:45:00 +0800', '', 97.7, 'degF'),
+    '<Workout workoutActivityType="HKWorkoutActivityTypeWalking" duration="40" durationUnit="min" startDate="2026-10-21 07:00:00 +0800" endDate="2026-10-21 07:40:00 +0800">',
+    '<WorkoutStatistics type="HKQuantityTypeIdentifierDistanceWalkingRunning" sum="4" unit="km"/></Workout>',
+    '<Workout workoutActivityType="HKWorkoutActivityTypeWalking" duration="25" durationUnit="min" startDate="2026-10-21 07:05:00 +0800" endDate="2026-10-21 07:30:00 +0800"></Workout>',
+    '<Workout workoutActivityType="HKWorkoutActivityTypeRunning" duration="30" durationUnit="min" totalDistance="5.4" totalDistanceUnit="km" startDate="2026-10-22 06:30:00 +0800" endDate="2026-10-22 07:00:00 +0800"></Workout>',
+    '<Workout workoutActivityType="HKWorkoutActivityTypeYoga" duration="45" durationUnit="min" startDate="2026-10-22 19:00:00 +0800" endDate="2026-10-22 19:45:00 +0800"></Workout>',
+    '<Workout workoutActivityType="HKWorkoutActivityTypeCurling" duration="60" durationUnit="min" startDate="2026-10-22 20:00:00 +0800" endDate="2026-10-22 21:00:00 +0800"></Workout>'
+  ].join('') + '</HealthData>';
+  var r = H.parseAppleXml(xml);
+  check('steps: where a phone and a watch counted the same hour the larger count stays, then hours add up (1500 + 2000 + 300)', JSON.stringify(r.steps) === JSON.stringify([{ date: '2026-10-20', steps: 3800 }]), JSON.stringify(r.steps));
+  check('resting heart rate: one number a day, the mean of that day; an impossible 300 is not read', JSON.stringify(r.restinghr) === JSON.stringify([{ date: '2026-10-20', bpm: 63 }]) && r.counts.unreadable === 1, JSON.stringify([r.restinghr, r.counts.unreadable]));
+  check('temperature: a sleeping wrist reading belongs to the morning it ends on; basal in °F becomes °C (97.7 °F = 36.5 °C)', JSON.stringify(r.temperature) === JSON.stringify([{ date: '2026-10-21', wrist: 35.62, basal: 36.5 }]), JSON.stringify(r.temperature));
+  var ws = r.workouts.map(function (x) { return [x.date, x.start, x.activity, x.variant, x.minutes, x.paced].join(' '); });
+  check('workouts: two overlapping walks are one (the longer), its pace from distance (4 km in 40 min is 6 km/h, brisk); 5.4 km in 30 min is a 10.8 km/h run; yoga has no pace', JSON.stringify(ws) === JSON.stringify(['2026-10-21 07:00 walk brisk 40 true', '2026-10-22 06:30 run fast 30 true', '2026-10-22 19:00 yoga hatha 45 ']), JSON.stringify(ws));
+  check('a workout type with no Movement activity (curling) is listed, never guessed', r.skipped.HKWorkoutOther === 1 && H.kinds(r).later.some(function (l) { return /no activity/.test(l.name); }), JSON.stringify(r.skipped));
+  check('pace bands: 4.0 km/h slow, 5.0 steady, 6.0 brisk, 6.6 very brisk; under 9 km/h a jog; cycling 20 km/h general', H.paceVariant('walk', 4) === 'slow' && H.paceVariant('walk', 5) === 'steady' && H.paceVariant('walk', 6) === 'brisk' && H.paceVariant('walk', 6.6) === 'fast' && H.paceVariant('run', 8) === 'jog' && H.paceVariant('cycle', 20) === 'general');
+  var k = H.kinds(r).ready.map(function (x) { return x.id; });
+  check('the picker offers the four new kinds, nothing ticked by the module', JSON.stringify(k) === JSON.stringify(['steps', 'workouts', 'restinghr', 'temperature']), JSON.stringify(k));
+
+  /* writing: workouts become Movement entries, counted once */
+  S.add('exercise', '2026-10-22', EX.makeEntry({ activity: 'yoga', variant: 'vinyasa', minutes: 50 }), 'room');
+  var p = H.apply(r, S, { kinds: ['steps', 'workouts', 'restinghr', 'temperature'] });
+  var ex = S.list('exercise').filter(function (e) { return e.source === 'apple-health'; });
+  check('a yoga she logged herself that day keeps hers; the walk and the run come in', p.counts.workouts === 2 && p.keptBy.workouts === 1 && ex.length === 2 && ex.every(function (e) { return e.data.activity !== 'yoga'; }), JSON.stringify([p.counts, p.keptBy]));
+  var walk = ex.filter(function (e) { return e.data.activity === 'walk'; })[0];
+  check('an imported walk carries its Compendium MET, its pace, where it came from and no strength day', walk && walk.data.met === 4.8 && /from your pace/.test(walk.data.detail) && walk.data.from === 'Apple Health' && walk.data.strength === false && walk.data.start === '07:00' && walk.data.km === 4, JSON.stringify(walk && walk.data));
+  var p2 = H.apply(r, S, { kinds: ['workouts', 'steps'] });
+  check('reading again refreshes the same workouts and days instead of adding twice', p2.refreshed === 3 && S.list('exercise').filter(function (e) { return e.source === 'apple-health'; }).length === 2 && S.list('steps').length === 1, JSON.stringify(p2));
+  var wk = EX.week(S.list('exercise'), '2026-10-23');
+  S.add('exercise', '2026-10-21', EX.makeEntry({ activity: 'walk', variant: 'steady', minutes: 30 }), 'room');
+  var wk2 = EX.week(S.list('exercise'), '2026-10-23');
+  check('logging the same walk by hand after it came in counts it once: hers counts, the imported one is left out of the week', wk2.sessions === wk.sessions && wk2.importedSkipped === 1 && wk2.minutes === wk.minutes - 40 + 30, JSON.stringify([wk.sessions, wk.minutes, wk2.sessions, wk2.minutes]));
+  var RWd = w.OvuRewards.award(ex[0]);
+  check('imported workouts earn no hearts', RWd && RWd.points === 0, JSON.stringify(RWd));
+  check('the store keeps the three new daily types, one a day', S.list('steps').length === 1 && S.list('restinghr').length === 1 && S.list('temperature').length === 1 && w.OvuStore.TYPES.indexOf('temperature') > -1);
+  check('removing workouts takes only the imported ones; her own stay', H.removeImported(S, 'workouts') === 2 && S.list('exercise').length === 2 && S.list('exercise').every(function (e) { return e.source === 'room'; }));
+  var mig = fs.readFileSync(path.join(root, 'supabase/migrations/20261023120000_health_signal_entries.sql'), 'utf8');
+  check('the migration lets every store type sync, and says when it was applied', S.TYPES.every(function (t) { return mig.indexOf("'" + t + "'") > -1; }) && /APPLIED to the live project on\n-- 23 Oct 2026/.test(mig));
+
+  /* Takeout and the native shell take the same paths */
+  var fitWalk = H.fitWorkoutType('walking.treadmill'), fitRun = H.fitWorkoutType('running'), fitNone = H.fitWorkoutType('sleep.deep');
+  check('Google Fit activity names map to the same workouts; others are not guessed', fitWalk === 'Walking' && fitRun === 'Running' && fitNone === null);
+  var sc = H.appleScanner();
+  sc.record({ type: ST, startDate: '2026-10-20T00:00:00+08:00', endDate: '2026-10-21T00:00:00+08:00', value: '6420', unit: 'count', sourceName: 'Health daily total' });
+  sc.record({ type: 'HKWorkout', workoutActivityType: 'HKWorkoutActivityTypeCycling', startDate: '2026-10-20T07:00:00+08:00', endDate: '2026-10-20T08:00:00+08:00', duration: 60, distanceKm: 25 });
+  var nr = sc.result();
+  check('a direct read: Apple\'s daily step total is kept as it is, and a workout with distance gets its pace (25 km/h, fast cycling)', JSON.stringify(nr.steps) === JSON.stringify([{ date: '2026-10-20', steps: 6420 }]) && nr.workouts.length === 1 && nr.workouts[0].activity === 'cycle' && nr.workouts[0].variant === 'fast', JSON.stringify([nr.steps, nr.workouts]));
+
+  /* the numbers shown: her own usual, never a target or a score */
+  var es = []; for (var i = 1; i <= 20; i++) es.push({ type: 'steps', date: G.addDays('2026-10-23', -i), data: { steps: 5000 + i * 100 } });
+  es.push({ type: 'steps', date: '2026-10-23', data: { steps: 1200 } });
+  var st = G.steps(es, '2026-10-23');
+  check('steps: the last 7 days, today shown but left out of the usual; the usual is the median of the 28 days before today', st.days.length === 7 && st.days[6].steps === 1200 && st.usual === 6050 && st.usualDays === 20, JSON.stringify(st));
+  check('no usual from fewer than 7 days', G.steps(es.slice(0, 5).concat([es[20]]), '2026-10-23').usual === null);
+  var hs = []; for (var j = 7; j <= 30; j++) hs.push({ type: 'restinghr', date: G.addDays('2026-10-23', -j), data: { bpm: 60 } });
+  [0, 1, 2, 3].forEach(function (d) { hs.push({ type: 'restinghr', date: G.addDays('2026-10-23', -d), data: { bpm: 64 } }); });
+  var h = G.heart(hs, '2026-10-23');
+  check('resting heart rate: this week against her usual, as plain beats', h.recent === 64 && h.usual === 60 && h.diff === 4 && /4 above your usual of 60/.test(G.heartLine(h)), G.heartLine(h));
+  check('a small difference reads as around her usual', /around your usual/.test(G.heartLine({ recent: 61, usual: 60, diff: 1 })));
+  var ts = []; for (var q = 3; q <= 20; q++) ts.push({ type: 'temperature', date: G.addDays('2026-10-23', -q), data: { wrist: 35.5, basal: null } });
+  ts.push({ type: 'temperature', date: '2026-10-22', data: { wrist: 35.8, basal: null } });
+  var t = G.temperature(ts, '2026-10-23');
+  check('temperature: the last 3 days against her usual, wrist and basal apart', t.wrist.diff === 0.3 && !t.basal.any && /\+0\.3 °C/.test(G.tempLine(t.wrist, 'wrist')), JSON.stringify(t.wrist));
+  var words = JSON.stringify(G.COPY) + G.heartLine(h) + G.tempLine(t.wrist, 'wrist');
+  check('the words: no em dash, no 10,000 goal, nothing called a stress score, and no prediction from temperature', !/—/.test(words) && !/10,000 (a day|steps a day)/.test(words) && /never calls it stress/.test(words) && /never uses it to predict/.test(words) && !/score/i.test(words));
+
+  /* the screens and the shells */
+  var rj = fs.readFileSync(path.join(root, 'room.js'), 'utf8'), jh = fs.readFileSync(path.join(root, 'journal.html'), 'utf8'), rh = fs.readFileSync(path.join(root, 'room.html'), 'utf8');
+  check('the room loads ovu-signals.js and draws steps in Movement and body signals in the Cycle tab', /<script src="ovu-signals\.js"><\/script>/.test(rh) && /moveWeekHTML\(wk\) \+ moveStepsHTML\(\)/.test(rj) && /var sig = signalsHTML\(\)/.test(rj));
+  check('the journal names the new kinds and keeps them under their own chip, out of All', /steps:'directions_walk'/.test(jh) && /data-f="body"/.test(jh) && /filter\|\|!BODY\[e\.type\]/.test(jh));
+  var swift = fs.readFileSync(path.join(root, 'ios/App/App/RhythmeHealthPlugin.swift'), 'utf8');
+  check('the iPhone plugin reads the new types and still never asks to write', /HKStatisticsCollectionQuery/.test(swift) && /restingHeartRate/.test(swift) && /appleSleepingWristTemperature/.test(swift) && /workoutType\(\)/.test(swift) && /toShare: nil/.test(swift) && !/requestAuthorization\(toShare: Set/.test(swift));
+  check('the Health permission text names what is read', /steps, workouts, resting heart rate and temperature/.test(fs.readFileSync(path.join(root, 'ios/App/App/Info.plist'), 'utf8')));
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-healthnative.js'), 'utf8'), w, { filename: 'ovu-healthnative.js' });
+  check('Health Connect is asked only for the three types its plugin knows', JSON.stringify(w.OvuHealthNative.typeIds('android')) === JSON.stringify(['sleep', 'menstrualFlow', 'intermenstrualBleeding']) && w.OvuHealthNative.typeIds('ios').length === 8);
 })();
 process.on('beforeExit', function () { if (summarised) return; summarised = true; Object.keys(openHarness).forEach(function (k) { check('async harness ' + k + ' finished', false, 'its promises never settled'); }); console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });

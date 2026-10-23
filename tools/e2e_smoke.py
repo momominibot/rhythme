@@ -508,6 +508,57 @@ async def gym_checks(browser, gate):
     check("gym: signing out mid-workout ends it, her own clothes back, and its panel goes", not so["active"] and so["costume"] is None and not so["panel"], so)
     await ctxs.close()
 
+async def check_body_signals(browser):
+    """Steps, workouts, resting heart rate and temperature from a health app (23 Oct): Movement shows steps against her
+    usual with no goal, a walk logged by hand and the same walk from Apple Health count once, the Cycle tab shows body
+    signals as a difference from her usual, and the import picker offers the new kinds with nothing ticked."""
+    d = json.loads(json.dumps(DB)); ev = d["events"]; today = datetime.date.today()
+    day = lambda n: (today - datetime.timedelta(days=n)).isoformat()
+    for n in range(1, 21): ev.append({"id": "st%d" % n, "type": "steps", "date": day(n), "createdAt": NOW, "updatedAt": NOW, "source": "apple-health", "data": {"steps": 6000}})
+    ev.append({"id": "st0", "type": "steps", "date": TODAY, "createdAt": NOW, "updatedAt": NOW, "source": "apple-health", "data": {"steps": 2300}})
+    for n in range(0, 31): ev.append({"id": "hr%d" % n, "type": "restinghr", "date": day(n), "createdAt": NOW, "updatedAt": NOW, "source": "apple-health", "data": {"bpm": 64 if n < 7 else 60}})
+    for n in range(0, 21): ev.append({"id": "tp%d" % n, "type": "temperature", "date": day(n), "createdAt": NOW, "updatedAt": NOW, "source": "apple-health", "data": {"wrist": 35.8 if n < 3 else 35.5, "basal": None}})
+    walk = {"activity": "walk", "label": "Walking", "variant": "brisk", "detail": "Brisk, about 5.6 to 6.3 km/h, from your pace", "code": "17200", "met": 4.8, "metSource": "2024 Adult Compendium", "minutes": 40, "intensity": "moderate", "strength": False, "aerobic": True, "note": "", "from": "Apple Health", "importKey": "Walking@x", "start": "07:00"}
+    ev.append({"id": "wk1", "type": "exercise", "date": day(1), "createdAt": NOW, "updatedAt": NOW, "source": "apple-health", "data": walk})
+    ev.append({"id": "wk2", "type": "exercise", "date": day(1), "createdAt": NOW, "updatedAt": NOW, "source": "room", "data": dict(walk, detail="Brisk, about 5.6 to 6.3 km/h", minutes=30, importKey=None, start=None, **{"from": None})})
+    ctx = await browser.new_context(viewport={"width": 390, "height": 844})
+    await ctx.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(d))); await ctx.add_init_script(SESSION_SEED)
+    await ctx.route("**/functions/v1/**", lambda r: r.abort())
+    pg = await ctx.new_page(); errs = []
+    pg.on("pageerror", lambda e: errs.append(str(e)[:200]))
+    await pg.goto(BASE + "room.html", wait_until="domcontentloaded")
+    try: await pg.wait_for_function("()=>window.OvuRoom && !OvuRoom.busy()", timeout=15000)
+    except Exception: pass
+    await pg.click("nav a[data-tab=mind]"); await pg.wait_for_selector("#mindMove", timeout=8000); await pg.click("#mindMove"); await pg.wait_for_selector("#mvSteps", timeout=8000)
+    await pg.evaluate("()=>document.fonts.ready.then(()=>1)"); await pg.wait_for_timeout(150)  # an icon whose font is still loading shows its name as wide text for a moment
+    mv = await pg.evaluate("""()=>{const s=document.querySelector('#mvSteps'), sh=document.querySelector('#sheetBody'), wk=document.querySelector('#mvWeek');
+      return {today: s.querySelector('.mvhead b').textContent, bars: s.querySelectorAll('.stepbars i').length, usual: !!s.querySelector('.stepbars .usual'), text: s.textContent,
+        week: wk.querySelector('.mvhead b').textContent, tag: [...document.querySelectorAll('#mvList li')].filter(li=>/Apple Health/.test(li.textContent)).length, fits: sh.scrollWidth <= sh.clientWidth + 1}}""")
+    check("Movement shows today's steps, the last 7 days as bars and a line at her usual (6,000), with no goal", mv["today"] == "2,300" and mv["bars"] == 7 and mv["usual"] and "Your usual is about 6,000 a day" in mv["text"] and "goal" not in mv["text"].lower() and mv["fits"], mv)
+    check("a walk logged by hand and the same walk from Apple Health count once in the week (30 moderate minutes, not 70); the imported one is marked", mv["week"] == "30" and mv["tag"] == 1, mv)
+    await pg.evaluate("()=>OvuRoom.closeSheet && OvuRoom.closeSheet()"); await pg.keyboard.press("Escape"); await pg.wait_for_timeout(300)
+    await pg.click("nav a[data-tab=cycle]")
+    try: await pg.wait_for_selector("#bodySignals", timeout=8000)
+    except Exception: pass
+    await pg.evaluate("()=>document.fonts.ready.then(()=>1)"); await pg.wait_for_timeout(150)
+    bs = await pg.evaluate("""()=>{const b=document.querySelector('#bodySignals'); if(!b) return null; const sh=document.querySelector('#sheetBody');
+      return {text: b.textContent, cards: b.querySelectorAll('.sigcard').length, sparks: b.querySelectorAll('.sigbars').length, fits: sh.scrollWidth <= sh.clientWidth + 1}}""")
+    check("the Cycle tab shows body signals: resting heart rate 4 above her usual of 60 and wrist temperature +0.3 °C, never called stress", bool(bs) and bs["cards"] == 2 and bs["sparks"] == 2 and "4 above your usual of 60" in bs["text"] and "+0.3 °C" in bs["text"] and "stress score" not in bs["text"].lower() and bs["fits"], bs)
+    await pg.evaluate("()=>OvuRoom.closeSheet && OvuRoom.closeSheet()"); await pg.keyboard.press("Escape"); await pg.wait_for_timeout(300)
+    await pg.click("nav a[data-tab=you]"); await pg.wait_for_selector('[data-yact="import"]', timeout=8000); await pg.click('[data-yact="import"]'); await pg.wait_for_selector("#impApple", state="attached", timeout=8000)
+    xml = ('<HealthData><Record type="HKQuantityTypeIdentifierStepCount" sourceName="iPhone" unit="count" startDate="%s 09:00:00 +0800" endDate="%s 09:30:00 +0800" value="900"/>'
+           '<Record type="HKQuantityTypeIdentifierRestingHeartRate" sourceName="Watch" unit="count/min" startDate="%s 08:00:00 +0800" endDate="%s 08:00:00 +0800" value="58"/>'
+           '<Workout workoutActivityType="HKWorkoutActivityTypeCycling" duration="45" durationUnit="min" startDate="%s 18:00:00 +0800" endDate="%s 18:45:00 +0800"></Workout></HealthData>') % ((day(3),) * 6)
+    await pg.set_input_files("#impApple", files=[{"name": "export.xml", "mimeType": "text/xml", "buffer": xml.encode()}])
+    try: await pg.wait_for_selector(".imp-kinds", timeout=10000)
+    except Exception: pass
+    pk = await pg.evaluate("()=>({kinds: [...document.querySelectorAll('.imp-kinds input[data-kind]')].map(i=>i.dataset.kind+':'+i.checked), go: (document.querySelector('#impGo')||{}).disabled})")
+    check("the import picker offers steps, workouts and resting heart rate from an export, with nothing ticked", pk["kinds"] == ["steps:false", "workouts:false", "restinghr:false"] and pk["go"] is True, pk)
+    await pg.click('.imp-kinds input[data-kind="workouts"]'); await pg.wait_for_timeout(200); await pg.click("#impGo"); await pg.wait_for_timeout(500)
+    got = await pg.evaluate("()=>OvuStore.list('exercise').filter(e=>e.source==='apple-health').map(e=>e.data.activity+':'+e.data.minutes+':'+e.data.strength).sort()")
+    check("bringing in only workouts adds the ride to Movement (45 min, no strength day) and nothing else", got == ["cycle:45:false", "walk:40:false"], got)
+    check("body signals: no page errors", not errs, errs[:3]); await ctx.close()
+
 async def main():
     server = serve()
     try:
@@ -1316,7 +1367,7 @@ async def main():
             await page.set_input_files("#impApple", os.path.join(ROOT, "tools", "fixtures", "apple-export-mini.xml"))
             await page.wait_for_selector("#impGo", timeout=15000)
             pk = await page.evaluate("()=>({kinds: [...document.querySelectorAll('.imp-kind input')].map(i=>i.dataset.kind).join(','), ticked: document.querySelectorAll('.imp-kind input:checked').length, go: document.querySelector('#impGo').disabled, later: document.querySelector('.imp-later summary')?.textContent || '', db: JSON.parse(localStorage.getItem('ovumind_db_v1')).events.filter(e=>e.source==='apple-health').length})")
-            check("the picker lists every kind found with nothing ticked, Bring in locked, kinds with no place yet named, nothing written yet", pk["kinds"] == "sleep,period,spotting,symptoms,weight,mindful" and pk["ticked"] == 0 and pk["go"] and "4 other kinds" in pk["later"] and pk["db"] == 0, pk)
+            check("the picker lists every kind found with nothing ticked (steps and the walk too, since 23 Oct), Bring in locked, kinds with no place yet named, nothing written yet", pk["kinds"] == "sleep,period,spotting,symptoms,weight,mindful,steps,workouts" and pk["ticked"] == 0 and pk["go"] and "2 other kinds" in pk["later"] and pk["db"] == 0, pk)
             await page.click('.imp-kind input[data-kind="sleep"]'); await page.wait_for_function("()=>document.querySelector('.imp-kind input[data-kind=\"sleep\"]')?.checked")
             await page.click('.imp-kind input[data-kind="weight"]'); await page.wait_for_function("()=>!document.querySelector('#impGo').disabled && /2 kinds/.test(document.querySelector('#impGo').textContent)")
             await page.click("#impGo"); await page.wait_for_function("()=>document.querySelector('#impSummary')?.dataset.run === '1'", timeout=15000)
@@ -4384,6 +4435,7 @@ async def main():
             check("villagers: no page errors", not verr, verr[:3])
             await ctxV.close()
             await check_legacy_pages(browser)  # the older pages and the Settings sheet (22 Oct)
+            await check_body_signals(browser)  # steps, workouts, resting heart rate and temperature (23 Oct)
             await gym_checks(browser, gate)  # Tideline Gym workouts, in a context of their own with a fake clock
 
             # 1t. tidy up (23 Oct): clutter on the floor by the clock, "Tidy up your room" with the magical broom (ovu-tidy.js).

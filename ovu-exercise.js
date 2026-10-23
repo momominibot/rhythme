@@ -36,6 +36,7 @@
   var BY = {}; ACTIVITIES.forEach(function (a) { BY[a.id] = a; });
   var WHO = { moderateMin: 150, moderateMax: 300, strengthDays: 2, metMinLow: 500, metMinHigh: 1000 };
   var MAX_MINUTES = 600, NOTE_MAX = 280;
+  var IMPORTED = { 'apple-health': 1, 'google-fit': 1 };
 
   function activity(id) { return BY[id] || null; }
   function variant(actId, varId) { var a = BY[actId]; if (!a) return null; return a.variants.filter(function (x) { return x.id === varId; })[0] || null; }
@@ -80,9 +81,13 @@
   function week(entries, end) {
     var from = addDays(end, -6);
     var s = { from: from, to: end, sessions: 0, minutes: 0, light: 0, moderate: 0, vigorous: 0, strengthMinutes: 0, moderateEquivalent: 0, metMinutes: 0, aerobicMetMinutes: 0, metUnknown: 0, strengthDays: 0, activeDays: 0, status: 'below', toGo: WHO.moderateMin, byActivity: [] };
-    var sDays = {}, aDays = {}, byAct = {};
+    var sDays = {}, aDays = {}, byAct = {}, own = {};
+    /* counted once: a workout brought in from a health app is left out on a day she logged the same activity herself,
+       whichever came first (ovu-health.js already skips it at import when hers came first) */
+    (entries || []).forEach(function (e) { if (e && e.type === 'exercise' && e.data && !IMPORTED[e.source]) own[e.date + '|' + e.data.activity] = 1; });
     (entries || []).forEach(function (e) {
       if (!e || e.type !== 'exercise' || !e.data || e.date < from || e.date > end) return;
+      if (IMPORTED[e.source] && own[e.date + '|' + e.data.activity]) { s.importedSkipped = (s.importedSkipped || 0) + 1; return; }
       if (e.data.activity === 'pulse') { s.pulse = (s.pulse || 0) + 1; s.pulseSeconds = (s.pulseSeconds || 0) + Math.max(0, Number(e.data.seconds) || 0); aDays[e.date] = 1; return; } /* PULSE breaks: shown apart, never WHO minutes or a strength day */
       var d = e.data, m = Math.max(0, Math.round(Number(d.minutes) || 0)); if (!m) return;
       var it = d.intensity || intensityOf(d.met, null), aerobic = d.aerobic !== false && d.activity !== 'strength';

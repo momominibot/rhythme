@@ -88,7 +88,7 @@
       <h2><span class="ms">auto_stories</span>Journal logs</h2>
       <p class="sub">Every entry with its daily summary. Tap the bin to remove one.</p>
       <div class="chips" id="filters" style="margin-top:10px">
-        <button class="chipbtn on" data-f="">All</button><button class="chipbtn" data-f="sleep"><span class="ms">bedtime</span>Sleep</button><button class="chipbtn" data-f="period"><span class="ms">water_drop</span>Period</button><button class="chipbtn" data-f="symptom"><span class="ms">spa</span>Symptoms</button><button class="chipbtn" data-f="food"><span class="ms">restaurant</span>Food</button><button class="chipbtn" data-f="reflection"><span class="ms">edit_note</span>Reflections</button><button class="chipbtn" data-f="mindfulness"><span class="ms">self_improvement</span>Calm</button><button class="chipbtn" data-f="weight"><span class="ms">monitor_weight</span>Weight</button><button class="chipbtn" data-f="exercise"><span class="ms">directions_run</span>Movement</button>
+        <button class="chipbtn on" data-f="">All</button><button class="chipbtn" data-f="sleep"><span class="ms">bedtime</span>Sleep</button><button class="chipbtn" data-f="period"><span class="ms">water_drop</span>Period</button><button class="chipbtn" data-f="symptom"><span class="ms">spa</span>Symptoms</button><button class="chipbtn" data-f="food"><span class="ms">restaurant</span>Food</button><button class="chipbtn" data-f="reflection"><span class="ms">edit_note</span>Reflections</button><button class="chipbtn" data-f="mindfulness"><span class="ms">self_improvement</span>Calm</button><button class="chipbtn" data-f="weight"><span class="ms">monitor_weight</span>Weight</button><button class="chipbtn" data-f="exercise"><span class="ms">directions_run</span>Movement</button><button class="chipbtn" data-f="body"><span class="ms">favorite</span>Steps and body</button>
       </div>
       <div id="timeline"></div>
     </section>
@@ -136,7 +136,7 @@
   function pretty(iso,o){return new Date(iso+'T12:00:00').toLocaleDateString(undefined,o||{weekday:'short',day:'numeric',month:'short'});}
   function cap(s){return s?s.charAt(0).toUpperCase()+s.slice(1):s;}
   function message(el,t,cls){el.textContent=t;el.className='msg on '+cls;}
-  var ICON={sleep:'bedtime',period:'water_drop',symptom:'spa',food:'restaurant',reflection:'edit_note',mindfulness:'self_improvement',weight:'monitor_weight',exercise:'directions_run',sleepcheck:'fact_check'};
+  var ICON={sleep:'bedtime',period:'water_drop',symptom:'spa',food:'restaurant',reflection:'edit_note',mindfulness:'self_improvement',weight:'monitor_weight',exercise:'directions_run',sleepcheck:'fact_check',steps:'directions_walk',restinghr:'favorite',temperature:'device_thermostat'};
   var SRC={'apple-health':'Apple Health','google-fit':'Google'};
   function metMin(d){return typeof d.met==='number'&&d.met>0?Math.round(d.met*(Number(d.minutes)||0)):null;}
   var filter='';
@@ -151,11 +151,15 @@
     if(e.type==='food'){title=cap(d.meal)+(d.time?' · '+d.time:'');var tot=(d.items&&d.items.length&&window.OvuFood)?window.OvuFood.sum(d.items):null;text=(d.foods||'')+(tot?'\n'+window.OvuFood.line(tot.totals)+' · '+d.items.map(function(it){return it.source&&it.source.label?it.source.label:'';}).filter(function(v,i,a){return v&&a.indexOf(v)===i;}).join(', '):'')+((d.tags||[]).length?'\n'+d.tags.join(' · '):'');}
     if(e.type==='mindfulness'){title='Mindfulness · '+(d.minutes||0)+' min';text=(d.kind==='erin'?'Guided by Erin':d.kind==='imported'?(d.guide||'Brought in')+(d.sessions>1?', '+d.sessions+' sessions':''):d.kind==='informal'&&d.activity==='morning'?'Morning start'+(d.version==='erin'?' with Erin’s guide':', your way')+(d.brushed&&d.brushed!=='no'?' · brushed':''):d.kind==='informal'?(d.activityName||d.guide||'Everyday mindfulness'):d.kind==='lightflower'?'Light Flower':d.kind==='breathtap'?'Moon Tap':'Breathing orb')+(d.completed?' · completed':' · stopped early');}
     if(e.type==='reflection'){title='Reflection'+(d.mood?' · '+d.mood:'');text=d.text||'';}
+    if(e.type==='steps'){title='Steps · '+Number(d.steps||0).toLocaleString();text='';}
+    if(e.type==='restinghr'){title='Resting heart rate · '+d.bpm+' bpm';text='';}
+    if(e.type==='temperature'){title='Temperature';text=[typeof d.wrist==='number'?'wrist while asleep '+d.wrist+' °C':'',typeof d.basal==='number'?'basal '+d.basal+' °C':''].filter(Boolean).join(' · ');}
     if(e.type==='exercise'){title='Movement · '+(d.label||'activity')+' · '+(d.activity==='pulse'?(d.seconds||0)+' s':(d.minutes||0)+' min');text=[d.detail||'',metMin(d)!==null?metMin(d)+' MET-minutes':'',d.intensity||'',d.strength?'strength':''].filter(Boolean).join(' · ')+(d.note?'\n'+d.note:'');}
     return '<div class="entry">'+(e.type==='food'&&d.photo?'<img class="ethumb" src="'+d.photo+'" alt="" style="width:44px;height:44px;object-fit:cover;border-radius:10px;flex-shrink:0">':'<span class="ms">'+ICON[e.type]+'</span>')+'<div class="body"><b>'+esc(title)+(SRC[e.source]?'<em class="srcchip">'+SRC[e.source]+'</em>':'')+'</b><span>'+esc(text)+'</span></div><button class="del" data-del="'+esc(e.id)+'" aria-label="Delete entry"><span class="ms">delete</span></button></div>';
   }
   function renderTimeline(){
-    var events=S.list(filter||null).slice().reverse(),groups={},order=[];
+    /* steps, resting heart rate and temperature arrive one a day from a health app, so they have their own chip and stay out of All */
+    var BODY={steps:1,restinghr:1,temperature:1},events=(filter==='body'?S.list(null).filter(function(e){return BODY[e.type];}):S.list(filter||null).filter(function(e){return filter||!BODY[e.type];})).slice().reverse(),groups={},order=[];
     events.forEach(function(e){if(!groups[e.date]){groups[e.date]=[];order.push(e.date);}groups[e.date].push(e);});
     var tl=$('#timeline');
     if(!order.length){tl.innerHTML='<div class="empty">No entries yet. Go back to your room and tap the bed, the calendar, the diary or the clock.</div>';return;}
@@ -270,6 +274,9 @@
     if(e.type==='mindfulness')return ['Mindfulness, '+(d.minutes||0)+' min',(d.kind==='erin'?'guided by Erin':d.kind==='informal'?'everyday practice':d.kind==='imported'?String(d.guide||'brought in').replace(/^From /,'from ')+(d.sessions>1?', '+d.sessions+' sessions':''):'breathing')+(d.completed&&d.kind!=='imported'?', completed':'')];
     if(e.type==='reflection')return ['Reflection'+(d.mood?', '+d.mood:''),d.text||''];
     if(e.type==='weight')return ['Weight',d.kg+' kg'];
+    if(e.type==='steps')return ['Steps',Number(d.steps||0).toLocaleString()];
+    if(e.type==='restinghr')return ['Resting heart rate',d.bpm+' bpm'];
+    if(e.type==='temperature')return ['Temperature',[typeof d.wrist==='number'?'wrist while asleep '+d.wrist+' °C':'',typeof d.basal==='number'?'basal '+d.basal+' °C':''].filter(Boolean).join(', ')];
     if(e.type==='exercise')return ['Movement, '+(d.label||'activity')+', '+(d.activity==='pulse'?(d.seconds||0)+' s':(d.minutes||0)+' min'),[d.detail||'',metMin(d)!==null?metMin(d)+' MET-minutes':'',d.intensity||'',d.strength?'strength':''].filter(Boolean).join(', ')+(d.note?'. '+d.note:'')];
     return [e.type,''];
   }
