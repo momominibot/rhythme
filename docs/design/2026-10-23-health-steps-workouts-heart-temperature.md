@@ -40,6 +40,6 @@ HRV is left out for now. If added later it is a plain trend with no score (the 1
   `Info.plist` says what is read.
 - Health Connect (Android) keeps its three types until its Kotlin plugin learns the new ones; it is never asked for a
   type it would refuse.
-- `supabase/migrations/20261023120000_health_signal_entries.sql`: lets the three new types sync. **Not applied.**
-  Until it is, `ovu-sync.js` holds those rows on the phone, as it did for `exercise` and `sleepcheck`. The staff data
+- `supabase/migrations/20261023120000_health_signal_entries.sql`: lets the three new types sync. **Applied live on 23 Oct 2026**
+  on Jamie's word (it also carried `sleepcheck`). Had it waited, `ovu-sync.js` would have held those rows on the phone. The staff data
   contract names its own types, so none of the three reaches the dashboard.

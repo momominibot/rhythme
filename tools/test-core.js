@@ -6402,7 +6402,7 @@ var summarised = false;
   check('the store keeps the three new daily types, one a day', S.list('steps').length === 1 && S.list('restinghr').length === 1 && S.list('temperature').length === 1 && w.OvuStore.TYPES.indexOf('temperature') > -1);
   check('removing workouts takes only the imported ones; her own stay', H.removeImported(S, 'workouts') === 2 && S.list('exercise').length === 2 && S.list('exercise').every(function (e) { return e.source === 'room'; }));
   var mig = fs.readFileSync(path.join(root, 'supabase/migrations/20261023120000_health_signal_entries.sql'), 'utf8');
-  check('the migration lets every store type sync, and is marked not applied', S.TYPES.every(function (t) { return mig.indexOf("'" + t + "'") > -1; }) && /NOT APPLIED YET/.test(mig));
+  check('the migration lets every store type sync, and says when it was applied', S.TYPES.every(function (t) { return mig.indexOf("'" + t + "'") > -1; }) && /APPLIED to the live project on\n-- 23 Oct 2026/.test(mig));
 
   /* Takeout and the native shell take the same paths */
   var fitWalk = H.fitWorkoutType('walking.treadmill'), fitRun = H.fitWorkoutType('running'), fitNone = H.fitWorkoutType('sleep.deep');

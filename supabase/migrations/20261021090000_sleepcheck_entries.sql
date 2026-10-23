@@ -1,4 +1,5 @@
--- Rhythme two-week sleep check: let 'sleepcheck' entries sync. NOT APPLIED YET: production migrations wait for Jamie.
+-- Rhythme two-week sleep check: let 'sleepcheck' entries sync. Applied on 23 Oct 2026 as part of
+-- 20261023120000_health_signal_entries.sql (the later file carries the full list).
 --
 -- The local store (ovu-store.js) writes a new entry type, 'sleepcheck' (the optional two-week sleep check, one a day).
 -- Until this runs, ovu-sync.js holds sleepcheck rows on the phone and uploads everything else, exactly as it did for

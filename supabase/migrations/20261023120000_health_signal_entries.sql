@@ -1,5 +1,6 @@
--- Rhythme steps, resting heart rate and temperature: let these entry types sync. NOT APPLIED YET: production
--- migrations wait for Jamie.
+-- Rhythme steps, resting heart rate and temperature: let these entry types sync. APPLIED to the live project on
+-- 23 Oct 2026 (Jamie: "Yes, apply the 20261023120000_health_signal_entries migration to the live database"). It
+-- also carried 'sleepcheck', whose own migration (20261021090000) had not been applied.
 --
 -- ovu-health.js now brings in three new entry types from Apple Health, Health Connect or Google Takeout, one a day:
 -- 'steps' (data.steps), 'restinghr' (data.bpm) and 'temperature' (data.wrist, data.basal in degrees Celsius). They are
