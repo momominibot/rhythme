@@ -623,7 +623,8 @@
     restoreTimer = setTimeout(function () {
       if (lastCostume !== rec) return;
       if (!leftOn()) { rec.pending = false; return; } /* her own clothes (or a newer picture) are on: settled */
-      if (rec.pending && rec.gen === imgGen) { watchRestore(rec); return; } /* her own picture is still on its way */
+      if (rec.pending && rec.gen === imgGen && (rec.waits = (rec.waits || 0) + 1) < 5) { watchRestore(rec); return; } /* her own picture is still on its way; after about 6 s it has stalled, so the picture from before (Codex diff review 4) */
+      rec.pending = false;
       ++imgGen; finishTwirl(); avatarImg.src = rec.back || ART + 'avatar-' + savedOutfit() + '.webp';
     }, 1200);
   }

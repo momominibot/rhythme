@@ -229,7 +229,8 @@ async def gym_checks(browser, gate):
     a = await pg.evaluate(G)
     await pg.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('gymbike'))"); await pg.wait_for_timeout(200)
     b2 = await pg.evaluate(G)
-    check("gym: Begin turns her into the yoga set (shown, never saved) and puts her on the belt: the strip plays, her standing picture hides, the panel shows; it is the activity, the room is busy, and another machine waits", a["active"] and a["st"]["mounted"] and a["costume"] == "yoga" and a["saved"] == "base" and a["src"] == "avatar-yoga.webp" and a["hidden"] and a["strip"] and a["stripSrc"] == "avatar-walk-yoga-side.webp" and a["panel"] and a["act"] == "gym" and a["busy"] and b2["st"]["id"] == "treadmill" and b2["sheet"] is None, [a, b2])
+    bc = {"active": a["active"], "mounted": a["st"]["mounted"], "costume": a["costume"] == "yoga", "saved": a["saved"] == "base", "src": a["src"] == "avatar-yoga.webp", "hidden": a["hidden"], "strip": a["strip"], "stripSrc": a["stripSrc"] == "avatar-walk-yoga-side.webp", "panel": a["panel"], "act": a["act"] == "gym", "busy": a["busy"], "stays": b2["st"]["id"] == "treadmill", "nosheet": b2["sheet"] is None}
+    check("gym: Begin turns her into the yoga set (shown, never saved) and puts her on the belt: the strip plays, her standing picture hides, the panel shows; it is the activity, the room is busy, and another machine waits", all(bc.values()), {"failed": [k for k, v in bc.items() if not v], "src": a["src"], "costume": a["costume"], "sheet": b2["sheet"], "stripSrc": a["stripSrc"]})
     await pg.click('#gpPause'); p1 = await pg.evaluate("()=>OvuGym.state().ms"); await pg.clock.run_for(8000); p2 = await pg.evaluate("()=>OvuGym.state().ms"); await pg.click('#gpPause'); await pg.clock.run_for(3000); p3 = await pg.evaluate("()=>OvuGym.state()")
     check("gym: Pause holds the clock; Resume carries on", abs(p2 - p1) < 1 and not p3["paused"] and p3["ms"] > p2 + 2500, [p1, p2, p3])
     await pg.click('#gpStop'); await pg.clock.run_for(2500); await pg.wait_for_timeout(200)
@@ -369,6 +370,40 @@ async def gym_checks(browser, gate):
     ov2 = await pg.evaluate("()=>({ask: OvuGym.pendingAsk(), sheet: OvuRoom.sheetOpen() ? OvuRoom.sheetId() : null})")
     check("gym: a log offer waiting behind a sheet stays waiting while Mind seats her on the mat, and goes when Light Flower opens: it never opens under the flower or after it", ov0 and mind["sheet"] == "mind" and mind["med"] and mind["ask"] and not ov1["ask"] and ov1["over"] and ov1["sheet"] != "move" and not ov2["ask"] and ov2["sheet"] != "move", [ov0, mind, ov1, ov2])
     await pg.evaluate("()=>{ if (OvuRoom.sheetOpen()) OvuRoom.hideSheet(); if (OvuRoom.meditating()) OvuRoom.exitMeditation(); }"); await pg.wait_for_timeout(300)
+    # Mind, then one of its own sheets (Everyday, You), then close: she may still sit, but the waiting offer opens (Codex diff review 4)
+    mc = []
+    for child in ["#mindEveryday", "[data-tab=you]"]:
+        await begin('gymtreadmill', 5); await pg.clock.run_for(65000)
+        await pg.evaluate("()=>OvuRoom.openCalendar()"); await pg.wait_for_timeout(300)
+        await pg.evaluate("()=>document.querySelector('#gpStop').click()"); await pg.clock.run_for(3000)
+        await pg.evaluate("()=>document.querySelector('[data-tab=mind]').click()"); await pg.wait_for_timeout(300); await pg.clock.run_for(800)
+        await pg.evaluate("(c)=>document.querySelector(c).click()", child); await pg.wait_for_timeout(300); await pg.clock.run_for(800)
+        via = await pg.evaluate("()=>OvuRoom.sheetOpen() ? OvuRoom.sheetId() : null")
+        await pg.evaluate("()=>OvuRoom.closeSheet()")
+        for _ in range(20):
+            await pg.clock.run_for(400)
+            if await pg.evaluate("()=>OvuRoom.sheetId()==='move'"): break
+        mc.append({"child": child, "via": via, "sheet": await pg.evaluate("()=>OvuRoom.sheetOpen() ? OvuRoom.sheetId() : null"), "ask": await pg.evaluate("()=>OvuGym.pendingAsk()")})
+        await pg.evaluate("()=>{ OvuRoom.closeSheet(); if (OvuRoom.meditating()) OvuRoom.exitMeditation(); }"); await pg.clock.run_for(1500); await pg.wait_for_timeout(200)
+    check("gym: a log offer waiting behind a sheet still opens after Mind, then Everyday practice or You, then closing it", len(mc) == 2 and all(m["via"] not in (None, "mind", "move") and m["sheet"] == "move" and not m["ask"] for m in mc), mc)
+    # her own clothes' picture never answers: after a few seconds she wears the picture from before and the log opens (Codex diff review 4)
+    stalled = []
+    async def stall(route): stalled.append(route)
+    await pg.route("**/avatar-kebaya-red*.webp", stall)
+    await begin('gymtreadmill', 5)
+    await pg.evaluate("()=>OvuRoom.setOutfit('kebaya-red')"); await pg.wait_for_timeout(200)
+    await pg.clock.run_for(65000); await pg.click('#gpStop')
+    sw0 = None
+    for i in range(30):
+        await pg.clock.run_for(400)
+        if i == 3: sw0 = await pg.evaluate("()=>({restoring: OvuRoom.restoring(), src: (document.querySelector('#avatarImg').getAttribute('src')||'').split('/').pop()})")
+        if await pg.evaluate("()=>OvuRoom.sheetId()==='move'"): break
+    sw1 = await pg.evaluate("()=>({sheet: OvuRoom.sheetOpen() ? OvuRoom.sheetId() : null, restoring: OvuRoom.restoring(), saved: OvuStore.profile().outfit, src: (document.querySelector('#avatarImg').getAttribute('src')||'').split('/').pop(), hidden: document.querySelector('#avatar').classList.contains('hidden')})")
+    await pg.evaluate("()=>OvuRoom.closeSheet()")
+    while stalled: await stalled.pop().abort()
+    await pg.unroute("**/avatar-kebaya-red*.webp")
+    await pg.evaluate("()=>OvuRoom.setOutfit('base', true)"); await pg.clock.run_for(1500); await pg.wait_for_timeout(300)
+    check("gym: when her own clothes' picture never answers, she is still in the workout clothes at first, then within about six seconds wears the picture from before the workout and the movement log opens", sw0 and sw0["restoring"] and sw0["src"] == "avatar-yoga.webp" and sw1["sheet"] == "move" and not sw1["restoring"] and sw1["saved"] == "kebaya-red" and sw1["src"] == "avatar-base.webp" and not sw1["hidden"], [sw0, sw1])
     # a phone lock mid-workout: paused, time away not counted, Resume carries on
     await begin('gymtreadmill', 10)
     await pg.clock.run_for(5000)

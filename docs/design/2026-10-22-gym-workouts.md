@@ -198,3 +198,16 @@ kit shows in five of its eight walk frames, and its blink has faint smudges at t
   the room rebuilds its props, and her strip and clock carry on.
 - Not changed: grounding is measured against the station's own spot (an evidence gap Codex named, not a defect); the spots
   were placed by eye on zoomed screenshots of each pose on its machine, which Jamie has.
+
+## After Codex diff review 4 (HOLD: 1 P2, 2 P3; docs/design/reviews/2026-10-23-codex-gym-diff-4.md)
+
+- The P2 came from the round-3 mat guard: after Mind, then Everyday practice or You, then close, she can still be seated with
+  no sheet open, so an offer waiting for her to stand waited for ever. The guard is gone. The offer waits only for an open
+  sheet (Mind's included) and goes when Light Flower or Koi Pond opens or another activity starts; when it opens it stands
+  her up, as the movement log always has. Browser check: Mind, then Everyday or You, then close, and the log opens.
+- P3, fixed: a restore whose picture never answers no longer waits for ever. After about six seconds (`watchRestore`, five
+  1.2 s waits) she wears the picture from before the workout and the offer opens. Browser check with the request held and
+  never answered.
+- P3, left as a follow-up: when an action pose is on screen as a workout begins and her saved outfit's picture also fails,
+  there is no standing picture to go back to. It needs a pose on screen, a failing outfit picture, and a workout started
+  in between.
