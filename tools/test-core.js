@@ -325,9 +325,9 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('your way: arrive, notice, then brushing only after she says she is ready', yw.join() === 'arrive,notice,ready,yourway' && M.STEPS.ready.gate && M.STEPS.yourway.open && !M.STEPS.yourway.secs, yw.join());
   var wakeV = MF.byId('wake').variations[0], sipV = MF.byId('coffee').variations.filter(function (v) { return v.when === 'morning' && v.author === 'erin'; })[0], sipI = MF.byId('coffee').variations.indexOf(sipV);
   var groups = er.map(function (x) { return x.gate ? 'gate:' + x.group : x.group; }).filter(function (g, i, a) { return g !== a[i - 1]; }).join(',');
-  check('with Erin (21 Oct): her wake-up script, a gate, her brushing script, a gate, her mindful sip, in her words and order with her clips', er.length === wakeV.steps.length + 1 + mv.steps.length + 1 + sipV.steps.length && groups === 'wake,gate:teeth,teeth,gate:sip,sip' && er.slice(0, wakeV.steps.length).every(function (x, i) { return x.text === wakeV.steps[i].text && x.secs === wakeV.steps[i].secs && x.audio === 'assets/audio/guide-interim/wake-0-' + i + '.mp3' && x.erin && x.part === 1; }) && er.slice(-sipV.steps.length).every(function (x, i) { return x.text === sipV.steps[i].text && x.audio === 'assets/audio/guide-interim/coffee-' + sipI + '-' + i + '.mp3' && x.pose === 'coffee' && x.part === 3; }), groups);
+  check('with Erin (21 Oct): her wake-up script, a gate, her brushing script, a gate, her mindful sip, in her words and order, as captions', er.length === wakeV.steps.length + 1 + mv.steps.length + 1 + sipV.steps.length && groups === 'wake,gate:teeth,teeth,gate:sip,sip' && er.slice(0, wakeV.steps.length).every(function (x, i) { return x.text === wakeV.steps[i].text && x.secs === wakeV.steps[i].secs && x.erin && x.part === 1; }) && er.slice(-sipV.steps.length).every(function (x, i) { return x.text === sipV.steps[i].text && x.pose === 'coffee' && x.part === 3; }), groups);
   var brush = er.filter(function (x) { return x.group === 'teeth' && !x.gate; });
-  check('with Erin the brushing part is her whole script, in the brushing pose, with her clips', brush.length === mv.steps.length && brush.every(function (x, i) { return x.text === mv.steps[i].text && x.secs === mv.steps[i].secs && x.audio === 'assets/audio/guide-interim/teeth-' + teeth.variations.indexOf(mv) + '-' + i + '.mp3' && x.pose === 'teeth' && x.erin && x.part === 2; }), brush.length);
+  check('with Erin the brushing part is her whole script, in the brushing pose, as captions', brush.length === mv.steps.length && brush.every(function (x, i) { return x.text === mv.steps[i].text && x.secs === mv.steps[i].secs && x.pose === 'teeth' && x.erin && x.part === 2; }), brush.length);
   var poses = er.slice(0, wakeV.steps.length).map(function (x) { return x.pose || '-'; }).join(',');
   check('the wake-up stands still except on its two movement passages (shoulders, arms), which take the stretch pose', poses === '-,-,stretch,stretch,-,-', poses);
   var ps = M.partsOf(er), tot = ps.reduce(function (t, p) { return t + p.secs; }, 0);
@@ -338,13 +338,14 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('the first steps invite any position, care for dizziness, leave the breath alone, offer touch, sound and colour, and stopping', /Sit, lie down or stand/.test(M.STEPS.arrive.text) && /dizzy, stay sitting or lying/.test(M.STEPS.arrive.text) && /eyes can be open or closed/.test(M.STEPS.arrive.text) && /no need to change your breathing/.test(M.STEPS.arrive.text) && /something you can touch/.test(M.STEPS.arrive.text) && /don’t need to move/.test(M.STEPS.notice.text) && /a sound or a colour instead/.test(M.STEPS.notice.text) && /stop at any time/.test(M.STEPS.notice.text));
   check('any sink, and time for prayer or anything else before brushing', /wherever you brush/.test(M.STEPS.ready.text) && /prayer or anything else/.test(M.STEPS.ready.text) && !/the sink/.test(M.STEPS.ready.text));
   var am = M.plan('yourway', at(8))[0], pm = M.plan('yourway', at(19))[0], gm = M.arriveFor(at(4)), hi = M.arriveFor(at(12));
-  check('Good morning only inside the morning window, Hello at any other hour, each with its own clip', am.text.indexOf('Good morning. Sit') === 0 && /mstart-arrive-0\.mp3$/.test(am.audio) && pm.text.indexOf('Hello. Sit') === 0 && /mstart-arrive-1\.mp3$/.test(pm.audio) && gm.text.indexOf('Good morning') === 0 && hi.text.indexOf('Hello') === 0 && M.STEPS.arrive.text.indexOf('Good') < 0, am.text.slice(0, 20) + ' | ' + pm.text.slice(0, 20));
+  check('Good morning only inside the morning window, Hello at any other hour', am.text.indexOf('Good morning. Sit') === 0 && pm.text.indexOf('Hello. Sit') === 0 && gm.text.indexOf('Good morning') === 0 && hi.text.indexOf('Hello') === 0 && M.STEPS.arrive.text.indexOf('Good') < 0, am.text.slice(0, 20) + ' | ' + pm.text.slice(0, 20));
   var brushAt = brush.map(function (x) { return x.brushing ? 1 : 0; }).join('');
   check('with Erin, brushing counts only from the line after "beginning to brush", not while she picks up the brush', brushAt === '00011111' && /beginning to brush/.test(brush[2].text), brushAt);
   var e8 = M.plan('erin', at(8))[0], e19 = M.plan('erin', at(19))[0], e2 = M.arriveFor(at(8), 'erin');
-  check('with Erin the first words are her own Good morning from the wake-up, at any hour, so no Rhythme greeting comes before hers', e8.text.indexOf('Good morning.') === 0 && e19.text === e8.text && /wake-0-0\.mp3$/.test(e8.audio) && e2.text.indexOf('Sit, lie down') === 0 && /mstart-arrive-2\.mp3$/.test(e2.audio), e8.text.slice(0, 20));
+  check('with Erin the first words are her own Good morning from the wake-up, at any hour, so no Rhythme greeting comes before hers', e8.text.indexOf('Good morning.') === 0 && e19.text === e8.text && e2.text.indexOf('Sit, lie down') === 0, e8.text.slice(0, 20));
   var voiced = [am, pm, e8, M.STEPS.notice, M.STEPS.ready, M.STEPS.yourway].concat(er.filter(function (x) { return x.audio; }));
-  check('every Rhythme step has its own clip on disk, read in Erin\'s voice; Quiet keeps it captions only', voiced.every(function (x) { return x.audio && fs.existsSync(path.join(root, x.audio)) && fs.statSync(path.join(root, x.audio)).size > 20000; }), voiced.map(function (x) { return x.audio; }).join());
+  var msrc = fs.readFileSync(path.join(root, 'ovu-morning.js'), 'utf8');
+  check('Morning start says nothing aloud (Jamie, 23 Oct: "Take a moment to arrive? - remove erin\'s voice"): no step carries a clip, nothing makes an audio element, no Voice button', voiced.concat(er).every(function (x) { return !x.audio; }) && !/new Audio\(|mpQuiet|\.mp3/.test(msrc), voiced.concat(er).filter(function (x) { return x.audio; }).map(function (x) { return x.key; }).join());
   var now = 0, c = M.makeClock(function () { return now; });
   c.run(); now = 10000; c.hold(); now = 25000; c.run(); now = 55000;
   check('practice time counts only while a step runs, not while paused or walking to the sink', c.seconds() === 40 && c.running(), c.seconds());
@@ -354,7 +355,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   var d = M.entryData({ seconds: 30, confirmed: true, version: 'yourway', skipped: ['notice'], brushed: 'yourway', finished: true });
   check('one honest entry: informal, morning, real seconds, what was skipped, whether it finished', d && d.kind === 'informal' && d.activity === 'morning' && d.seconds === 30 && d.minutes === 0.5 && d.skipped.join() === 'notice' && d.finished && d.completed && d.confirmedReal && d.brushed === 'yourway', JSON.stringify(d));
   var e2 = M.entryData({ seconds: 95, confirmed: true, version: 'erin', brushed: 'no', finished: false });
-  check('a stopped routine is saved as not finished and says brushing did not happen; the credit says whose words and whose voice', e2 && !e2.finished && !e2.completed && e2.brushed === 'no' && /Erin Lee/.test(e2.guide) && /Rhythme in Erin’s voice/.test(e2.guide) && /read in Erin’s voice/.test(d.guide));
+  check('a stopped routine is saved as not finished and says brushing did not happen; the credit says whose words and whose voice', e2 && !e2.finished && !e2.completed && e2.brushed === 'no' && /Erin Lee/.test(e2.guide) && /as captions/.test(e2.guide) && /Words by Rhythme, as captions/.test(d.guide) && !/voice/.test(d.guide));
   var pts = [1, 2, 3].map(function () { return RW.award(S.add('mindfulness', S.today(), M.entryData({ seconds: 120, confirmed: true, version: 'yourway', brushed: 'yourway', finished: true }))).points; });
   check('the morning pays its small thank-you once a day: repeating it earns nothing more, and there is never a streak', pts.join() === '2,0,0' && (RW.ledger().streak || 0) === 0, pts.join());
   var pe = M.partEntry('wake', { seconds: 193, confirmed: true, finished: true }), ps2 = M.partEntry('sip', { seconds: 41.2, confirmed: true, finished: false });
@@ -393,7 +394,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   }
   var g = plantWorld(false); g.start(); var stale = g.q.map(function (t) { return t.f; }), oldStop = g.stop();
   g.emit('activity'); g.active(true); var endedAt = g.calls.length; stale.forEach(function (f) { f(); }); oldStop();
-  check('garden watering cancels synchronously on activity, pauses audio and leaves a new session\'s HUD, pose, Stop and diary untouched', !g.w.OvuGarden.watering() && g.q.every(function (t) { return !t.live; }) && g.calls.indexOf('pause') > -1 && g.calls.length === endedAt && g.w.OvuStore.list('mindfulness').length === 0);
+  check('garden watering cancels synchronously on activity and leaves a new session\'s HUD, pose, Stop and diary untouched', !g.w.OvuGarden.watering() && g.q.every(function (t) { return !t.live; }) && g.calls.length === endedAt && g.w.OvuStore.list('mindfulness').length === 0);
   g.active(false); g.start(); var newerAt = g.calls.length; stale.forEach(function (f) { f(); }); oldStop();
   check('a cancelled watering\'s clips, captions, completion and Stop callbacks cannot act inside its replacement', g.w.OvuGarden.watering() && g.calls.length === newerAt && g.w.OvuStore.list('mindfulness').length === 0);
   g.emit('beforeWalk');
@@ -598,7 +599,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
       hudClockStart: function () { c.clock = true; }, hudClockStop: function () { c.clock = false; },
       afterSave: function (ev) { saves.push(ev); }, toast: function (text) { toasts.push(text); }, esc: function (t) { return t; } };
     vm.createContext(c);
-    ['emit', 'sessionCurrent', 'cancelRunner', 'playClip', 'wait', 'runSession', 'finishSession', 'stopSession', 'exitMeditation', 'stopEverything', 'practiceCurrent', 'playUrl', 'pwait', 'runPractice', 'askPracticeDone', 'practiceMs', 'stopPractice'].forEach(function (n) { vm.runInContext(fn(n), c); });
+    ['emit', 'hudVoice', 'sessionCurrent', 'cancelRunner', 'playClip', 'wait', 'runSession', 'finishSession', 'stopSession', 'exitMeditation', 'stopEverything', 'practiceCurrent', 'playUrl', 'pwait', 'runPractice', 'askPracticeDone', 'practiceMs', 'stopPractice'].forEach(function (n) { vm.runInContext(fn(n), c); });
     vm.runInContext('hudOn = ' + hudFn(), c);
     return { c: c, w: w, timers: timers, clips: clips, captions: captions, poses: poses, saves: saves, sheets: sheets, toasts: toasts, node: node, advance: function (ms) { now += ms; }, call: function (code) { return vm.runInContext(code, c); } };
   }
@@ -614,10 +615,10 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
     if (timer) timer.f();
     return flush().then(function () { check('cancelling a timed wait resolves it, clears its own timer, and an old timer cannot act on the next session', settled && !replacement.timer && s.c.session === newest && !s.clips.some(function (t) { return /meditation_begin/.test(t); })); });
   }).then(function () {
-    var p = env(); p.call('runPractice("plants", 0)');
+    var p = env(); p.call('runPractice("plants", 0, true)');
     return flush().then(function () {
       var oldP = p.c.practice, fin = oldP.audio.onended, meta = oldP.audio.onloadedmetadata;
-      p.call('stopPractice()'); p.call('runPractice("teeth", 0)'); var nextP = p.c.practice; if (fin) fin(); if (meta) meta();
+      p.call('stopPractice()'); p.call('runPractice("teeth", 0, true)'); var nextP = p.c.practice; if (fin) fin(); if (meta) meta();
       return flush().then(function () {
         check('Everyday callbacks and captions belong to the originating practice, with the old audio and wait cancelled', p.c.practice === nextP && oldP.audio.paused && oldP.cancelWait === null && p.clips.length === 2 && p.clips[0].indexOf('plants-0-0') > -1 && p.clips[1].indexOf('teeth-0-0') > -1 && p.captions.length === 2, p.clips.join(' | '));
         var b = env(); b.call('runSession("erin", 3)'); var bedRun = b.c.session; b.advance(5000); b.call('stopEverything()'); /* no opening action line to pause since 23 Oct: Erin's action clips are gone */
@@ -632,7 +633,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
       });
     });
   }).then(function () {
-    var p = env(); p.call('runPractice("plants", 0)');
+    var p = env(); p.call('runPractice("plants", 0, true)');
     return flush().then(function () {
       p.advance(65000); p.call('stopPractice()'); var pending = p.c.practice, yes = p.node('#pdYes').events.click, storage = p.w.localStorage, original = storage.setItem, writes = 0;
       storage.setItem = function (k, v) { if (k === 'ovumind_db_v1') throw new Error('quota'); return original.call(storage, k, v); };
@@ -642,7 +643,7 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
       var events = p.w.OvuStore.list('mindfulness');
       check('failed Everyday confirmation keeps the prompt and exact pending practice, with no event or explored count left in memory', intact && /could not be saved/.test(p.toasts[0] || ''), p.toasts.join(' | '));
       check('retry confirms the same practice once, committing its entry and exploration count in one database write', p.c.practice === null && p.c.current === null && events.length === 1 && p.w.OvuStore.state().explored.plants === 1 && events[0].data.confirmedReal && writes === 1 && p.saves.length === 1, JSON.stringify({ writes: writes, events: events.length }));
-      var no = env(); no.call('runPractice("plants", 0)'); no.advance(65000); no.call('stopPractice()'); no.node('#pdNo').events.click();
+      var no = env(); no.call('runPractice("plants", 0, true)'); no.advance(65000); no.call('stopPractice()'); no.node('#pdNo').events.click();
       check('declining Everyday confirmation saves neither a journal entry nor an exploration completion', !no.w.OvuStore.list('mindfulness').length && !no.w.OvuStore.state().explored && no.c.practice === null);
     });
   }).then(function () { finished = true; }).catch(function (e) { check('runner regression chain completes', false, e.stack); finished = true; });
@@ -3060,6 +3061,23 @@ function scenes(todayIso) {
   var rw = w.OvuRewards.award(ev);
   check('a watering minute is worth 2 hearts as a one-minute calm entry (plus the usual streak rule)', rw.points === 2, JSON.stringify(rw));
 })();
+(function erinOnlyInMindfulness() {
+  console.log('Erin speaks only in mindfulness begun from Mind (Jamie, 23 Oct): every other clip of ours is silent, the practice bar mute quiets her');
+  var store = {}, w = { localStorage: { getItem: function (k) { return k in store ? store[k] : null; }, setItem: function (k, v) { store[k] = String(v); } } };
+  function El(src) { this.tagName = 'AUDIO'; this.src = src; this.muted = false; }
+  El.prototype.play = function () { return 'played'; };
+  w.HTMLMediaElement = El; vm.createContext(w); w.window = w;
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-voicemute.js'), 'utf8'), w, { filename: 'ovu-voicemute.js' });
+  var V = w.OvuVoice, greet = new El('assets/audio/erin-tts/greeting_morning.mp3'), guided = new El('assets/audio/erin-tts/breathing_in.mp3'), pod = new El('https://example.com/podcast.mp3');
+  greet.play(); V.allow(guided, true); guided.play(); pod.play();
+  check('a clip no mindfulness run asked for plays muted; the one a Mind run allowed is heard; the podcast is never touched', greet.muted === true && guided.muted === false && pod.muted === false && V.heard(guided) && !V.heard(greet));
+  V.set(true);
+  check('the practice bar mute quiets the guided clip at once and is remembered; unmuting brings only that clip back', guided.muted === true && store.rhythme_guide_muted === '1' && (V.set(false), guided.muted === false && greet.muted === true));
+  var rsrc = fs.readFileSync(path.join(root, 'room.js'), 'utf8');
+  check('room: With Erin and an everyday practice are heard only when begun from the M or Mind (a bench session stays captions), and no greeting or good night is spoken', /var heard = !!\(run\.audio && guided\); if \(heard && window\.OvuVoice\) OvuVoice\.allow\(run\.audio, true\);/.test(rsrc) && /runSession\(b\.dataset\.kind, Number\(b\.dataset\.min\), true\)/.test(rsrc) && /if \(id === 'coach'\) return openEveryday\(null, true\)/.test(rsrc) && /var voiced = a\.audio !== false && !!guided;/.test(rsrc) && /openEveryday\(null, true\)/.test(rsrc) && !/night_sweet_dreams|morning_how/.test(rsrc) && !/erinvoice/.test(rsrc));
+  var gsrc = fs.readFileSync(path.join(root, 'ovu-garden.js'), 'utf8');
+  check('the garden watering minute says nothing aloud', !/new Audio\(|garden-water-|\.mp3/.test(gsrc));
+})();
 (function plazaHasOnlyRealPeople() {
   console.log('the plaza shows only real people (Jamie, 23 Oct: no sample neighbours; nobody there means an empty plaza)');
   var w = scenes('2026-10-18'), C = w.OvuCommunity;
@@ -4274,18 +4292,17 @@ var summarised = false;
   vm.runInContext(fs.readFileSync(path.join(root, 'ovu-seats.js'), 'utf8'), w, { filename: 'ovu-seats.js' });
   var SE = w.OvuSeats, src = fs.readFileSync(path.join(root, 'ovu-seats.js'), 'utf8'), ids = Object.keys(SE.SCRIPTS);
   check('four practices, seven, six, six and six steps, each about two and a half to three minutes', ids.join() === 'street,plaza,tree,harbour' && SE.steps('street').length === 7 && SE.steps('plaza').length === 6 && SE.steps('tree').length === 6 && SE.steps('harbour').length === 6 && ids.every(function (id) { var t = SE.total(id); return t >= 140 && t <= 185; }), ids.map(function (id) { return SE.total(id); }).join());
-  var missing = [];
-  ids.forEach(function (id) { SE.steps(id).forEach(function (s) { if (!fs.existsSync(path.join(root, s.audio))) missing.push(s.audio); }); });
-  SE.steps('harbour', true).forEach(function (s) { if (!fs.existsSync(path.join(root, s.audio))) missing.push(s.audio); });
-  check('every clip is on disk, the reduced-motion line too', missing.length === 0, missing.join());
+  var voicedSteps = [];
+  ids.forEach(function (id) { SE.steps(id).concat(SE.steps(id, true)).forEach(function (s) { if (s.audio) voicedSteps.push(s.key); }); });
+  check('a bench says nothing aloud (Jamie, 23 Oct): no step carries a clip, no audio element is made, no Voice button, and the credit says captions', voicedSteps.length === 0 && !/new Audio\(|spQuiet|\.mp3/.test(src) && /captions/.test(SE.CREDIT), voicedSteps.join());
   var rm = SE.steps('harbour', true), plain = SE.steps('harbour', false);
-  check('with reduced motion the water’s second line asks for a colour, not a ripple; nothing else changes', /colour or a reflection/.test(rm[1].text) && /ripple/.test(plain[1].text) && rm[1].audio !== plain[1].audio && rm[0].text === plain[0].text && rm[2].audio === plain[2].audio && SE.steps('street', true)[1].text === SE.steps('street')[1].text);
+  check('with reduced motion the water’s second line asks for a colour, not a ripple; nothing else changes', /colour or a reflection/.test(rm[1].text) && /ripple/.test(plain[1].text) && rm[1].text !== plain[1].text && rm[0].text === plain[0].text && rm[2].text === plain[2].text && SE.steps('street', true)[1].text === SE.steps('street')[1].text);
   var words = ids.map(function (id) { return SE.SCRIPTS[id].steps.map(function (s) { return s.text; }).join(' '); }).join(' ');
   check('no claims in the scripts: nothing cured, healed or promised, no em dashes, every part of the kindness practice optional with a way out', !/\b(cure|heal|fix|anxiety|depression|reduce stress|lower your|boost|detox|will feel)\b/i.test(words) && words.indexOf('—') < 0 && SE.SCRIPTS.plaza.steps.slice(1, 5).every(function (s) { return /If you would like|If someone|you might|Otherwise/.test(s.text); }) && /stop now/.test(SE.SCRIPTS.plaza.steps[5].text));
   var seatList = Object.keys(SE.SEATS).map(function (k) { return SE.SEATS[k]; });
   check('every bench has its own words and its own animation (Codex, 21 Oct: the bench by the tree had shared the board bench’s)', seatList.length === 4 && new Set(seatList.map(function (s) { return s.practice; })).size === 4 && new Set(seatList.map(function (s) { return s.fx; })).size === 4 && SE.SEATS['plaza:bench2'].practice === 'tree' && SE.SEATS['plaza:bench2'].fx === 'shade');
   check('the shade practice makes its small thanks optional and says so when nothing comes', /^If you would like/.test(SE.SCRIPTS.tree.steps[4].text) && /If nothing comes to mind, that is fine too/.test(SE.SCRIPTS.tree.steps[4].text) && /stop whenever you need/.test(SE.SCRIPTS.tree.steps[0].text));
-  check('the credit names Erin Lee, her cloned voice and her permission', /Erin Lee/.test(SE.CREDIT) && /cloned voice/.test(SE.CREDIT) && /permission/.test(SE.CREDIT));
+  check('the credit says whose words and that they are captions, never a voice', /Rhythme/.test(SE.CREDIT) && /captions/.test(SE.CREDIT) && !/voice/.test(SE.CREDIT));
   var e1 = SE.entry('street', { seconds: 59.9, confirmed: true, finished: false }), e2 = SE.entry('street', { seconds: 60, confirmed: true, finished: false, startedAt: 'x' }), e3 = SE.entry('street', { seconds: 200, confirmed: false, finished: true }), e4 = SE.entry('nowhere', { seconds: 200, confirmed: true, finished: true }), e5 = SE.entry('plaza:bench2', { seconds: 168.4, confirmed: true, finished: true });
   check('59.9 seconds is not a minute; sixty is; nothing unconfirmed and no unknown seat; a finished practice is complete, a stopped one says so', e1 === null && !!e2 && e2.seconds === 60 && e2.minutes === 1 && e2.stoppedEarly && !e2.completed && e2.activity === 'seat' && e2.seat === 'street' && e2.scene === 'street' && e2.activityName === 'Sounds of the street' && e2.confirmedReal && e2.startedAt === 'x' && e2.guide === SE.CREDIT && e3 === null && e4 === null && e5.completed && !e5.stoppedEarly && e5.minutes === 2.8 && e5.scene === 'plaza', JSON.stringify([e1, e2, e5]));
   var t = 1000, clk = SE.makeClock(function () { return t; });

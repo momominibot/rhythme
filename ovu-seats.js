@@ -2,14 +2,14 @@
  * practice with erin, i want it refreshing for each chair... for the sitting in the cave will be different - it's purely
  * frequency sounds"). The shape follows a Codex design review of the same day (docs/design/2026-10-21-seats.md).
  * Every seat keeps "just sit", where nothing is counted. Each bench has its own seated practice of about three minutes in
- * Erin Lee's cloned voice (Rhythme's words, with her permission): the street bench listens, the bench by the board wishes
+ * written words (Rhythme's; since 23 Oct nothing on a bench is spoken, Erin speaks only in the mindfulness begun from Mind): the street bench listens, the bench by the board wishes
  * well, the bench by the tree rests in the shade, the harbour bench watches the water. The garden bench keeps Breathe with Erin (ovu-garden.js) and the cave's warm stone
  * is the crystals' tone with no voice at all (ovu-tones.js). Each seat has its own small animation layer: environmental,
  * never timed to breath, still under reduced motion. Pure parts first (testable in node), then the runner. */
 (function (root) {
   'use strict';
-  var GUIDE = 'assets/audio/guide-interim/', MIN_SAVE_S = 60; /* a minute of active practice time, unrounded, before anything is saved */
-  var CREDIT = 'Rhythme’s words, read in Erin Lee’s cloned voice with her permission';
+  var MIN_SAVE_S = 60; /* a minute of active practice time, unrounded, before anything is saved */
+  var CREDIT = 'Rhythme’s words, shown as captions'; /* nothing is spoken on a bench: Erin speaks only in the mindfulness begun from Mind (Jamie, 23 Oct) */
   /* secs = her clip + the silence after it + 0.6 s (one guarded voice run, 21 Oct 2026; durations from ffprobe) */
   var SCRIPTS = {
     street: { name: 'Sounds of the street', icon: 'hearing', about: 'Listening, eyes open or closed', steps: [
@@ -47,7 +47,7 @@
     ] }
   };
   /* with reduced motion the water does not ripple on the plate, so the second line asks for a colour instead (Codex, 21 Oct) */
-  var HARBOUR_RM = { text: 'Notice a colour or a reflection on the water. Let your eyes rest there.', secs: 26, file: 'seat-harbourrm-0-0.mp3' };
+  var HARBOUR_RM = { text: 'Notice a colour or a reflection on the water. Let your eyes rest there.', secs: 26 };
   /* the seats: which scene, which words, which animation, what the plain sit is called. Every bench has its own words and
    * its own animation, and each is its own seat, one thank-you a day each (Codex, 21 Oct: the bench by the tree had shared
    * the board bench's words; its own clips came from one guarded voice run the same day) */
@@ -60,8 +60,8 @@
   function steps(practice, reduced) {
     var p = SCRIPTS[practice]; if (!p) return [];
     return p.steps.map(function (s, i) {
-      var st = { key: practice + i, text: s.text, secs: s.secs, audio: GUIDE + 'seat-' + practice + '-0-' + i + '.mp3' };
-      if (reduced && practice === 'harbour' && i === 1) { st.text = HARBOUR_RM.text; st.secs = HARBOUR_RM.secs; st.audio = GUIDE + HARBOUR_RM.file; }
+      var st = { key: practice + i, text: s.text, secs: s.secs };
+      if (reduced && practice === 'harbour' && i === 1) { st.text = HARBOUR_RM.text; st.secs = HARBOUR_RM.secs; }
       return st;
     });
   }
@@ -85,7 +85,7 @@
       running: function () { return since !== null; }
     };
   }
-  var SE = { SEATS: SEATS, SCRIPTS: SCRIPTS, HARBOUR_RM: HARBOUR_RM, MIN_SAVE_S: MIN_SAVE_S, CREDIT: CREDIT, GUIDE: GUIDE, steps: steps, total: total, entry: entry, makeClock: makeClock };
+  var SE = { SEATS: SEATS, SCRIPTS: SCRIPTS, HARBOUR_RM: HARBOUR_RM, MIN_SAVE_S: MIN_SAVE_S, CREDIT: CREDIT, steps: steps, total: total, entry: entry, makeClock: makeClock };
   root.OvuSeats = SE;
 
   /* ---------- the runner (browser only) ---------- */
@@ -120,7 +120,7 @@
     if (R.refuseBusy ? R.refuseBusy() : (R.sessionOn() || R.practiceOn())) { if (!R.refuseBusy) R.hudOn(true); return; } /* one activity at a time (room.js activityNow) */
     var mins = Math.max(1, Math.round(total(seat.practice, reduced()) / 60));
     R.openSheet('seat-' + seat.practice, seat.title, seat.sub, 'chair',
-      '<div class="erin small"><img src="assets/avatars/erin/erin-chibi-face.webp" alt="Erin Lee"><div><b>' + esc(p.name) + '</b><small>' + esc(p.about) + '. About ' + mins + ' minutes in Erin’s voice, seated. Pause, skip a step or stop whenever you like.</small></div></div>' +
+      '<div class="erin small"><img src="assets/avatars/erin/erin-chibi-face.webp" alt="Erin Lee"><div><b>' + esc(p.name) + '</b><small>' + esc(p.about) + '. About ' + mins + ' minutes of written words, seated. Pause, skip a step or stop whenever you like.</small></div></div>' +
       '<div class="row"><button type="button" class="btn primary" id="seatBegin"><span class="ms">' + p.icon + '</span>Begin</button><button type="button" class="btn soft" id="seatSit"><span class="ms">chair</span>' + esc(seat.sit) + '</button></div>' +
       '<p class="help">A practice of a minute or more can be saved to your journal, with the small thank-you once a day for this seat (practices share up to six hearts a day)' + (doneToday(seatId) ? ' (already said today)' : '') + '. Sitting is just sitting: nothing is counted. ' + esc(CREDIT) + '.</p>');
     $('seatSit').addEventListener('click', function () { R.hideSheet(); plainSit(seatId); });
@@ -141,10 +141,7 @@
     if (root.OvuSound) root.OvuSound.play('boop'); /* a practice begins (only once nothing refused it) */
     var sp = spotFor(seatId); if (!sp || !sp.spot || !sp.spot.seat) return;
     var st = steps(seat.practice, reduced()), audio = null;
-    try { audio = new Audio(); } catch (e) { }
-    run = { seat: seat, id: seatId, spot: sp.spot, back: sp.back, steps: st, i: -1, paused: false, quiet: !!(root.OvuVoice && root.OvuVoice.muted && root.OvuVoice.muted()), /* a remembered mute starts her quiet (perimenopause walk, 21 Oct) */ timer: null, left: 0, t0: 0, waits: 0, clock: makeClock(), startedAt: new Date().toISOString(), audio: audio, pending: null, preloaded: null, el: null };
-    /* the first line starts inside the tap, which unlocks the one audio element for the rest (as the room's practices do) */
-    if (audio) { try { audio.src = st[0].audio; run.preloaded = st[0].audio; var pr = audio.play(); if (pr && pr.catch) pr.catch(function () { }); } catch (e) { } }
+    run = { seat: seat, id: seatId, spot: sp.spot, back: sp.back, steps: st, i: -1, paused: false, quiet: true, timer: null, left: 0, t0: 0, waits: 0, clock: makeClock(), startedAt: new Date().toISOString(), audio: audio, pending: null, preloaded: null, el: null };
     R.emit('activity', 'seat', seatId); /* the care steps, a float on the water, the greenhouse minute: everything else steps aside first */
     if (W.walking && W.walking()) { try { W.stop(); } catch (e) { } }
     try { R.freezeWalk(); } catch (e) { }
@@ -169,9 +166,9 @@
     if (panel) return panel;
     panel = doc.createElement('section'); panel.className = 'mpanel seatpanel'; panel.id = 'spanel'; panel.hidden = true; panel.tabIndex = -1; panel.setAttribute('aria-labelledby', 'spTitle');
     panel.innerHTML = '<p class="mp-count" id="spCount"></p><div class="mp-say" aria-live="polite" aria-atomic="true"><h3 id="spTitle"></h3><p id="spText"></p></div>' +
-      '<div class="mp-btns" id="spBtns"><button type="button" class="btn primary" id="spPause">Pause</button><button type="button" class="btn ghost" id="spNext">Next</button><button type="button" class="btn ghost" id="spQuiet">Voice off</button><button type="button" class="btn ghost" id="spStop">Stop</button></div>';
+      '<div class="mp-btns" id="spBtns"><button type="button" class="btn primary" id="spPause">Pause</button><button type="button" class="btn ghost" id="spNext">Next</button><button type="button" class="btn ghost" id="spStop">Stop</button></div>';
     var mp = $('mpanel'); if (mp && mp.parentNode) mp.parentNode.insertBefore(panel, mp.nextSibling); else doc.body.appendChild(panel);
-    $('spPause').addEventListener('click', pauseToggle); $('spNext').addEventListener('click', function () { next(true); }); $('spQuiet').addEventListener('click', quietToggle); $('spStop').addEventListener('click', stop);
+    $('spPause').addEventListener('click', pauseToggle); $('spNext').addEventListener('click', function () { next(true); }); $('spStop').addEventListener('click', stop);
     return panel;
   }
   function showPanel() { ensurePanel(); panel.hidden = false; try { panel.focus({ preventScroll: true }); } catch (e) { } }
@@ -181,7 +178,7 @@
     var s = step(); if (!s || !run) return;
     $('spCount').textContent = 'Step ' + (run.i + 1) + ' of ' + run.steps.length + (run.paused ? ' · paused' : '');
     $('spTitle').textContent = SCRIPTS[run.seat.practice].name; $('spText').textContent = s.text;
-    $('spPause').textContent = run.paused ? 'Resume' : 'Pause'; $('spQuiet').textContent = run.quiet ? 'Voice on' : 'Voice off';
+    $('spPause').textContent = run.paused ? 'Resume' : 'Pause';
     $('spNext').textContent = run.i >= run.steps.length - 1 ? 'Finish' : 'Next';
   }
   function play(url) {
@@ -216,13 +213,7 @@
     }
     paint();
   }
-  function quietToggle() {
-    if (!run) return; run.quiet = !run.quiet;
-    if (!run.quiet && root.OvuVoice && root.OvuVoice.allow) root.OvuVoice.allow(run.audio, true); /* Voice on is for this run: the app-wide switch (You tab) stays as she set it (Jamie, 22 Oct) */
-    if (run.quiet) { silence(run.audio); run.pending = null; }
-    else { var s = step(); if (s && !run.paused) play(s.audio); else if (s) run.pending = s.audio; } /* the voice comes back with the current line from its start */
-    paint();
-  }
+
   function stop() { if (run) finish(false); }
   /* the guide ends or she stops: she stays seated as on any bench; a minute or more of active time may be saved, once confirmed */
   function finish(finished) {

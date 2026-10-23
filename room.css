@@ -470,6 +470,7 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .hud-text b{display:block;font:800 11px var(--sans);color:var(--rm-ink-3);letter-spacing:.06em;text-transform:uppercase}
 .hud-text span{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;font-family:var(--serif);font-size:14px;color:var(--rm-plum);line-height:1.25;overflow:hidden;text-wrap:pretty}
 .hud-stop{width:36px;height:36px;border-radius:50%;border:none;background:var(--rm-lilac-2);color:var(--rm-plum);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.hud-mute[hidden]{display:none}
 
 /* ---------- Luna chat ---------- */
 .chat{display:flex;flex-direction:column;gap:8px;margin-top:6px}
