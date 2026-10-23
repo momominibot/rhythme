@@ -61,7 +61,12 @@
     }
     var full = Object.keys(c).every(function (k) { return c[k] !== null; });
     var total = full ? Math.round(Object.keys(CYCLE_W).reduce(function (a, k) { return a + CYCLE_W[k] * c[k]; }, 0)) : null;
-    return { score: total, parts: c, lengths: lengths, periodDays: periods.map(function (p) { return diffDays(p.start, p.end) + 1; }), from: run.length ? run[0].start : null, need: need, version: 'cycle-v1' };
+    /* "so far" (Jamie, 23 Oct: three months logged and no cycle wellness shown): once three cycles give frequency and period
+       length, the parts that exist are shown as a number with their own weights scaled to 100, labelled as so far and with
+       what is missing; the full score keeps its definition and stays empty until every part is there */
+    var have = Object.keys(c).filter(function (k) { return c[k] !== null; }), soFar = null;
+    if (!full && c.frequency !== null && c.duration !== null) { var wsum = have.reduce(function (a, k) { return a + CYCLE_W[k]; }, 0); soFar = Math.round(have.reduce(function (a, k) { return a + CYCLE_W[k] * c[k]; }, 0) / wsum); }
+    return { score: total, soFar: soFar, partsReady: have.length, parts: c, lengths: lengths, periodDays: periods.map(function (p) { return diffDays(p.start, p.end) + 1; }), from: run.length ? run[0].start : null, need: need, version: 'cycle-v1' };
   }
   /* nights: [{date, bed:'HH:MM', wake:'HH:MM', asleepMin, assumed}] */
   function sleepScore(nights, today) {
@@ -104,23 +109,27 @@
   var ART = 'assets/room/scores/';
   function mood(score) { return score === null ? 'sleepy' : score < 40 ? 'tender' : score < 70 ? 'calm' : score < 90 ? 'happy' : 'glow'; }
   /* the line says where the number sits, not how she is: an app-defined index can be high with pain in it (Codex, 22 Oct) */
-  function moodLine(kind, score) {
+  function moodLine(kind, score, sofar) {
+    if (sofar && score !== null) return 'So far, from ' + sofar + ' of 4 parts. The rest fills in as you record; the parts below say which.';
     if (score === null) return kind === 'cycle' ? 'Still gathering your cycles. Luna rests until there is enough to draw.' : 'Still gathering your nights. Luna rests until there is enough to draw.';
     if (score < 40) return 'Lower in these records. A number to notice, not a verdict; the parts below say which.';
     if (score < 70) return 'Mid-range in these records. The parts below say what is pulling it where.';
     if (score < 90) return 'High in these records. Each part below has its own picture.';
     return 'At the top of the range in these records. The parts below still carry their own detail.';
   }
-  function ring(score, label, id) {
+  /* the ring draws itself from empty to its number and the number counts up with it (animate(), below); sparkles twinkle
+     round a ring that has a number; with reduced motion everything simply appears */
+  function ring(score, label, id, sofar) {
     var r = 52, c = 2 * Math.PI * r, v = score === null ? 0 : score, dash = c * v / 100;
-    return '<div class="scring' + (score === null ? ' empty' : '') + '"><svg viewBox="0 0 128 128" role="img" aria-label="' + esc(label) + ': ' + (score === null ? 'not yet' : score + ' out of 100') + '">' +
+    return '<div class="scring' + (score === null ? ' empty' : '') + (sofar ? ' sofar' : '') + '" style="--c:' + c.toFixed(1) + ';--d:' + dash.toFixed(1) + '"><svg viewBox="0 0 128 128" role="img" aria-label="' + esc(label) + ': ' + (score === null ? 'not yet' : score + ' out of 100' + (sofar ? ', so far' : '')) + '">' +
       '<defs><linearGradient id="scg-' + id + '" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6c9d6"/><stop offset=".5" stop-color="#c9b6e6"/><stop offset="1" stop-color="#bfe3d4"/></linearGradient>' +
       '<filter id="scf-' + id + '" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="3"/></filter></defs>' +
       '<circle cx="64" cy="64" r="' + r + '" fill="none" stroke="#efe7f7" stroke-width="12"/>' +
-      (score === null ? '' : '<circle cx="64" cy="64" r="' + r + '" fill="none" stroke="url(#scg-' + id + ')" stroke-width="12" stroke-linecap="round" stroke-dasharray="' + dash.toFixed(1) + ' ' + c.toFixed(1) + '" transform="rotate(-90 64 64)" filter="url(#scf-' + id + ')" opacity=".55"/>' +
-      '<circle cx="64" cy="64" r="' + r + '" fill="none" stroke="url(#scg-' + id + ')" stroke-width="10" stroke-linecap="round" stroke-dasharray="' + dash.toFixed(1) + ' ' + c.toFixed(1) + '" transform="rotate(-90 64 64)"/>') +
+      (score === null ? '' : '<circle class="scarc glow" cx="64" cy="64" r="' + r + '" fill="none" stroke="url(#scg-' + id + ')" stroke-width="12" stroke-linecap="round" stroke-dasharray="' + dash.toFixed(1) + ' ' + c.toFixed(1) + '" transform="rotate(-90 64 64)" filter="url(#scf-' + id + ')" opacity=".55"/>' +
+      '<circle class="scarc" cx="64" cy="64" r="' + r + '" fill="none" stroke="url(#scg-' + id + ')" stroke-width="10" stroke-linecap="round" stroke-dasharray="' + dash.toFixed(1) + ' ' + c.toFixed(1) + '" transform="rotate(-90 64 64)"/>') +
       '<circle cx="64" cy="64" r="40" fill="rgba(255,255,255,.75)"/></svg>' +
-      '<div class="scnum">' + (score === null ? '<span class="scdash">·</span>' : '<b>' + score + '</b><small>of 100</small>') + '</div></div>';
+      (score === null ? '' : '<i class="scspark s1" aria-hidden="true"></i><i class="scspark s2" aria-hidden="true"></i><i class="scspark s3" aria-hidden="true"></i><i class="scspark s4" aria-hidden="true"></i>') +
+      '<div class="scnum">' + (score === null ? '<span class="scdash">·</span>' : '<b data-n="' + score + '">' + score + '</b><small>' + (sofar ? 'so far' : 'of 100') + '</small>') + '</div></div>';
   }
   function pill(name, v, note, shown) {
     var has = v !== null && v !== undefined, num = has && typeof v === 'number' ? v : null;
@@ -142,11 +151,25 @@
       '<defs><linearGradient id="scb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9c7f2"/><stop offset="1" stop-color="#a98bd8"/></linearGradient><linearGradient id="sco" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbd7c2"/><stop offset="1" stop-color="#f0a07a"/></linearGradient></defs>' + band +
       vals.map(function (v, i) { var x = x0 + i * step, inside = lo === null || (v >= lo && v <= hi); return '<rect x="' + x.toFixed(1) + '" y="' + y(v).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + (H - 18 - y(v)).toFixed(1) + '" rx="' + Math.min(8, bw / 2) + '" fill="url(#' + (inside ? 'scb' : 'sco') + ')"/><text x="' + (x + bw / 2).toFixed(1) + '" y="' + (H - 5) + '" text-anchor="middle" font-size="9" font-weight="700" fill="#7a6a96">' + v + '</text>'; }).join('') + '</svg>';
   }
-  function card(kind, title, icon, score, body) {
+  /* each score has its own friend: Luna's moon for sleep, and for the cycle its own picture once it is drawn (CYCLE_ART;
+     Jamie, 23 Oct: "the emoji of cycle wellness should be different from circadian cycle") */
+  var CYCLE_ART = 'cloud-';
+  function card(kind, title, icon, score, body, sofar) {
     var m = mood(score);
-    return '<section class="scorecard dreamy sc-' + kind + '" data-score="' + kind + '" data-mood="' + m + '"><div class="schero">' + ring(score, title, kind) +
-      '<div class="scside"><h3><span class="ms">' + icon + '</span>' + esc(title) + '</h3><p class="scmood">' + esc(moodLine(kind, score)) + '</p></div>' +
-      '<img class="sccloud" src="' + ART + 'cloud-' + m + '.webp" alt="" width="96" height="96" loading="lazy"></div>' + body + '</section>';
+    return '<section class="scorecard dreamy sc-' + kind + (sofar ? ' sofar' : '') + '" data-score="' + kind + '" data-mood="' + m + '"><div class="schero">' + ring(score, title, kind, sofar) +
+      '<div class="scside"><h3><span class="ms">' + icon + '</span>' + esc(title) + '</h3><p class="scmood">' + esc(moodLine(kind, score, sofar)) + '</p></div>' +
+      '<img class="sccloud" src="' + ART + (kind === 'cycle' ? CYCLE_ART : 'cloud-') + m + '.webp" alt="" width="96" height="96" loading="lazy"></div>' + body + '</section>';
+  }
+  /* the motion after the panel is on screen: each number counts up as its ring draws (about a second); nothing moves with
+     reduced motion, and the number written in the page is always the real one */
+  function animate(box) {
+    if (!box || !root.requestAnimationFrame) return;
+    var reduce = root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches; if (reduce) return;
+    Array.prototype.forEach.call(box.querySelectorAll('.scnum b[data-n]'), function (el) {
+      var n = Number(el.getAttribute('data-n')), t0 = null; if (!(n > 0)) return; el.textContent = '0';
+      function step(t) { if (t0 === null) t0 = t; var k = Math.min(1, (t - t0) / 1100), e = 1 - Math.pow(1 - k, 3); el.textContent = String(Math.round(n * e)); if (k < 1) root.requestAnimationFrame(step); else el.textContent = String(n); }
+      root.requestAnimationFrame(step);
+    });
   }
   function panelHTML(profile) {
     var today = S.today(), RH = root.OvuRhythm, band = RH && RH.bandFor ? RH.bandFor(profile || {}) : null;
@@ -154,11 +177,11 @@
     /* the cycle score is for menstrual cycles: after menopause it is not shown, and in pregnancy it pauses (request check, 22 Oct) */
     var post = !!(AG && AG.isPostmenopausal && AG.isPostmenopausal(profile || {})), preg = (profile || {}).lifeStage === 'pregnant';
     var h = post || preg ? '<section class="scorecard dreamy sc-cycle" data-score="cycle" data-mood="sleepy"><div class="schero"><div class="scside"><h3><span class="ms">favorite</span>Cycle wellness</h3><p class="scmood">' + (post ? 'Cycle wellness is for menstrual cycles, so it is not shown after menopause. Any bleeding you record is named as something to get checked.' : 'Cycle wellness pauses during pregnancy. It comes back once your periods return.') + '</p></div><img class="sccloud" src="' + ART + 'cloud-sleepy.webp" alt="" width="96" height="96" loading="lazy"></div></section>' :
-      card('cycle', 'Cycle wellness', 'favorite', cs.score,
+      card('cycle', 'Cycle wellness', 'local_florist', cs.score !== null ? cs.score : cs.soFar,
         '<div class="scpills">' + pill('Regularity', cs.parts.regularity, 'how much your cycle lengths vary, against what is usual for your age') + pill('Frequency', cs.parts.frequency, 'cycles of 24 to 38 days') + pill('Period length', cs.parts.duration, 'periods of 8 days or less') + pill('Comfort', cs.parts.comfort, 'from your 0 to 10 period pain') + '</div>' +
         needRow(cs.need) +
         '<h4 class="schead">Cycle lengths, days (reference 24 to 38)</h4>' + bars(cs.lengths, 24, 38, 60, 'cycles') + '<h4 class="schead">Period lengths, days (reference up to 8)</h4>' + bars(cs.periodDays, 1, 8, 12, 'periods') +
-        '<p class="help scfoot">An app-defined summary of your recorded cycles and period pain (weights: regularity 25, frequency 25, period length 20, comfort 30). It does not assess fertility, confirm ovulation or rule out a health condition.</p>');
+        '<p class="help scfoot">An app-defined summary of your recorded cycles and period pain (weights: regularity 25, frequency 25, period length 20, comfort 30). It does not assess fertility, confirm ovulation or rule out a health condition.' + (cs.score === null && cs.soFar !== null ? ' So far uses only the parts that are ready, with their weights scaled to 100.' : '') + '</p>', cs.score === null && cs.soFar !== null ? cs.partsReady : 0);
     h += card('sleep', 'Circadian rhythm', 'bedtime', ss.score,
       '<div class="scpills">' + pill('Steady timing', ss.parts.timing, ss.midSpread !== null ? 'the middle of your sleep moves about ' + ss.midSpread + ' min' : 'how much the middle of your sleep moves') + pill('Enough sleep', ss.parts.duration, 'nights reaching 7 hours') + pill('Wake time spread', ss.wakeSpread === null ? null : ss.wakeSpread + ' min', 'shown, not scored', true) + pill('Weekend shift', ss.weekendShift === null ? null : ss.weekendShift + ' min', 'shown, not scored', true) + '</div>' +
       needRow(ss.need) +
@@ -166,6 +189,6 @@
       '<p class="help scfoot">Estimated from your recorded sleep schedule and length (weights: steady timing 70, enough sleep 30). It does not measure your body clock, and a steady score does not rule out a sleep problem.</p>');
     return h;
   }
-  SC.mood = mood;
+  SC.mood = mood; SC.animate = animate;
   SC.panelHTML = panelHTML; SC.episodesFromStore = episodesFromStore; SC.nightsFromStore = nightsFromStore;
 })(typeof window !== 'undefined' ? window : this);
