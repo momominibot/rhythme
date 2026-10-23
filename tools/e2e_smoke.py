@@ -116,29 +116,71 @@ async def check_legacy_pages(browser):
     check("settings: the old settings.html address lands on the Settings sheet with the You tab chosen", s5["id"] == "settings" and (s5["tab"] or {}).get("tab") == "you", s5)
     # representative older pages: one header with a way back, the room's five tabs, the light palette, no second Luna
     looks = {}
+    OLDER = ["fertility.html", "journey-peri.html", "labs.html", "privacy.html", "ppg.html", "terms.html", "ovarian-health.html"]
+    # the rendered width of the page's first lines of content text (not the header), to see the room's Text size reach it
+    TEXT_W = "()=>{const el=[...document.querySelectorAll('main p, .scroll p, .scroll h1, .scroll h2, main h1, main h2, #step1 p, .terms-page p')].find(e=>!e.closest('.top,nav') && e.offsetParent && (e.textContent||'').trim().length>20); if(!el) return 0; const w=document.createTreeWalker(el,NodeFilter.SHOW_TEXT); let t; while((t=w.nextNode()) && t.textContent.trim().length<12){} if(!t) return 0; const r=document.createRange(), i=t.textContent.search(/\\S/); r.setStart(t,i); r.setEnd(t,i+10); return r.getBoundingClientRect().width;}"
+    base_w = {}
+    for name in OLDER:
+        await pg.goto(BASE + name, wait_until="load"); await pg.wait_for_timeout(400)
+        base_w[name] = await pg.evaluate(TEXT_W)
     await pg.evaluate("()=>{var d=JSON.parse(localStorage.getItem('ovumind_db_v1')); d.profile.textSize='large'; localStorage.setItem('ovumind_db_v1', JSON.stringify(d));}")
-    for name in ["fertility.html", "journey-peri.html", "labs.html", "privacy.html", "ppg.html", "terms.html", "ovarian-health.html"]:
+    for name in OLDER:
         await pg.goto(BASE + name, wait_until="load"); await pg.wait_for_timeout(500)
         looks[name] = await pg.evaluate("""()=>{const b=document.querySelector('.top.rh-top .rh-back'), t=document.querySelector('.top.rh-top .rh-title'), n=document.querySelector('nav.rh-nav'), l=document.querySelector('#lunaBtn');
           return {back: b && b.getAttribute('href'), title: t && t.textContent, tabs: n ? [...n.querySelectorAll('a')].map(a=>[...a.childNodes].filter(x=>x.nodeType===3).map(x=>x.textContent).join('').trim()) : null,
             on: n && n.querySelector('a.on') ? [...n.querySelector('a.on').childNodes].filter(x=>x.nodeType===3).map(x=>x.textContent).join('').trim() : null, icon: n && n.querySelectorAll('a .ms')[1] ? n.querySelectorAll('a .ms')[1].textContent : null, pad: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--shell-bottom-size'))||0,
             theme: document.documentElement.getAttribute('data-theme'), bg: getComputedStyle(document.body).backgroundColor, luna: !!(l && l.offsetParent),
-            font: parseFloat(document.documentElement.style.fontSize)||0, sheet: !!document.querySelector('link[href="rhythme-legacy.css"]')}}""")
+            sheet: !!document.querySelector('link[href="rhythme-legacy.css"]')}}""")
+        looks[name]["grow"] = round((await pg.evaluate(TEXT_W)) / (base_w[name] or 1), 3)
     await pg.goto(BASE + "life-journey.html", wait_until="load"); await pg.wait_for_timeout(400)
     s2b = await pg.evaluate("()=>({mine: [...document.querySelectorAll('.journey-link.mine')].map(a=>a.getAttribute('href')), tag: (document.querySelector('.journey-link.mine .mine-tag')||{}).textContent})")
     check("settings: the life chapter chosen in Settings is marked on Your life journey, and only that one", s2b["mine"] == ["journey-nurture.html"] and s2b["tag"] == "Your chapter", s2b)
-    bad = {k: v for k, v in looks.items() if not (v["back"] and v["back"].startswith("room.html") and v["title"] and v["theme"] == "light" and v["bg"] == "rgb(248, 243, 251)" and not v["luna"] and v["sheet"] and abs(v["font"] - 17.92) < 0.2)}
+    bad = {k: v for k, v in looks.items() if not (v["back"] and v["back"].startswith("room.html") and v["title"] and v["theme"] == "light" and v["bg"] == "rgb(248, 243, 251)" and not v["luna"] and v["sheet"] and abs(v["grow"] - 1.12) < 0.04)}
     check("older pages: each has the room's back button and title, the light palette even after an old dark choice, no second Luna, and the room's text size", not bad, bad)
     navs = {k: [v["tabs"], v["on"], v["icon"], v["pad"]] for k, v in looks.items()}
     want_on = {"fertility.html": "Home", "journey-peri.html": "Home", "labs.html": "You", "privacy.html": "You", "ppg.html": "Mind", "terms.html": "You", "ovarian-health.html": "Home"}
     check("older pages: every one has the room's five tabs with the room's calendar icon, its own tab chosen, and room left under the content for them", all(v[0] == ["Home", "Cycle", "Food", "Mind", "You"] and v[1] == want_on[k] and v[2] == "calendar_month" and v[3] >= 50 for k, v in navs.items()), navs)
-    # retired duplicates go where their content lives
-    ends = {}
-    for name in ["notifications.html", "reports.html", "meds.html", "sleep.html", "community.html", "premium.html"]:
-        await pg.goto(BASE + name, wait_until="domcontentloaded"); await pg.wait_for_timeout(900)
-        ends[name] = pg.url.replace(BASE, "")
-    want = {"notifications.html": "room.html", "reports.html": "labs.html", "meds.html": "health-profile.html", "sleep.html": "journal.html", "community.html": "room.html", "premium.html": "room.html"}
-    check("retired pages: reminders, sample reports, sample medicines, sleep notes, sample groups and the premium preview each land on their home", all(ends[k].split("#")[0] == v for k, v in want.items()), ends)
+    # retired duplicates land where their content lives: the right sheet with You chosen, the lab log, the health notes,
+    # the journal's Sleep filter; opened on their own (an old address) and from a link inside the room (the viewer)
+    ROOMS = {"notifications.html": "clock", "premium.html": "rhythme-plus", "community.html": "friends", "circle.html": "friends"}
+    PAGES = {"reports.html": "labs.html", "meds.html": "health-profile.html", "sleep.html": "journal.html"}
+    SHEET_JS = "()=>({id: OvuRoom.sheetId(), fr: !!document.querySelector('#frSheet'), tab: (document.querySelector('nav a.on')||{dataset:{}}).dataset.tab, viewer: OvuPage.isOpen()})"
+    def sheet_ok(r, want): return bool(r) and r["tab"] == "you" and not r["viewer"] and (r["fr"] if want == "friends" else r["id"] == want)
+    landed = {}
+    for name, want in ROOMS.items():
+        await pg.goto(BASE + name, wait_until="domcontentloaded")
+        try: await pg.wait_for_url("**/room.html*", timeout=8000)
+        except Exception: pass
+        await room_ready(pg)
+        try: await pg.wait_for_function("(w)=>w==='friends' ? !!document.querySelector('#frSheet') : OvuRoom.sheetId()===w", arg=want, timeout=8000)
+        except Exception: pass
+        landed["direct " + name] = await pg.evaluate(SHEET_JS)
+    for name, want in ROOMS.items():
+        await pg.evaluate("()=>{ if (OvuPage.isOpen()) OvuPage.close(); }"); await pg.keyboard.press("Escape"); await pg.wait_for_timeout(400)
+        await pg.evaluate("(n)=>OvuPage.open(n)", name)
+        try: await pg.wait_for_function("(w)=>!OvuPage.isOpen() && (w==='friends' ? !!document.querySelector('#frSheet') : OvuRoom.sheetId()===w)", arg=want, timeout=8000)
+        except Exception: pass
+        landed["viewer " + name] = await pg.evaluate(SHEET_JS)
+    bad_rooms = {k: v for k, v in landed.items() if not sheet_ok(v, ROOMS[k.split(" ")[1]])}
+    check("retired pages: reminders, the premium preview and the sample groups (community, circle) open their sheet with You chosen, from an old address and from a link in the room", not bad_rooms, bad_rooms)
+    pages = {}
+    for name, want in PAGES.items():
+        await pg.goto(BASE + name, wait_until="domcontentloaded")
+        try: await pg.wait_for_url("**/" + want + "*", timeout=8000)
+        except Exception: pass
+        await pg.wait_for_timeout(500)
+        pages["direct " + name] = await pg.evaluate("()=>({path: location.pathname.split('/').pop(), sleep: !!document.querySelector('#filters [data-f=sleep].on')})")
+    await pg.goto(BASE + "room.html", wait_until="domcontentloaded"); await room_ready(pg)
+    for name, want in PAGES.items():
+        await pg.evaluate("()=>{ if (OvuPage.isOpen()) OvuPage.close(); }"); await pg.wait_for_timeout(400)
+        await pg.evaluate("(n)=>OvuPage.open(n)", name)
+        try: await pg.wait_for_function("(w)=>{try{return document.querySelector('#pvFrame').contentWindow.location.pathname.endsWith('/'+w) && document.querySelector('#pvTitle').textContent}catch(e){return false}}", arg=want, timeout=8000)
+        except Exception: pass
+        await pg.wait_for_timeout(600)
+        pages["viewer " + name] = await pg.evaluate("()=>{const f=document.querySelector('#pvFrame'); let p='', s=false; try { p=f.contentWindow.location.pathname.split('/').pop(); s=!!f.contentDocument.querySelector('#filters [data-f=sleep].on'); } catch(e){} return {path: p, sleep: s, open: OvuPage.isOpen()}}")
+    bad_pages = {k: v for k, v in pages.items() if not (v["path"] == PAGES[k.split(" ")[1]] and (v["sleep"] if k.endswith("sleep.html") else True) and v.get("open", True))}
+    check("retired pages: sample reports open the lab log, sample medicines the health notes, sleep notes the journal on its Sleep filter, from an old address and inside the viewer", not bad_pages, bad_pages)
+    await pg.evaluate("()=>{ if (OvuPage.isOpen()) OvuPage.close(); }"); await pg.wait_for_timeout(400)
     # a Learn page in the viewer: its own header and tabs step aside for the viewer's bar
     await pg.goto(BASE + "room.html", wait_until="domcontentloaded"); await room_ready(pg)
     await pg.evaluate("()=>OvuPage.open('fertility.html')")

@@ -39,11 +39,13 @@
     var root = document.documentElement;
     var remPage = document.body && document.body.matches('.text-scaled-page, .home-page, .bio-age-page');
     root.setAttribute('data-font-mode', remPage ? 'rem' : 'legacy');
-    root.style.setProperty('--shell-text-scale', String(scale));
+    /* one scale for the whole page, as ovu-textsize.js does on the journal and doctor pages: the root is zoomed, so text
+       sized in px (the camera pulse page) grows with everything else; the older content-only scales stay at 1 */
+    root.style.setProperty('--shell-text-scale', '1');
     root.style.setProperty('--shell-base-font-size', baseFontSize + 'px');
-    // Clear the old inline zoom. The mode-specific CSS owns the one content scale.
     document.querySelectorAll('.app > .scroll, .app > .content').forEach(function (content) { content.style.removeProperty('zoom'); });
-    root.style.fontSize = (baseFontSize * scale) + 'px';
+    root.style.fontSize = baseFontSize + 'px';
+    root.style.zoom = scale === 1 ? '' : String(scale);
     document.documentElement.setAttribute('data-fontsize', level);
 
     scheduleShellMeasure();

@@ -38,6 +38,7 @@ for u, pages in missing.items(): bad += 1; print('MISSING %s (e.g. %s)' % (u, pa
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import page_inventory
 inv = page_inventory.crawl()
+stubs = {j['page']: (j['target'] or '').split('#')[0] for j in inv if j['kind'] == 'stub'}
 own_blank = re.compile(r'<a\b(?=[^>]*\btarget\s*=\s*["\']_blank)(?=[^>]*\bhref\s*=\s*["\'](?!https?:|mailto:|tel:)[^"\']*\.html)[^>]*>', re.I)
 for i in inv:
     name = i['page']; text = open(os.path.join(root, name), encoding='utf-8', errors='replace').read()
@@ -50,6 +51,9 @@ for i in inv:
         if 'ovu-night-palette.css' in i['styles']: bad += 1; print('NIGHT %s links the retired night palette' % name)
         vis = re.sub(r'<[^>]+>', ' ', re.sub(r'<!--[\s\S]*?-->|<script[\s\S]*?</script>|<style[\s\S]*?</style>', '', text))
         if '\u2014' in vis: bad += 1; print('DASH %s shows an em dash: %s' % (name, re.search(r'.{0,30}\u2014.{0,20}', vis).group(0).strip()))
+        # a link to a retired page that only sends her back to this same page goes nowhere
+        for href in set(re.findall(r'href\s*=\s*["\']([a-z0-9-]+\.html)', text)):
+            if stubs.get(href) == name: bad += 1; print('LOOP %s links %s, which only leads back to %s' % (name, href, name))
     else:
         t = i['target']
         if not (re.search(r'<meta http-equiv="refresh" content="0;\s*url=' + re.escape(t) + '"', text) and re.search(r'<a href="' + re.escape(t) + '"', text)):
