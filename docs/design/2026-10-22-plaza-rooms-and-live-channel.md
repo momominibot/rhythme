@@ -195,3 +195,25 @@ Checks after round 1: dry run 74/74 locally and on the live project, rolled back
 file; nothing persisted); races 10 of 10 safe with the second session seen waiting, 8 of 10 go wrong with the locks
 removed; core suite 1834/0; smoke rooms and staff blocks 32/32, and each new check fails on the code it guards against
 (three against the previous commit, two by mutation).
+
+## 11. Codex diff review, round 2 (23 Oct): HOLD, and the work stops here (AGENTS gate 6)
+
+Full text: `docs/design/reviews/2026-10-23-plaza-rooms-codex-diff-r2.md`. Eight of the 14 round-1 findings are FIXED
+(1, 2, 5, 9, 11, 12, 13, 14). Six come back NOT FIXED, so an independent review has now failed twice on the same
+findings, and no further repair is made without the owner's decision:
+
+- 3: a revision taken by an approval that commits after a later message's revision can still be skipped (commit order);
+  the fix it names is to return the whole visible window with each row's current state on every look.
+- 4 and 8: an open Report sheet survives a read refusal or the phone turning under 18, and its buttons still act.
+- 6: the plaza sheet opened before the rooms probe still says staff see only counts.
+- 7: other plain treatment commands ("Take insulin before meals", "Stop taking antibiotics") still show at once in live
+  mode (review mode, the default, still holds every message).
+- 10: more bare-link shapes pass (t.me/alice, t.co/hello, example.health).
+
+New in round 2 (B): two P1 (a Room chat yes that arrives late sends a draft from another room; Off while already off
+records nothing, so an older form can turn it back on), five P2 (a late feed reply restores messages deleted by Off or
+Block; the staff queue does not refresh while open; a failed Show or Hide message is wiped; new messages pull a reader
+who scrolled up to the bottom; the staff Plaza reports notice still says staff never see groups), and two P3.
+
+Browser suite on this machine at load 30 to 48: 493 passed, 2 failed, both outside the rooms (the wider-world map
+opening view, and Home while the room starts); the clean CI run decides those.
