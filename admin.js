@@ -333,16 +333,17 @@
 
   /* ---------- loading ---------- */
   var releaseKey = null; /* the published run and the hold count as last seen: when either changes, the cached feed is dropped at once and reloaded whole, so words from a run held since never stay on screen */
-  var feedGen = 0, feedNeedsFull = false; /* only the newest feed request may write; a full reload stays owed until one succeeds */
-  function loadOverview() { return rpc('admin_overview').then(function (j) { if (denied(j)) return bootStaffOnly(); ov = j; pill('on', 'live'); var rk = String(j && j.latest_run) + '|' + String(j && j.held_runs); if (releaseKey === null || rk !== releaseKey) { feed = []; feedTop = 0; feedNeedsFull = true; if (tab === 'feed') renderFeed(); } /* the first overview counts as a change: anything the boot feed showed may predate a hold, so it is dropped and reloaded whole */ releaseKey = rk; if (feedNeedsFull) loadFeed(true); if (tab === 'today') renderToday(); if (tab === 'agents') renderAgents(); if (tab === 'queue') renderQueue(); }).catch(function (e) { pill('bad', 'offline'); }); }
+  var feedGen = 0, feedNeedsFull = false, ovGen = 0; /* only the newest feed or overview request may write; a full feed reload stays owed until one succeeds */
+  function loadOverview() { var gen = ++ovGen; return rpc('admin_overview').then(function (j) { if (gen !== ovGen) return; /* a newer overview was sent since: this answer may predate a hold */ if (denied(j)) return bootStaffOnly(); ov = j; pill('on', 'live'); var rk = String(j && j.latest_run) + '|' + String(j && j.held_runs); if (releaseKey === null || rk !== releaseKey) { feed = []; feedTop = 0; feedNeedsFull = true; if (tab === 'feed') renderFeed(); } /* the first overview counts as a change: anything the boot feed showed may predate a hold, so it is dropped and reloaded whole */ releaseKey = rk; if (feedNeedsFull) loadFeed(true); if (tab === 'today') renderToday(); if (tab === 'agents') renderAgents(); if (tab === 'queue') renderQueue(); }).catch(function (e) { pill('bad', 'offline'); }); }
   function loadFeed(all) {
     all = all || feedNeedsFull;
     var gen = ++feedGen, args = all || !feedTop ? { p_limit: 60 } : { p_limit: 60, p_after: feedTop };
     return rpc('admin_feed', args).then(function (rows) {
       if (gen !== feedGen) return; /* a newer request was sent since: this answer may predate a hold */
       if (denied(rows)) return bootStaffOnly();
-      if (all) feedNeedsFull = false;
       rows = Array.isArray(rows) ? rows : [];
+      if (!all && rows.some(function (e) { return e && e.kind === 'invalidated'; })) { feed = []; feedTop = 0; feedNeedsFull = true; if (tab === 'feed') renderFeed(); loadOverview(); return loadFeed(true); } /* a hold arrived in a poll: everything cached may now be held, so drop it and reload whole */
+      if (all) feedNeedsFull = false;
       if (all || !feedTop) { feed = rows; } else if (rows.length) { feed = rows.concat(feed).slice(0, 300); }
       if (feed.length) feedTop = feed[0].id;
       if (tab === 'feed') {

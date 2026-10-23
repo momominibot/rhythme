@@ -2679,6 +2679,57 @@ function scenes(todayIso) {
     });
   }).catch(function (e) { check('dashboard first-load failure harness ran', false, String(e && e.stack || e)); });
 })();
+(function dashboardHoldPaths() {
+  console.log('phase 0 (23 Oct): a hold that arrives in a feed poll clears the feed, and an older overview answer cannot restore held summaries');
+  function harness() {
+    var el = function () { return { innerHTML: '', textContent: '', className: '', style: {}, dataset: {}, classList: { add: function () { }, remove: function () { }, toggle: function () { } }, setAttribute: function () { }, addEventListener: function () { }, querySelector: function () { return null; }, querySelectorAll: function () { return []; }, insertAdjacentHTML: function () { }, appendChild: function () { } }; };
+    var w = { console: console, setTimeout: setTimeout, clearTimeout: clearTimeout, setInterval: function () { return 0; }, clearInterval: function () { }, Promise: Promise, JSON: JSON, Date: Date, Math: Math, String: String, Number: Number, Array: Array, Object: Object, encodeURIComponent: encodeURIComponent, location: { search: '', hash: '', href: 'x' }, history: { replaceState: function () { } } };
+    w.window = w; w.document = { getElementById: function () { return el(); }, createElement: el, querySelector: function () { return null; }, querySelectorAll: function () { return []; }, addEventListener: function () { }, body: el(), documentElement: el(), hidden: false };
+    w.OVU_CONFIG = { supabaseUrl: 'https://t.invalid', supabaseKey: 'k' };
+    w.OvuAuth = { token: function () { return 't'; }, init: function () { return new Promise(function () { }); }, session: function () { return null; } };
+    w.__ADMIN_TEST__ = {};
+    var h = { feed: [], ov: [] };
+    var pend = function (list, body) { return new Promise(function (res) { list.push({ args: body, res: function (v) { res({ ok: true, status: 200, text: function () { return Promise.resolve(JSON.stringify(v)); } }); }, rej: function () { res({ ok: false, status: 500, text: function () { return Promise.resolve('{"message":"down"}'); } }); } }); }); };
+    w.fetch = function (u, o) { var name = String(u).split('/rpc/')[1], body = JSON.parse(o.body || '{}'); if (name === 'admin_feed') return pend(h.feed, body); if (name === 'admin_overview') return pend(h.ov, body); return Promise.resolve({ ok: true, status: 200, text: function () { return Promise.resolve('[]'); } }); };
+    vm.runInContext(fs.readFileSync(path.join(root, 'admin.js'), 'utf8'), vm.createContext(w), { filename: 'admin.js' });
+    h.T = w.__ADMIN_TEST__.api; h.T.setTab('none');
+    return h;
+  }
+  var tick = function () { return new Promise(function (r) { setTimeout(r, 0); }); };
+  var oldRow = { id: 5, run_id: 'r1', kind: 'report', title: 'cycle: 21 eligible adults', detail: { summary: { eligible: 21 } } };
+  openHarness.dashboardHoldPaths = true;
+  var a = harness();
+  var ov1 = a.T.loadOverview();
+  tick().then(function () { a.ov.shift().res({ latest_run: 'r1', held_runs: 0 }); return ov1; }).then(tick).then(function () {
+    a.feed.shift().res([oldRow]); return tick().then(tick);
+  }).then(function () {
+    var poll = a.T.loadFeed(false);
+    return tick().then(function () {
+      a.feed.shift().res([{ id: 6, kind: 'invalidated', title: 'orchestrator: 1 published run held until the next run (withdrawal)', detail: { runs: 1 } }]);
+      return tick().then(tick);
+    }).then(function () {
+      var st = a.T.state(), fullSent = a.feed.length === 1 && !('p_after' in a.feed[0].args), ovSent = a.ov.length === 1;
+      a.ov.shift().rej(); a.feed.shift().rej(); /* the overview and the full reload both fail */
+      return poll.then(tick).then(tick).then(function () {
+        var st2 = a.T.state();
+        check('a hold that arrives in a feed poll drops every cached row at once, asks for a full reload and a new overview, and stays dropped when both fail', st.feed.length === 0 && fullSent && ovSent && st2.feed.length === 0 && st2.needsFull === true, JSON.stringify({ st: st, st2: st2, fullSent: fullSent, ovSent: ovSent }));
+      });
+    });
+  }).then(function () {
+    var b = harness();
+    var older = b.T.loadOverview(), newer = b.T.loadOverview(); /* A sent before the withdrawal, B after */
+    return tick().then(function () {
+      b.ov[1].res({ latest_run: null, held_runs: 1 }); return newer;
+    }).then(tick).then(function () {
+      var rkB = b.T.state().releaseKey;
+      b.ov[0].res({ latest_run: 'r1', held_runs: 0 }); /* the older answer lands last */
+      return older.then(tick).then(function () {
+        check('an older overview answer that lands after a newer held one is ignored, so the release key and held summaries never roll back', rkB === 'null|1' && b.T.state().releaseKey === 'null|1', JSON.stringify({ rkB: rkB, now: b.T.state().releaseKey }));
+        delete openHarness.dashboardHoldPaths;
+      });
+    });
+  }).catch(function (e) { check('dashboard hold paths harness ran', false, String(e && e.stack || e)); });
+})();
 (function plotGrowth() {
   console.log('the plot grows a stage per credited day and never shrinks');
   var w = scenes('2026-10-18'), S = w.OvuStore, G = w.OvuGarden;

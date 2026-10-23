@@ -346,3 +346,26 @@ The slower boot-answer case is resolved. No other changed-line findings. Indepen
 FIX
 
 Fix: the first overview now counts as a change, so it drops the cached feed and cursor and redraws the Feed tab before the owed full reload (admin.js loadOverview; test-core dashboardFeedFirstLoadFails, which fails on 07e3680).
+
+
+# Round eight (commit 4301955, verdict FIX, two P1; fixed in the following commit)
+
+**Round-seven P1 is resolved at `4301955`. Two P1s remain.**
+
+1. **P1: Incremental invalidation leaves held Feed content visible.** [admin.js:346](/Users/michiyomimi/Doubao/chats/2026-10-16/new-chat-12/ovumind/.claude/worktrees/farm-barn-cave/admin.js:346) prepends `kind:"invalidated"` without clearing cached summaries. Reproduced: published feed → invalidation event → overview HTTP 500 → empty incremental poll. Both the hold announcement and old `eligible:21` title/detail remain rendered, with `needsFull:false`. Repeated overview failures preserve them indefinitely.
+
+   **Fix:** treat incremental invalidation as an immediate clearing and full-reconciliation trigger, retaining generation protection and reload debt.
+
+2. **P1: An older overview restores held summaries on Today/Agents.** [admin.js:337](/Users/michiyomimi/Doubao/chats/2026-10-16/new-chat-12/ovumind/.claude/worktrees/farm-barn-cave/admin.js:337) has no response-generation guard. Reproduced on both tabs: overview A starts before withdrawal; newer B returns held and removes summaries; delayed A then restores `21 eligible` and rolls `releaseKey` backward. Subsequent overview failure leaves those words visible. This affects overview content, not Feed resurrection.
+
+   **Fix:** reject obsolete overview responses before updating state or rendering; add this overlap regression.
+
+Swept boot, Run now, polling, visibility return, tab rendering, denial, failed/empty reloads, and delayed feed responses. No additional feed-specific findings.
+
+Verified **1814/1814 core checks**, **81 pages with zero static problems**, and the supplied regression passing HEAD and failing `07e3680`. A separate rendered-panel probe confirms the round-seven fix. PostgreSQL **64/64** remains owner-reported, not rerun. No files changed.
+
+Ship order remains migration first, schema-cache refresh, eight-argument RPC verification, then client merge.
+
+FIX
+
+Fix: a feed poll that brings an invalidated event drops the cached feed and cursor, asks for a new overview and a full reload, and keeps the reload owed if either fails; only the newest overview request may write (ovGen), so an older answer cannot roll the release key or held summaries back (test-core dashboardHoldPaths; each guard mutated alone fails its check).
