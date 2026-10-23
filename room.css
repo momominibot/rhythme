@@ -2602,3 +2602,20 @@ button.rmgroup:focus-visible{outline:3px solid var(--rm-mauve);outline-offset:2p
 #tidyLayer .puff img{width:100%;display:block}
 @keyframes puffup{0%{opacity:0;transform:translate(-50%,-60%) scale(.5)}30%{opacity:1}100%{opacity:0;transform:translate(-50%,-120%) scale(1.3)}}
 @media (prefers-reduced-motion:reduce){.tidyitem,.tidyitem.swept{animation:none}.broom{transition:none}.broom.sweeping img,.broom.dwell img{animation:none}#tidyLayer .spark,#tidyLayer .puff{display:none}}
+
+/* Free and Plus side by side in the Rhythme Plus sheet (23 Oct) */
+.plustable{width:100%;border-collapse:separate;border-spacing:0;margin:4px 0 12px;background:#fff;border:1px solid var(--rm-line,#ece3f6);border-radius:16px;overflow:hidden;font:600 12.5px/1.35 var(--sans);color:var(--rm-ink-2)}
+.plustable th,.plustable td{padding:8px 10px;border-bottom:1px solid #f1eaf8;vertical-align:middle}
+.plustable tbody tr:last-child th,.plustable tbody tr:last-child td{border-bottom:0}
+.plustable thead th{font:800 11px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--rm-plum);background:#faf6ff;text-align:center}
+.plustable thead th:first-child{text-align:left}
+.plustable tbody th{text-align:left;font-weight:700;color:var(--rm-ink)}
+.plustable td{text-align:center;width:24%;white-space:nowrap}
+.plustable td:last-child{background:linear-gradient(135deg,rgba(255,246,230,.7),rgba(251,227,234,.7))}
+.plustable .pc-yes{color:#8a6bb8;font-size:20px;vertical-align:middle}
+.plustable .pc-no{color:#c9bcd9;font-size:20px;line-height:1}
+.plustable .pc-txt{font:800 11.5px var(--sans);color:var(--rm-plum)}
+.plustable .pc-soon{display:inline-block;font:800 10px var(--sans);letter-spacing:.02em;color:#8a5a2a;background:#fff1d6;border:1px solid #f1d9b0;border-radius:999px;padding:2px 7px;white-space:nowrap}
+.plussupport{display:flex;gap:10px;align-items:flex-start;background:linear-gradient(135deg,#fff6e6,#fbe3ea);border:1px solid #f1d9b0;border-radius:16px;padding:10px 12px;margin:0 0 12px}
+.plussupport .ms{color:#d77a9a;font-size:20px;flex:none;margin-top:1px}
+.plussupport p{margin:0;font:600 12.5px/1.45 var(--sans);color:var(--rm-ink-2)}
