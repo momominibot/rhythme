@@ -330,8 +330,9 @@ begin
   low := lower(translate(t, '’‘', ''''''));
   -- contact details first, on all of her words, so no exception can hide one (Codex diff review round 4, B3 and B4)
   if low ~ '[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}' or low ~ '(^|[^a-z0-9])@[a-z0-9_.]{2,}' then return 'contact'; end if;
-  -- a number with a country code is a phone number whatever its digits look like (+45 20-12-2012; round 6)
-  for run in select m[1] from regexp_matches(low, '(\+[0-9][0-9 ().-]*[0-9])', 'g') as m loop
+  -- a number with a country code is a phone number whatever its digits look like (+45 20-12-2012; round 6), but a plus
+  -- right after a digit is a pregnancy week (12+3), not a country code (round 7)
+  for run in select m[1] from regexp_matches(low, '(?<![0-9])(\+[0-9][0-9 ().-]*[0-9])', 'g') as m loop
     if char_length(regexp_replace(run, '[^0-9]', '', 'g')) >= 7 then return 'contact'; end if;
   end loop;
   nd := plaza.undate(low);

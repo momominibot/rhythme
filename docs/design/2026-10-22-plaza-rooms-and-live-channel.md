@@ -337,3 +337,7 @@ styles) were judged intact. Round-5 fixes 1, 2, 3 and 5 and B3, B4 were confirme
 These are the last of a family Codex has found more of each round. With review only, a phrase the refusal rules miss
 reaches a person before anyone else, so the rules are a first filter, not the boundary.
 
+Round 7 (`docs/design/reviews/2026-10-23-plaza-rooms-codex-diff-r7.md`): MERGE, every round-6 item fixed. One P2 came from
+the country-code rule: "I was 12+3 (2026-10-22) at my scan" read `+3 (2026-10-22)` as a phone number. A plus right after a
+digit is a pregnancy week, not a country code; both rule sets now say so, with two fixture cases (12+3, 38+2).
+

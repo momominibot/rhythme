@@ -244,6 +244,14 @@
   {
    "text": "phone call 5551234",
    "problem": "contact"
+  },
+  {
+   "text": "I was 12+3 (2026-10-22) at my scan",
+   "problem": null
+  },
+  {
+   "text": "at 38+2 weeks today",
+   "problem": null
   }
  ],
  "hold": [

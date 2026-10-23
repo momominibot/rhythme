@@ -109,8 +109,9 @@
     var low = straight(t);
     /* contact details first, on all of her words, so no exception can hide one */
     if (/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/.test(low) || /(^|[^a-z0-9])@[a-z0-9_.]{2,}/.test(low)) return 'contact';
-    /* a number with a country code is a phone number whatever its digits look like (+45 20-12-2012; round 6) */
-    if ((low.match(/\+[0-9][0-9 ().-]*[0-9]/g) || []).some(function (r) { return r.replace(/[^0-9]/g, '').length >= 7; })) return 'contact';
+    /* a number with a country code is a phone number whatever its digits look like (+45 20-12-2012; round 6), but a plus
+       right after a digit is a pregnancy week (12+3), not a country code (round 7) */
+    if ((low.match(/(?<![0-9])\+[0-9][0-9 ().-]*[0-9]/g) || []).some(function (r) { return r.replace(/[^0-9]/g, '').length >= 7; })) return 'contact';
     var nd = low.replace(DATES, ' '), m;
     if (digitRuns(nd).some(function (n) { return n >= 8; }) || PHONE7.test(nd)) return 'contact';
     ASK.lastIndex = 0;
