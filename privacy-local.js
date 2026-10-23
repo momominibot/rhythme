@@ -51,7 +51,7 @@
     ['ovuluna_units', 'Measurement units preference', 'preferences'],
     ['ovuluna_auth', 'Legacy local sign-in appearance (not a verified account)', 'legacy'],
     ['ovuluna_preferences_v1', 'Welcome preferences', 'preferences'],
-    ['ovuluna_persona', 'Life-stage appearance', 'preferences'],
+    ['ovuluna_persona', 'Your life chapter (Settings)', 'preferences'],
     ['ovuluna_theme', 'Color theme', 'preferences'],
     ['ovuluna_fontsize', 'Text size', 'preferences'],
     ['ovuluna_hormone_view', 'Hormone chart view', 'preferences'],
