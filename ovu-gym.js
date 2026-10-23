@@ -81,7 +81,7 @@
   /* ---------- the runner (browser only) ---------- */
   var S = root.OvuStore, R = root.OvuRoom, W = root.OvuWalk, LN = root.OvuLane, LS = root.OvuLaneScene, doc = root.document;
   if (!S || !R || !W || !LN || !LS || !doc || !doc.createElement) return;
-  var GYM = 'lane-gym', URGENT = (root.OvuPulse && root.OvuPulse.BEFORE && root.OvuPulse.BEFORE.urgent) || 'Chest pain, pressure or tightness, unusual breathlessness, collapse or stroke signs: call your local emergency number.';
+  var GYM = 'lane-gym', GAP = 2500, URGENT = (root.OvuPulse && root.OvuPulse.BEFORE && root.OvuPulse.BEFORE.urgent) || 'Chest pain, pressure or tightness, unusual breathlessness, collapse or stroke signs: call your local emergency number.';
   function $(id) { return doc.getElementById(id); }
   function esc(s) { return R.esc ? R.esc(s) : String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function reduced() { return !!(R.reduced && R.reduced()); }
@@ -130,7 +130,7 @@
     if (root.OvuPodcast) { try { root.OvuPodcast.pause(); } catch (e) { } }
     R.hideSheet();
     var kit = kitFor(R.savedOutfit ? R.savedOutfit() : 'base'), meta = strip(kit, id);
-    run = { id: id, st: st, ln: ln, sp: sp, kit: kit, meta: meta, minutes: minutes, total: minutes * 60000, clock: makeClock(), phase: 'dress', paused: false, el: null, img: null, frame: -1, timer: 0, last: 0, day: S.today(), tok: {} };
+    run = { id: id, st: st, ln: ln, sp: sp, kit: kit, meta: meta, minutes: minutes, total: minutes * 60000, clock: makeClock(), phase: 'dress', paused: false, el: null, img: null, frame: -1, timer: 0, last: 0, h: 0, day: S.today(), born: born() };
     var r = run;
     R.placeAvatar(sp.wp, !!sp.wp.flip);
     showPanel();
@@ -158,11 +158,14 @@
       el.style.left = r.st.on.x + '%'; el.style.top = r.st.on.y + '%'; el.style.width = w.toFixed(2) + '%';
       var cp = clipLocal(r.st.clip, box(r.st.on, w, h)); if (cp) { el.style.clipPath = cp; el.style.webkitClipPath = cp; }
       el.innerHTML = '<div class="gwcell" style="aspect-ratio:' + m.w + '/' + m.h + '"><img class="gwa" alt="" src="' + R.ART + m.file + '" style="width:' + (m.frames * 100) + '%"><img class="gwb" alt="" src="' + R.ART + m.file + '" style="width:' + (m.frames * 100) + '%"></div>';
-      R.els.props.appendChild(el); r.el = el;
+      R.els.props.appendChild(el); r.el = el; r.h = h;
       R.els.avatar.classList.add('hidden'); R.els.scene.classList.add('gymming'); r.hid = true;
       if (W.sortDepth) W.sortDepth();
     }
-    r.clock.run(); r.last = mono(); paint(true); paintPanel();
+    r.last = mono();
+    if (doc.hidden) { r.paused = true; r.away = true; if (r.el) r.el.classList.add('paused'); } /* locked while she changed: she waits on the machine, nothing counted (Codex diff review, 22 Oct) */
+    else r.clock.run();
+    paint(true); paintPanel();
     clearInterval(r.timer); r.timer = setInterval(tick, 100);
   }
   /* off the machine: the strip goes; she is shown again and stands at its stand point only while the gym still owns her (a
@@ -170,10 +173,10 @@
   function unmount(r) {
     if (r.el && r.el.parentNode) r.el.remove(); r.el = null;
     R.els.scene.classList.remove('gymming');
-    var mine = !R.asleep() && !R.meditating();
-    if (r.hid && mine) R.els.avatar.classList.remove('hidden'); /* a new scene does not show her by itself */
+    var owned = R.meditating() || R.els.scene.classList.contains('is-night'); /* the mat or this tab's night shows her its own way */
+    if (r.hid && !owned) R.els.avatar.classList.remove('hidden'); /* a new scene, or bedtime in another tab, does not show her by itself (Codex diff review, 22 Oct) */
     r.hid = false;
-    if (mine && inGym()) R.placeAvatar(r.sp.wp, !!r.sp.wp.flip); /* in a new scene she is already where it put her */
+    if (!owned && inGym() && !R.asleep()) R.placeAvatar(r.sp.wp, !!r.sp.wp.flip); /* in a new scene she is already where it put her */
   }
   function showFrame(img, f, n) { if (img) img.style.transform = 'translate3d(-' + (f * 100 / n).toFixed(3) + '%,0,0)'; }
   /* the frame for the active time so far: a loop steps; a fade holds each frame and cross-fades to the next */
@@ -192,7 +195,7 @@
   function tick() {
     var r = run; if (!r || r.phase !== 'move') return;
     var now = mono();
-    if (doc.hidden || now - r.last > 2500) { if (!r.paused) { pause(r.last + 100); r.away = true; paintPanel(); } r.last = now; return; } /* hidden, or a page that froze: the clock stops where it was last seen */
+    if (doc.hidden || now - r.last > GAP) { if (!r.paused) { pause(r.last); r.away = true; paintPanel(); } r.last = now; return; } /* hidden, or a page that froze: the clock stops where it was last seen running */
     r.last = now;
     if (r.paused) return;
     if (r.clock.ms() >= r.total) { finish(true); return; }
@@ -222,7 +225,18 @@
     var p = $('gpPause'); p.textContent = r.paused ? 'Resume' : 'Pause'; p.disabled = r.phase !== 'move';
     paintClock();
   }
-  function pause(at) { var r = run; if (!r || r.phase !== 'move' || r.paused) return; r.paused = true; r.clock.hold(at); r.el && r.el.classList.add('paused'); paintPanel(); }
+  /* every stop of the clock goes through here: a Pause tap or a hidden page delivered after the page froze ends at the last
+     moment it was seen running, never later (Codex diff review, 22 Oct) */
+  function holdClock(r, at) { var now = mono(); r.clock.hold(typeof at === 'number' ? at : now - r.last > GAP ? r.last : now); }
+  function pause(at) {
+    var r = run; if (!r || r.phase !== 'move' || r.paused) return;
+    r.paused = true; holdClock(r, at);
+    if (r.el) { /* a cross-fade stops where it is: the current frame, fully drawn */
+      r.el.classList.add('paused'); var a = r.el.querySelector('.gwa'), b = r.el.querySelector('.gwb');
+      if (a) { a.style.transition = 'none'; a.style.opacity = '1'; } if (b) { b.style.transition = 'none'; b.style.opacity = '0'; }
+    }
+    paintPanel();
+  }
   function resume() { var r = run; if (!r || r.phase !== 'move' || !r.paused) return; r.paused = false; r.away = false; r.last = mono(); r.clock.run(); r.el && r.el.classList.remove('paused'); paintPanel(); }
   function pauseToggle() { var r = run; if (!r) return; R.chime('tap'); if (r.paused) resume(); else pause(); }
   function stop() { if (run) { R.chime('tap'); finish(false); } }
@@ -230,7 +244,7 @@
   /* the planned length, or Stop: off the machine, back into her own clothes, and the movement log filled in, after a minute */
   function finish(done, quiet) {
     var r = run; if (!r) return;
-    clearInterval(r.timer); if (!r.paused) r.clock.hold(Math.min(mono(), r.last + 250));
+    clearInterval(r.timer); if (!r.paused && r.phase === 'move') holdClock(r);
     var mins = minutesFor(activeMs(r)), name = place(r.id);
     run = null; hidePanel(); unmount(r);
     R.undress(!!quiet || R.asleep());
@@ -240,7 +254,7 @@
     /* the offer waits for her turn back, and for any other sheet to close; anything else starting, bedtime, leaving the gym or
        the account changing drops it (Codex design review, 22 Oct) */
     dropAsk();
-    var tok = pendingAsk = { act: r.st.act, mins: mins };
+    var tok = pendingAsk = { act: r.st.act, mins: mins, born: r.born };
     function ask() {
       if (pendingAsk !== tok) return;
       if (R.asleep() || !inGym() || (R.activityNow && R.activityNow()) || !R.openExercise) { dropAsk(); return; }
@@ -256,21 +270,27 @@
   function cancel() {
     dropAsk();
     var r = run; if (!r) { R.undress(true); return; }
-    run = null; clearInterval(r.timer); r.clock.hold(); hidePanel(); unmount(r);
+    run = null; clearInterval(r.timer); hidePanel(); unmount(r);
     R.undress(true);
   }
 
   GY.open = open; GY.begin = begin; GY.stop = stop; GY.cancel = cancel; GY.pause = pause; GY.resume = resume; GY.reveal = reveal;
   GY.active = function () { return !!run; }; GY.pendingAsk = function () { return !!pendingAsk; };
-  GY.state = function () { return run ? { id: run.id, kit: run.kit, title: run.st.title, phase: run.phase, paused: run.paused, minutes: run.minutes, ms: run.clock.ms(), frame: run.frame, mounted: !!run.el } : null; };
+  GY.state = function () { return run ? { id: run.id, kit: run.kit, title: run.st.title, phase: run.phase, paused: run.paused, away: !!run.away, minutes: run.minutes, ms: run.clock.ms(), frame: run.frame, mounted: !!run.el } : null; };
+  /* the camera follows what you see: the middle of her on the machine, while her standing picture is hidden */
+  GY.focus = function () { var r = run; return r && r.el && r.h ? { x: r.st.on.x, y: r.st.on.y - r.h / 2 } : null; };
+  /* when the diary was begun: Delete everything or a restore that replaces it, here or in another tab, gives a new one */
+  function born() { return S.born ? S.born() : null; }
   R.on('boot', function () {
     R.on('activity', function (kind, id) { if (kind === 'gym' && run && id === run.id) return; if (run) cancel(); else dropAsk(); });
     R.on('layout', function (L) { if ((run || pendingAsk) && (!L || L.id !== GYM)) cancel(); });
     R.on('beforeWalk', function () { if (run) finish(false, true); }); /* walks are refused while she works out; this is the safety net */
+    R.on('meditate', function () { if (run) finish(false, true); }); /* the Mind tab seats her on the mat: off the machine first, the log offered once its sheet closes */
     R.on('props', function () { if (run && run.el && !run.el.isConnected && inGym()) { R.els.props.appendChild(run.el); if (W.sortDepth) W.sortDepth(); } }); /* a props rebuild (a game-save pull, a sky change) keeps her on the machine, clock and frame as they were */
     S.subscribe(function (reason) {
       if (!run && !pendingAsk) return;
-      if (reason === 'clear' || reason === 'import' || (S.state() && S.state().sleeping)) cancel();
+      var now = born(), was = run ? run.born : pendingAsk.born;
+      if (reason === 'clear' || reason === 'import' || (now && was && now !== was) || (S.state() && S.state().sleeping)) cancel(); /* another tab's reset or restore arrives as 'external' (Codex diff review, 22 Oct) */
     });
     doc.addEventListener('visibilitychange', function () { if (doc.hidden && run && run.phase === 'move' && !run.paused) { pause(); run.away = true; paintPanel(); } }); /* away: the clock holds; she comes back to Resume or Stop */
   });

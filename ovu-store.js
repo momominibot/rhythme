@@ -645,7 +645,13 @@
   /* same-day duplicates (a sync can bring two checks for one day): the newest edit is the answer; on a tie, the later row (Codex, 21 Oct) */
   function newestFirst(a, b) { var ta = String(a.updatedAt || a.createdAt || ''), tb = String(b.updatedAt || b.createdAt || ''); return tb > ta ? 1 : tb < ta ? -1 : 0; }
   function latestOnDate(type, date) { var l = list(type, { from: date, to: date }).map(function (e, i) { return { e: e, i: i }; }).sort(function (x, y) { return newestFirst(x.e, y.e) || (y.i - x.i); }); return l.length ? l[0].e : null; }
-  root.OvuStore = { registerMerge: registerMerge,
+  /* when this diary was begun, as stored: Delete everything or a restore that replaces the diary gives a new one, and another
+     tab sees it at once (ovu-gym.js ends a workout on it, since that tab's merge keeps its own createdAt in memory) */
+  function born() {
+    try { var raw = localStorage.getItem(KEY), m = raw && /"createdAt"\s*:\s*"([^"]{1,40})"/.exec(raw.slice(0, 400)); if (m) return m[1]; } catch (e) { }
+    return load().createdAt || null;
+  }
+  root.OvuStore = { registerMerge: registerMerge, born: born,
     /* the current first-visit data notice (ovu-consent.js asks again below it; the gate below sends people to the room) */
     NOTICE_V: 5, /* v5, 21 Oct 2026: an optional birthday, the year only if she adds it, kept on this phone for the birthday card (the sheet promises to ask again when what is collected changes); v4, 20 Oct 2026: backup and improve-logging wording says who can reach records (Codex legal review) */
     KEY: KEY, TYPES: TYPES, checkinAnswers: checkinAnswers, setCheckinAnswer: setCheckinAnswer, today: today, validDate: validDate, validTime: validTime, addDays: addDays, diffDays: diffDays,

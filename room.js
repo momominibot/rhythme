@@ -593,19 +593,29 @@
   function dressFor(id, done) {
     if (!/^[a-z0-9-]{1,32}$/.test(id || '') || asleep()) return false;
     if (trying) endTryOn(true);
-    costume = { outfit: id, at: L.id }; quietMoment();
+    var k = spriteKey(); /* the picture she wears now: the way back if her own outfit's picture will not load (Codex diff review, 22 Oct) */
+    costume = { outfit: id, at: L.id, from: k && k.indexOf('act-') !== 0 ? ART + 'avatar-' + k + '.webp' : '' }; quietMoment();
     turnInto(id, done); return true;
   }
   /* back into her own saved clothes (a pick made meanwhile wins). silent: at once, no turn (leaving the room, bedtime) */
   function undress(silent, done) {
     if (!costume) return false;
-    costume = null; var own = savedOutfit();
+    var own = savedOutfit(), back = costume.from; costume = null;
     if (silent) {
       ++imgGen; finishTwirl(); quietMoment();
-      if (!avatar.classList.contains('hidden') || (avatarImg.getAttribute('src') || '').indexOf('/avatar-act-') < 0) avatarImg.src = ART + 'avatar-' + own + '.webp';
+      if (!avatar.classList.contains('hidden') || (avatarImg.getAttribute('src') || '').indexOf('/avatar-act-') < 0) wearOwn(own, back);
       if (done) done(true); return true;
     }
-    turnInto(own, done); return true;
+    turnInto(own, function (ok) { if (!ok) wearOwn(own, back); if (done) done(ok); }); return true;
+  }
+  /* her own picture; if it will not load (a pick made during the workout, offline), the picture she wore before the workout:
+     never the workout clothes (Codex diff review, 22 Oct) */
+  function wearOwn(own, back) {
+    var url = ART + 'avatar-' + own + '.webp', gen = ++imgGen;
+    function off() { avatarImg.removeEventListener('error', fail); avatarImg.removeEventListener('load', off); }
+    function fail() { off(); if (gen === imgGen && back && (avatarImg.getAttribute('src') || '') === url) avatarImg.src = back; }
+    if (back && back.indexOf(url) < 0) { avatarImg.addEventListener('error', fail); avatarImg.addEventListener('load', off); }
+    finishTwirl(); avatarImg.src = url;
   }
   /* Keep: an outfit she has (and the accessory) becomes hers to wear, free, as the wardrobe has always been; the only save */
   function keepTryOn() {
@@ -2712,7 +2722,7 @@
     if (meditating && !session) exitMeditation();
     var today = S.today(), from = EX.addDays(today, -6), wk = EX.week(S.list('exercise', { from: from, to: today }), today);
     var ctx = EX.periodContext(S.byDate(today)), recent = S.list('exercise', { from: from, to: today }).reverse().slice(0, 10);
-    var st = { act: null, variant: null };
+    var st = { act: null, variant: null, noTick: opt.strengthTick === false }; /* a few curls at the gym never pre-confirm a whole strength day: she ticks it herself (Codex reviews, 22 Oct) */
     var preMin = Math.round(Number(opt.minutes)); if (!(preMin >= 1 && preMin <= EX.MAX_MINUTES)) preMin = 30;
     var preDay = typeof opt.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(opt.date) && opt.date <= today ? opt.date : today;
     openSheet('move', 'Movement', 'Log what you did and see your week', 'directions_run',
@@ -2742,14 +2752,14 @@
       if (!a) { f.hidden = true; return; }
       if (!EX.variant(a.id, st.variant)) st.variant = a.variants.length === 1 ? a.variants[0].id : null;
       box.innerHTML = a.variants.map(function (v) { var it = EX.intensityOf(v.met, v.effort); return '<button type="button" class="mvvar' + (v.id === st.variant ? ' on' : '') + '" data-mvar="' + v.id + '" aria-pressed="' + (v.id === st.variant) + '"><b>' + esc(v.label) + '</b><small>' + (v.met === null ? 'No MET value' : v.met + ' MET') + ' · ' + EX.WORD[it] + '</small></button>'; }).join('');
-      f.hidden = false; str.checked = !!a.strength; /* pre-ticked for strength work, never locked: the person decides */
+      f.hidden = false; str.checked = !!a.strength && !st.noTick; /* pre-ticked for strength work, never locked: the person decides */
       preview();
     }
     var actsBox = $('#mvActs');
     actsBox.addEventListener('click', function (e) { var b = e.target.closest('[data-mact]'); if (!b) return; chime('tap'); st.act = b.dataset.mact; st.variant = null; $$('.mvact', actsBox).forEach(function (x) { var on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); }); renderVars(); });
     $('#mvVars').addEventListener('click', function (e) { var b = e.target.closest('[data-mvar]'); if (!b) return; chime('tap'); st.variant = b.dataset.mvar; $$('.mvvar', this).forEach(function (x) { var on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); }); preview(); });
     $('#mvQuick').addEventListener('click', function (e) { var b = e.target.closest('[data-min]'); if (!b) return; $('#mvMin').value = b.dataset.min; $$('.chipbtn', this).forEach(function (x) { x.classList.toggle('on', x === b); }); preview(); });
-    $('#mvStr').addEventListener('change', preview);
+    $('#mvStr').addEventListener('change', function () { st.noTick = false; preview(); });
     $('#mvMin').addEventListener('input', function () { var v = this.value; $$('#mvQuick .chipbtn').forEach(function (x) { x.classList.toggle('on', x.dataset.min === v); }); preview(); });
     $('#mvSave').addEventListener('click', function () {
       try {
@@ -2768,7 +2778,6 @@
     $('#mvGuide').addEventListener('click', function () { chime('tap'); openMoveGuide(); });
     var pc = $('#pulseCards'); if (pc) pc.addEventListener('click', function (e) { var b = e.target.closest('[data-pulse]'); if (!b) return; chime('tap'); openPulse(b.dataset.pulse); });
     if (typeof pre === 'string') { var pb = actsBox.querySelector('[data-mact="' + pre + '"]'); if (pb) pb.click(); }
-    if (opt.strengthTick === false) { $('#mvStr').checked = false; preview(); } /* a few curls at the gym never pre-confirm a whole strength day: she ticks it if it was (Codex design review, 22 Oct) */
   }
   function openMoveGuide() {
     if (!EX) return;

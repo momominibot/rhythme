@@ -142,3 +142,24 @@ walk strip, flipped to face the console); bike base at 36, 75.5, so her bike cov
 the low wall; mat 48.5, 60.2; weights 55.5, 56.5. Strips: `tools/art/gymstrip.py` (new) for the bike, weights and mat,
 `tools/art/walkcycle.py` for the covered-head kit's side walk. Known small art notes: the star brooch on the covered-head
 kit shows in five of its eight walk frames, and its blink has faint smudges at the eye edges visible only when zoomed.
+
+## After Codex diff review 1 (HOLD: 4 P1, 3 P2, 1 P3; docs/design/reviews/2026-10-22-codex-gym-diff-1.md)
+
+- A restore whose picture will not load falls back to the picture she wore before the workout (`costume.from`, `wearOwn`),
+  never the workout clothes. Browser check with service workers blocked so the route really fails; it fails with the
+  fallback removed.
+- Cleanup shows her again unless this tab's mat or night owns her picture, so bedtime in another tab no longer leaves her
+  invisible.
+- Every stop of the clock goes through `holdClock`: a Pause tap or hidden page delivered after a freeze ends at the last
+  moment she was seen running; a workout reaching the machine while the phone is locked starts paused with nothing counted.
+- Another tab's Delete everything or replacing restore is read from the stored diary's creation stamp (`OvuStore.born`);
+  an ordinary save from another tab keeps the workout.
+- The camera follows the middle of her strip (`OvuGym.focus`) while her standing picture is hidden.
+- The strength-day tick stays off for the gym's offer until she ticks it, even if she taps Strength again.
+- Pause freezes a cross-fade on the current frame. Main's new `meditate` event (Mind seats her on the mat) ends the workout
+  first, the log still offered.
+- Tests: frames must actually step; six code mutations each fail a check; browser checks added for a locked phone, reduced
+  motion, a wardrobe pick, a blocked restore, a props rebuild, another tab's reset, sign-out, an offer overtaken by another
+  activity, bedtime reaching home and the bed sheet, and Jamie's no-float rule (every weights frame within 2% of her standing
+  height on screen, feet on the strip's bottom edge). Measured at phone width: standing 78.6 px, standing frames 77.9 to
+  79.4 px, feet gap 0 px; the bike rider's head is her standing head's width.
