@@ -10,6 +10,8 @@
   var me = null, tab = 'today', ov = null, feed = [], feedTop = 0, findings = null, proposals = null, admins = null, audit = null, timers = [];
   var review = null, reviewGen = 0, propGen = 0; /* the team review status; each loader's own generation drops a reply older than the latest request */
   var reviewAt = 0, reviewBad = false; /* when the status last answered (local clock), and whether the latest try failed */
+  var reviewMissing = false; /* the review worker migration is not applied yet: Refresh runs the plain report (admin_run) and no review line shows */
+  function missingFn(e) { return /PGRST202|Could not find the function|\b404\b/i.test(String((e && e.message) || '')); }
   var refreshing = null, refreshMsg = ''; /* one Refresh at a time: {id, state: 'pending' | 'uncertain'}; an uncertain one is retried with the same id so the server replays it */
   var feedLoaded = false, feedBad = false; /* a feed that failed to load is never shown as an empty feed */
   var reports = null, reportsAll = false, reportsBad = false, reportsMissing = false, reportsGen = 0, reportsNote = null; /* admin_social_reports: Plaza friends reports, cards only (no account ids, emails or groups) */
@@ -234,7 +236,11 @@
     if (refreshing && refreshing.state === 'pending') return;
     var g = acctGen, cur = refreshing = { id: refreshing ? refreshing.id : reqId(), state: 'pending' };
     setRefresh('Running…');
-    rpc('admin_refresh', { p_days: 28, p_request_id: cur.id }).then(function (j) {
+    (reviewMissing ? rpc('admin_run', { p_days: 28 }) : rpc('admin_refresh', { p_days: 28, p_request_id: cur.id }).catch(function (e) {
+      if (!missingFn(e)) throw e;
+      reviewMissing = true; redrawTeam(); /* the function does not exist, so nothing ran: the plain report is safe to run once */
+      return rpc('admin_run', { p_days: 28 });
+    })).then(function (j) {
       if (g !== acctGen || refreshing !== cur) return;
       refreshing = null;
       setRefresh(j && j.error ? j.error : refreshText(j && j.review));
@@ -360,7 +366,7 @@
     html += '<div class="card"><h2>Policy<span>' + (owner ? 'owner' : 'read only') + '</span></h2><div class="policy">' +
       polRow('k_floor', 'People floor', 'Buckets under this many people are held back everywhere. It cannot go below 20.', pol.k_floor, 'number', owner) +
       polRow('autonomy_on', 'Autonomy', 'Lets the orchestrator apply approved content ids on its own. Off in this phase; there is nothing approved to apply.', pol.autonomy_on, 'bool', owner) +
-      polRow('review_on', 'Team review on refresh', 'When on, a refresh also asks the team to read the released group numbers through Codex on Jamie\'s Mac. It also needs the privacy clearance for sending numbers to Codex, which is not set from this page.', pol.review_on, 'bool', owner) +
+      (reviewMissing || !('review_on' in pol) ? '' : polRow('review_on', 'Team review on refresh', 'When on, a refresh also asks the team to read the released group numbers through Codex on Jamie\'s Mac. It also needs the privacy clearance for sending numbers to Codex, which is not set from this page.', pol.review_on, 'bool', owner)) +
       polRow('lever_days', 'Lever days', 'How long an applied lever lives before it expires on its own.', pol.lever_days, 'number', owner) +
       '</div><p class="msg" id="polMsg"></p></div>';
     html += '<div class="card"><h2>Provider blocks</h2>' + (blocked.length ? blocked.map(function (b) { return '<div class="prop"><div class="h"><b>' + esc(b.source) + '</b><span class="chip high">blocked</span></div><div class="why">' + esc(blockText(b.code || b.error)) + '</div><div class="meta">' + esc(when(b.at)) + '</div>' + (owner ? '<div class="row acts"><button class="btn sm" data-clear="' + b.id + '">Clear the block</button></div>' : '') + '</div>'; }).join('') : '<p class="empty">None. A first provider failure stops the team review until an owner clears it here; nothing retries by itself.</p>') + '</div>';
@@ -449,12 +455,13 @@
   function loadProposals() { var g = ++propGen, a = acctGen; return rpc('admin_proposals').then(function (j) { if (g !== propGen || a !== acctGen) return; proposals = Array.isArray(j) ? j : 'unavailable'; }).catch(function (e) { if ((e && e.cancelled) || g !== propGen || a !== acctGen) return; proposals = 'unavailable'; }); } /* the newest request of this account only; a failure is unavailable, never empty */
   function redrawTeam() { var t = doc.getElementById('teamLine'); if (t) t.innerHTML = teamLine(); if (tab === 'agents') renderAgents(); }
   function loadReview() {
+    if (reviewMissing) return Promise.resolve();
     var g = ++reviewGen;
     return rpc('admin_review_status').then(function (j) {
       if (g !== reviewGen || denied(j)) return;
       if (!j || typeof j !== 'object' || Array.isArray(j)) throw new Error('unexpected status answer');
       review = j; reviewAt = Date.now(); reviewBad = false; redrawTeam();
-    }).catch(function () { if (g !== reviewGen) return; reviewBad = true; redrawTeam(); });
+    }).catch(function (e) { if (g !== reviewGen) return; if (missingFn(e)) { reviewMissing = true; reviewBad = false; } else reviewBad = true; redrawTeam(); });
   }
   function reqId() { try { return root.crypto.randomUUID(); } catch (e) { return 'r' + Date.now() + Math.random().toString(16).slice(2); } }
   var REVIEW_TEXT = { review_off: 'The team review is switched off (Queue tab, Policy), so the team was not asked.', transfer_not_cleared: 'The team review waits for the privacy clearance for sending numbers to Codex, so nothing was sent.', blocked: 'The team review is stopped by a provider block (Queue tab).', run_held: 'The run was held, so the team was not asked.', nothing_to_review: 'Nothing measured yet, so the team was not asked.', run_failed: 'The run failed, so the team was not asked.' };
@@ -463,6 +470,7 @@
   function stageName(a) { return AGENTS[a] ? AGENTS[a].name : a === 'orchestrator' ? NIMBUS.name : a; }
   function hbAge(h) { return Math.round(h.age_s + Math.max(0, Date.now() - reviewAt) / 1000); } /* the server's age plus the time since it answered */
   function teamLine() {
+    if (reviewMissing) return '';
     if (!review) return reviewBad ? '<p class="msg bad">The team review status could not be loaded. It tries again shortly.</p>' : '';
     var o = review.open, l = review.last, txt, stale = reviewBad || Date.now() - reviewAt > 75000;
     if (review.block) txt = 'Team review stopped: ' + blockText(review.block.code);

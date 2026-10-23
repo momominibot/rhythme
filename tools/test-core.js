@@ -6173,4 +6173,37 @@ var summarised = false;
     });
   }).catch(function (e) { check('dashboard screen-state harness ran', false, String(e && e.stack || e)); });
 })();
+(function dashboardBeforeMigration() {
+  console.log('review worker (23 Oct): merged before its migration is applied, the dashboard stays inert: Refresh runs the plain report once, no review line or switch');
+  var el = function () { return { innerHTML: '', textContent: '', className: '', disabled: false, style: {}, dataset: {}, classList: { add: function () { }, remove: function () { }, toggle: function () { } }, setAttribute: function () { }, removeAttribute: function () { }, addEventListener: function () { }, querySelector: function () { return null; }, querySelectorAll: function () { return []; }, insertAdjacentHTML: function () { }, appendChild: function () { } }; };
+  var w = { console: console, setTimeout: setTimeout, clearTimeout: clearTimeout, setInterval: function () { return 0; }, clearInterval: function () { }, Promise: Promise, JSON: JSON, Date: Date, Math: Math, String: String, Number: Number, Array: Array, Object: Object, encodeURIComponent: encodeURIComponent, location: { search: '', hash: '', href: 'x' }, history: { replaceState: function () { } }, crypto: { randomUUID: function () { return 'rid'; } } };
+  w.window = w; w.addEventListener = function () { }; w.document = { getElementById: function () { return el(); }, createElement: el, querySelector: function () { return null; }, querySelectorAll: function () { return []; }, addEventListener: function () { }, body: el(), documentElement: el(), hidden: false };
+  w.OVU_CONFIG = { supabaseUrl: 'https://t.invalid', supabaseKey: 'k' };
+  w.OvuAuth = { token: function () { return 't'; }, init: function () { return new Promise(function () { }); }, session: function () { return null; }, subscribe: function () { } };
+  w.__ADMIN_TEST__ = {};
+  var sent = [];
+  w.fetch = function (u, o) {
+    var name = String(u).split('/rpc/')[1]; sent.push(name);
+    if (name === 'admin_refresh' || name === 'admin_review_status') return Promise.resolve({ ok: false, status: 404, text: function () { return Promise.resolve('{"code":"PGRST202","message":"Could not find the function public.' + name + '"}'); } });
+    return Promise.resolve({ ok: true, status: 200, text: function () { return Promise.resolve(JSON.stringify(name === 'admin_run' ? { ok: true } : {})); } });
+  };
+  vm.runInContext(fs.readFileSync(path.join(root, 'admin.js'), 'utf8'), vm.createContext(w), { filename: 'admin.js' });
+  var T = w.__ADMIN_TEST__.api; T.setTab('none');
+  var tick = function () { return new Promise(function (r) { setTimeout(r, 0); }); };
+  openHarness.dashboardBeforeMigration = true;
+  T.loadReview().then(tick).then(function () {
+    check('a missing review status function shows no line and no error', T.teamLine() === '', T.teamLine());
+    T.runNow();
+    return tick().then(tick).then(tick).then(tick);
+  }).then(function () {
+    var runs = sent.filter(function (n) { return n === 'admin_run'; }).length, refs = sent.filter(function (n) { return n === 'admin_refresh'; }).length;
+    check('Refresh with the migration not applied runs the plain report exactly once (the status check already knew)', runs === 1 && refs === 0, sent);
+    T.runNow();
+    return tick().then(tick).then(tick);
+  }).then(function () {
+    var refs = sent.filter(function (n) { return n === 'admin_refresh'; }).length, runs = sent.filter(function (n) { return n === 'admin_run'; }).length;
+    check('later presses go straight to the plain report, never the missing refresh', refs === 0 && runs === 2, sent);
+    delete openHarness.dashboardBeforeMigration;
+  }).catch(function (e) { check('before-migration harness ran', false, String(e && e.stack || e)); });
+})();
 process.on('beforeExit', function () { if (summarised) return; summarised = true; Object.keys(openHarness).forEach(function (k) { check('async harness ' + k + ' finished', false, 'its promises never settled'); }); console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });
