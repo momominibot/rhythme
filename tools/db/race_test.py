@@ -314,7 +314,7 @@ def room_scenarios(c):
     A = chatter(c, 'Ada', 'everyone', 'everyone-wins')
     s0 = Session(); m = s0.call(A['id'], 'select public.plaza_say(%s, %s, false)', [A['entry'], 'waiting for a check']); s0.c.commit(); s0.c.close()
     mid = int(m['message']['id'])
-    r1, r2, w = race((A['id'], 'select public.plaza_chat_off(3, null)', []), (O['id'], 'select public.admin_plaza_decide(%s, %s)', [mid, 'show']))
+    r1, r2, w = race((A['id'], 'select public.plaza_chat_off(3, null)', []), (O['id'], 'select public.admin_plaza_decide(%s, %s, %s)', [mid, 'show', one(c, 'select rev from public.plaza_messages where id = %s', [mid])]))
     left = one(c, 'select count(*) from public.plaza_messages where id = %s', [mid])
     seen['chat_off_vs_staff_show'] = (r2.get('ok') is False and left == 0, {'decide': r2, 'waited': w, 'left': left}, w)
 
@@ -346,7 +346,7 @@ def commit_order(c):
     s0 = Session(); m = s0.call(A['id'], 'select public.plaza_say(%s, %s, false)', [A['entry'], 'waiting first']); s0.c.commit(); s0.c.close()
     mid = int(m['message']['id'])
     c.execute("update public.plaza_flags set value = 'live' where key = 'mode'")
-    s1 = Session(); d = s1.call(O['id'], 'select public.admin_plaza_decide(%s, %s)', [mid, 'show'])  # open: its revision is taken, not committed
+    s1 = Session(); d = s1.call(O['id'], 'select public.admin_plaza_decide(%s, %s, %s)', [mid, 'show', one(c, 'select rev from public.plaza_messages where id = %s', [mid])])  # open: its revision is taken, not committed
     s2 = Session(); s2.call(B['id'], 'select public.plaza_say(%s, %s, false)', [B['entry'], 'newer and shown']); s2.c.commit(); s2.c.close()
     s3 = Session(); f1 = s3.call(Rd['id'], 'select public.plaza_room_feed(%s, %s, %s, null)', ['everyone', Rd['visit'], 'everyone-chat']); s3.c.commit()
     s1.c.commit(); s1.c.close()

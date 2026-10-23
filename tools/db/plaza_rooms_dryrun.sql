@@ -86,7 +86,8 @@ declare
     'hourly_limit', 'feed_same', 'block_hides_both_ways', 'paused_author_hidden', 'paused_cannot_say', 'hidden_author_hidden', 'report_bad_reason',
     'report_own_refused', 'report_held_refused', 'report', 'report_again_not_counted', 'three_reports_hide', 'report_staff_view', 'staff_hide_closes_reports',
     'other_group_refused', 'room_ends_with_visit', 'chat_off_deletes', 'withdraw_social_ends_chat', 'retention', 'open_report_limit', 'chat_flag_off',
-    'quiet_full_no_suggest', 'topic_full_suggests_everyone', 'hourly_cleanup_scheduled', 'account_delete'];
+    'quiet_full_no_suggest', 'topic_full_suggests_everyone', 'hourly_cleanup_scheduled', 'account_delete', 'stale_decision_refused',
+    'hidden_card_keeps_place'];
 begin
   -- a synthetic owner for the staff calls (rolled back with everything else)
   insert into auth.users (id, email, aud, role) values (o, 'dryrun-owner-' || o || '@example.invalid', 'authenticated', 'authenticated');
@@ -172,6 +173,15 @@ begin
   out := out || jsonb_build_object('join_full_suggests', r ->> 'why' = 'full' and (r ->> 'people')::int = 12
     and (r -> 'suggest') @> '[{"id":"everyone-chat"}]' and not (r -> 'suggest') @> '[{"id":"everyone-vent"}]');
   delete from public.plaza_room_presence where user_id = any (fillers);
+  -- a hidden card keeps its place: showing it again cannot put a room over its twelve (Codex diff review round 3)
+  declare fl uuid[] := array(select gen_random_uuid() from generate_series(1, 13)); vz uuid; begin
+    for i in 1 .. 12 loop perform pg_temp.person(fl[i], 'Seat' || i, 'everyone', false); perform pg_temp.seat(fl[i], 'everyone-vent'); end loop;
+    update public.social_profiles set hidden = true where user_id = fl[1];
+    vz := pg_temp.person(fl[13], 'Zia', 'everyone', true);
+    r := pg_temp.call(fl[13], format('select public.plaza_room_join(%L, %L::uuid, %L)', 'everyone', vz, 'everyone-vent'));
+    out := out || jsonb_build_object('hidden_card_keeps_place', r ->> 'why' = 'full' and plaza.room_count('everyone-vent') = 12);
+    delete from public.plaza_room_presence where user_id = any (fl); delete from public.plaza_presence where user_id = any (fl);
+  end;
 
   -- Room chat needs her own fresh yes, on the card and Room chat history the form was opened with
   vg := pg_temp.person(g, 'Gia', 'everyone', false); eg := pg_temp.seat(g, 'everyone-chat');
@@ -218,9 +228,9 @@ begin
   r := pg_temp.call(o, 'select public.admin_plaza_messages(''held'')');
   out := out || jsonb_build_object('staff_queue', exists (select 1 from jsonb_array_elements(r -> 'messages') x where (x ->> 'id')::bigint = mid and x ->> 'why' = 'review'
     and x ->> 'group' = 'Everyone' and x ->> 'room' = 'Chat' and x ->> 'name' = 'Ann'));
-  r := pg_temp.call(b, format('select public.admin_plaza_decide(%s, %L)', mid, 'show'));
+  r := pg_temp.call(b, format('select public.admin_plaza_decide(%s, %L, %s)', mid, 'show', (select rev from public.plaza_messages where id = mid)));
   out := out || jsonb_build_object('staff_decide_needs_owner', (r ->> 'denied')::boolean and (select status from public.plaza_messages where id = mid) = 'held');
-  r := pg_temp.call(o, format('select public.admin_plaza_decide(%s, %L)', mid, 'show'));
+  r := pg_temp.call(o, format('select public.admin_plaza_decide(%s, %L, %s)', mid, 'show', (select rev from public.plaza_messages where id = mid)));
   r2 := pg_temp.feed(b, 'everyone', vb, 'everyone-chat');
   out := out || jsonb_build_object('staff_show', (r ->> 'ok')::boolean and pg_temp.has(r2, mid));
 
@@ -238,7 +248,7 @@ begin
     perform pg_temp.say(a, ea, 'a newer note, shown', false);
     r := pg_temp.feed(b, 'everyone', vb, 'everyone-chat'); sb := r ->> 'seen';
     r3 := pg_temp.feed(a, 'everyone', va, 'everyone-chat'); sa := r3 ->> 'seen';
-    perform pg_temp.call(o, format('select public.admin_plaza_decide(%s, %L)', h1, 'show'));
+    perform pg_temp.call(o, format('select public.admin_plaza_decide(%s, %L, %s)', h1, 'show', (select rev from public.plaza_messages where id = h1)));
     r2 := pg_temp.call(b, format('select public.plaza_room_feed(%L, %L::uuid, %L, %L)', 'everyone', vb, 'everyone-chat', sb));
     r3 := pg_temp.call(a, format('select public.plaza_room_feed(%L, %L::uuid, %L, %L)', 'everyone', va, 'everyone-chat', sa));
     out := out || jsonb_build_object('approval_reaches_old_view', not pg_temp.has(r, h1) and not (r2 ->> 'same')::boolean and pg_temp.has(r2, h1)
@@ -285,7 +295,8 @@ begin
     and plaza.text_problem('I saw it on Instagram') is null and plaza.text_problem('it.in my back hurts') is null
     and plaza.text_problem('see example.co for more') = 'link' and plaza.text_problem('myprofile.me') = 'link' and plaza.text_problem('x.com/mei') = 'link'
     and plaza.text_problem('t.me/alice') = 'link' and plaza.text_problem('t.co/hello') = 'link' and plaza.text_problem('example.health') = 'link'
-    and plaza.text_problem('I need some self care today') is null and plaza.text_problem('half/half and 1/2 a day') is null);
+    and plaza.text_problem('I need some self care today') is null and plaza.text_problem('half/half and 1/2 a day') is null
+    and plaza.text_problem('medlineplus.gov has it') = 'link' and plaza.text_problem('see hse.ie') = 'link' and plaza.text_problem('ok.thanks for that') is null);
   out := out || jsonb_build_object('hold_cases',
     plaza.hold_why('I keep thinking about suicide', false) = 'care' and plaza.hold_why('some days I want to die', false) = 'care'
     and plaza.hold_why('I don’t want to be here any more', false) = 'care' and plaza.hold_why('I used to self-harm', false) = 'care'
@@ -300,13 +311,18 @@ begin
     and plaza.hold_why('I walk every day now', false) is null and plaza.hold_why('my doctor said to stop worrying', false) is null
     and plaza.hold_why('Take insulin before meals', false) = 'advice' and plaza.hold_why('Stop taking antibiotics', false) = 'advice'
     and plaza.hold_why('You should try melatonin', false) = 'advice' and plaza.hold_why('Avoid ibuprofen on an empty stomach', false) = 'advice'
-    and plaza.hold_why('my meds make me sleepy', false) is null and plaza.hold_why('I stopped the pill last year', false) is null);
+    and plaza.hold_why('my meds make me sleepy', false) is null and plaza.hold_why('I stopped the pill last year', false) is null
+    and plaza.hold_why('Stop citalopram', false) = 'advice' and plaza.hold_why('Take amoxicillin', false) = 'advice'
+    and plaza.hold_why('Honestly, take amoxicillin for it', false) = 'advice' and plaza.hold_why('the nurse said you should stop the antibiotics', false) = 'advice'
+    and plaza.hold_why('Try a heat pad', false) = 'advice' and plaza.hold_why('Take care of yourself', false) is null
+    and plaza.hold_why('Take it easy today', false) is null and plaza.hold_why('Try to rest tonight', false) is null
+    and plaza.hold_why('Stop. Breathe.', false) is null);
 
   -- holds in live mode: crisis words (then the help reminder once shown), advice, news in a quiet room; grief and news elsewhere shown
   ec := pg_temp.seat(c, 'everyone-vent');
   r := pg_temp.say(c, ec, 'I do not want to be here any more', false); mid3 := (r -> 'message' ->> 'id')::bigint;
   r2 := pg_temp.feed(b, 'everyone', vb, 'everyone-vent');
-  perform pg_temp.call(o, format('select public.admin_plaza_decide(%s, %L)', mid3, 'show'));
+  perform pg_temp.call(o, format('select public.admin_plaza_decide(%s, %L, %s)', mid3, 'show', (select rev from public.plaza_messages where id = mid3)));
   r3 := pg_temp.feed(b, 'everyone', vb, 'everyone-vent');
   out := out || jsonb_build_object('care_held_then_marked', r ->> 'held_why' = 'care' and not (r -> 'message' ->> 'care')::boolean and not pg_temp.has(r2, mid3)
     and pg_temp.has(r3, mid3) and (r3 -> 'messages' -> 0 ->> 'care')::boolean);
@@ -399,9 +415,21 @@ begin
   r := pg_temp.call(o, 'select public.admin_social_reports(''open'')');
   out := out || jsonb_build_object('report_staff_view', exists (select 1 from jsonb_array_elements(r -> 'reports') x
     where x ->> 'phrase' = 'Everyone, Chat: Hello everyone, first time here' and x ->> 'name' = 'Ann' and (x ->> 'about_message')::boolean));
-  r := pg_temp.call(o, format('select public.admin_plaza_decide(%s, %L)', mid, 'hide'));
+  r := pg_temp.call(o, format('select public.admin_plaza_decide(%s, %L, %s)', mid, 'hide', (select rev from public.plaza_messages where id = mid)));
   out := out || jsonb_build_object('staff_hide_closes_reports', (r ->> 'ok')::boolean and (select status from public.plaza_messages where id = mid) = 'hidden'
     and not exists (select 1 from staff.social_reports where message_id = mid and status = 'open'));
+
+  -- a decision made on an older view of the queue is refused: another owner's Hide is never silently reversed
+  declare x6 uuid := gen_random_uuid(); e6 uuid; m6 bigint; r0 bigint; begin
+    perform pg_temp.person(x6, 'Uma', 'everyone', true); e6 := pg_temp.seat(x6, 'everyone-wins');
+    r := pg_temp.say(x6, e6, 'a long day, glad it is over', true); m6 := (r -> 'message' ->> 'id')::bigint;
+    select rev into r0 from public.plaza_messages where id = m6;
+    r2 := pg_temp.call(o, format('select public.admin_plaza_decide(%s, %L, %s)', m6, 'hide', r0));
+    r3 := pg_temp.call(o, format('select public.admin_plaza_decide(%s, %L, %s)', m6, 'show', r0));
+    out := out || jsonb_build_object('stale_decision_refused', (r2 ->> 'ok')::boolean and not (r3 ->> 'ok')::boolean and (r3 ->> 'stale')::boolean
+      and (select status from public.plaza_messages where id = m6) = 'hidden');
+    delete from public.plaza_room_presence where user_id = x6; delete from public.plaza_presence where user_id = x6;
+  end;
 
   -- another group's room is closed to her; reading needs her own group
   r := pg_temp.feed(f, 'pcos', vf, 'everyone-chat'); r2 := pg_temp.feed(f, 'everyone', vf, 'everyone-chat');

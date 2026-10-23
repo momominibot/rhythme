@@ -172,12 +172,15 @@ create index if not exists plaza_messages_rev on public.plaza_messages (room, re
 -- phrases that hold a message for a person to read first (lower case, straight apostrophes, hyphens as spaces), matched
 -- as whole words. 'care': self-harm and crisis; 'advice': instructions about treatment; 'med': medicines and supplements,
 -- which hold a message only together with an instruction word (take, start, stop, try, use, double, ...); 'news':
--- pregnancy and birth announcements, only in rooms that keep news out. Doses and schedules hold on their own. This is
--- deliberately cautious ("I take metformin" waits too): a person shows it in a moment, and review mode is the default. Grief ("we lost the heartbeat", "my due date would have been today",
+-- pregnancy and birth announcements, only in rooms that keep news out. Doses and schedules hold on their own, and so
+-- does any sentence that opens by telling someone to take, stop, start or try something, whatever the medicine is
+-- called ("Stop citalopram"); 'ok': everyday kindness that opens the same way ("take care", "try to rest") and clears
+-- that sentence. This is deliberately cautious ("I take metformin" and "Try a heat pad" wait too): a person shows it in
+-- a moment, and review mode is the default. Grief ("we lost the heartbeat", "my due date would have been today",
 -- "I gave birth to my son sleeping") is on no list. Staff can add or remove rows without a release.
 create table if not exists public.plaza_hold_phrases (
   phrase text primary key check (phrase = lower(phrase) and char_length(phrase) between 3 and 60),
-  kind text not null check (kind in ('care', 'advice', 'med', 'news'))
+  kind text not null check (kind in ('care', 'advice', 'med', 'news', 'ok'))
 );
 insert into public.plaza_hold_phrases (phrase, kind) values
   ('kill myself', 'care'), ('killing myself', 'care'), ('end it all', 'care'), ('end my life', 'care'), ('take my life', 'care'), ('suicide', 'care'),
@@ -202,6 +205,11 @@ insert into public.plaza_hold_phrases (phrase, kind) values
   ('vitamin', 'med'), ('vitamins', 'med'), ('melatonin', 'med'), ('magnesium', 'med'), ('folic acid', 'med'), ('ashwagandha', 'med'),
   ('cbd', 'med'), ('antihistamine', 'med'), ('antihistamines', 'med'), ('laxative', 'med'), ('laxatives', 'med'), ('prednisone', 'med'),
   ('levothyroxine', 'med'), ('misoprostol', 'med'), ('mifepristone', 'med'),
+  ('take care', 'ok'), ('take it easy', 'ok'), ('take your time', 'ok'), ('take a break', 'ok'), ('take a breath', 'ok'),
+  ('take a deep breath', 'ok'), ('take a nap', 'ok'), ('take a rest', 'ok'), ('take a moment', 'ok'), ('take a minute', 'ok'),
+  ('take it slow', 'ok'), ('take it one day at a time', 'ok'), ('take each day as it comes', 'ok'), ('take care of yourself', 'ok'),
+  ('try to rest', 'ok'), ('try to sleep', 'ok'), ('try to relax', 'ok'), ('try again', 'ok'), ('try your best', 'ok'),
+  ('stop blaming yourself', 'ok'), ('stop being so hard on yourself', 'ok'), ('start small', 'ok'),
   ('i''m pregnant', 'news'), ('im pregnant', 'news'), ('i am pregnant', 'news'), ('we''re pregnant', 'news'), ('we are pregnant', 'news'),
   ('i''m expecting', 'news'), ('i am expecting', 'news'), ('we''re expecting', 'news'), ('we are expecting', 'news'), ('bfp', 'news'),
   ('big fat positive', 'news'), ('got my positive', 'news'), ('it''s a girl', 'news'), ('it''s a boy', 'news'), ('its a girl', 'news'),
@@ -265,11 +273,12 @@ language sql stable security definer set search_path = '' as $$
   select p_visit is not null and social.present(p_uid, p_server, p_visit)
 $$;
 
--- joined a room now: a room membership counts only while its own group visit is still present and its person may read
+-- joined a room now: a room membership counts while its own group visit is still present. A hidden or paused card keeps
+-- its place, so showing it again can never put a room over its capacity (Codex diff review round 3)
 create or replace function plaza.room_count(p_room text) returns integer
 language sql stable security definer set search_path = '' as $$
   select count(*)::integer from public.plaza_room_presence r join public.plaza_presence p on p.user_id = r.user_id and p.server = r.server and p.visit = r.visit
-  where r.room = p_room and p.seen_at > clock_timestamp() - interval '75 seconds' and plaza.can_read(r.user_id)
+  where r.room = p_room and p.seen_at > clock_timestamp() - interval '75 seconds'
 $$;
 
 -- the text as the phrase lists see it: lower case, straight apostrophes, anything else a space, padded with spaces
@@ -287,7 +296,7 @@ begin
   if char_length(t) > 280 then return 'long'; end if;
   low := replace(lower(translate(t, '’‘', '''''')), 'findahelpline.com', ' '); -- the one address the help card itself names
   if low ~ '[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}' or low ~ '(^|[^a-z0-9])@[a-z0-9_.]{2,}' then return 'contact'; end if;
-  if low ~ '(https?:|www\.|[a-z0-9-]+\.[a-z]{2,}/[a-z0-9]|[a-z0-9-]+\.(com|net|org|io|ly|gg|app|dev|info|xyz|link|site|online|shop|store|biz|health|care|clinic|life|live|world|today|blog|page|club|fun|art|space|tech|news)\y|[a-z0-9-]{3,}\.(co|me|sg|uk|au|ph|my|in|id|us|ca|de|fr|tv|ai|so|to|cc|nz|hk|jp)\y)' then return 'link'; end if;
+  if low ~ '(https?:|www\.|[a-z0-9-]+\.[a-z]{2,}/[a-z0-9]|[a-z0-9-]+\.(com|net|org|gov|edu|mil|int|io|ly|gg|app|dev|ai|info|xyz|link|site|online|shop|store|biz|health|care|clinic|life|live|world|today|blog|page|club|fun|art|space|tech|news|media|studio|agency|network|digital|cloud|center|group|email|website|web|wiki|pro|name|mobi|asia|travel)\y|[a-z0-9-]{3,}\.[a-z]{2}\y)' then return 'link'; end if;
   for run in select m[1] from regexp_matches(low, '(\+?[0-9][0-9 ().-]{6,}[0-9])', 'g') as m loop
     if char_length(regexp_replace(run, '[^0-9]', '', 'g')) >= 8 and run !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' then return 'contact'; end if;
   end loop;
@@ -304,7 +313,7 @@ end $$;
 -- why a message waits for a person to read it first, or null; 'care' first, so the help reminder follows the crisis words
 create or replace function plaza.hold_why(p_body text, p_no_news boolean) returns text
 language plpgsql stable security definer set search_path = '' as $$
-declare f text := plaza.flat(p_body);
+declare f text := plaza.flat(p_body); cl text; c text;
 begin
   if exists (select 1 from public.plaza_hold_phrases h where h.kind = 'care' and position(' ' || replace(h.phrase, '-', ' ') || ' ' in f) > 0) then return 'care'; end if;
   if exists (select 1 from public.plaza_hold_phrases h where h.kind = 'advice' and position(' ' || h.phrase || ' ' in f) > 0)
@@ -312,6 +321,15 @@ begin
      or f ~ ' every [0-9]+ ?(hours?|hrs?|h|days?) ' or f ~ ' ([0-9]+|once|twice|three|four) times? (a|per) day ' or f ~ ' (once|twice) (a|per) day '
      or (exists (select 1 from public.plaza_hold_phrases h where h.kind = 'med' and position(' ' || h.phrase || ' ' in f) > 0)
          and f ~ ' (take|taking|start|starting|stop|stopping|try|use|double|increase|up|skip|quit|buy|swap|switch|avoid|reduce|lower|halve|drop|cut|add) ') then return 'advice'; end if;
+  -- a sentence that tells someone to take, stop, start or try something, whatever it is called (Codex diff review round 3)
+  if f ~ ' you (should|must|need to|have to|gotta|ought to) (take|stop|start|try|quit|skip|use|avoid|switch|swap|double|increase|reduce|come off|go off|get off) [a-z0-9]' then return 'advice'; end if;
+  foreach cl in array regexp_split_to_array(lower(translate(coalesce(p_body, ''), '’‘', '''''')), '[.!?;:,\n]+') loop
+    c := regexp_replace(plaza.flat(cl), '^ ((i think|honestly|so|and|but|just|please|maybe|definitely|really|seriously|i would|i d|you (should|must|need to|have to|could|can|might want to|gotta|ought to)) )+', ' ');
+    if c ~ '^ (take|stop|start|quit|skip|double|halve|increase|decrease|reduce|lower|switch|swap|avoid|try|use|buy|come off|go off|get off) [a-z0-9]'
+       and not exists (select 1 from public.plaza_hold_phrases h where h.kind = 'ok' and position(' ' || h.phrase || ' ' in c) = 1) then
+      return 'advice';
+    end if;
+  end loop;
   if coalesce(p_no_news, false) and exists (select 1 from public.plaza_hold_phrases h where h.kind = 'news' and position(' ' || h.phrase || ' ' in f) > 0) then return 'news'; end if;
   return null;
 end $$;
@@ -587,13 +605,15 @@ begin
   perform plaza.sweep();
   return jsonb_build_object('at', clock_timestamp(), 'mode', case when plaza.live() then 'live' else 'review' end, 'chat_on', plaza.chat_on(),
     'messages', coalesce((select jsonb_agg(x.j order by x.id) from (
-      select m.id, jsonb_build_object('id', m.id, 'at', m.at, 'status', m.status, 'why', m.held_why, 'care', m.care, 'body', m.body,
+      select m.id, jsonb_build_object('id', m.id, 'rev', m.rev, 'at', m.at, 'status', m.status, 'why', m.held_why, 'care', m.care, 'body', m.body,
         'group', s.name, 'room', r.name, 'name', m.name, 'card', left(m.handle::text, 8),
         'reports', (select count(*) from staff.social_reports x where x.message_id = m.id and x.status = 'open')) as j
       from public.plaza_messages m join public.plaza_rooms r on r.id = m.room join public.plaza_servers s on s.id = m.server
       where m.status = 'held' order by m.id limit 200) x), '[]'::jsonb));
 end $$;
-create or replace function staff.plaza_decide(p_id bigint, p_decision text, p_actor uuid) returns jsonb
+-- a decision names the revision the queue showed: a message decided or changed since (another owner, a third report, its
+-- writer turning Room chat off) is refused, never silently reversed (Codex diff review round 3)
+create or replace function staff.plaza_decide(p_id bigint, p_decision text, p_actor uuid, p_rev bigint) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare a uuid; m public.plaza_messages%rowtype;
 begin
@@ -603,7 +623,9 @@ begin
   perform social.lock(a);
   select * into m from public.plaza_messages where id = p_id for update;
   if not found then return jsonb_build_object('ok', false, 'error', 'That message is gone (deleted, expired or withdrawn).'); end if;
-  if p_decision = 'show' and m.status = 'shown' or p_decision = 'hide' and m.status = 'hidden' then return jsonb_build_object('ok', true, 'already', true); end if;
+  if m.status <> 'held' or p_rev is null or m.rev <> p_rev then
+    return jsonb_build_object('ok', false, 'stale', true, 'error', 'Someone decided or changed this message since the queue was shown. The queue has been refreshed.');
+  end if;
   update public.plaza_messages set status = case when p_decision = 'show' then 'shown' else 'hidden' end, decided_at = now(), decided_by = p_actor,
     rev = nextval('public.plaza_messages_rev_seq') where id = p_id;
   if p_decision = 'hide' then
@@ -622,12 +644,12 @@ begin
   if p_status is distinct from 'held' then return jsonb_build_object('error', 'Only messages waiting for a check are listed.'); end if;
   return staff.plaza_queue('held');
 end $$;
-create or replace function public.admin_plaza_decide(p_id bigint, p_decision text) returns jsonb
+create or replace function public.admin_plaza_decide(p_id bigint, p_decision text, p_rev bigint) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare d jsonb;
 begin
-  d := staff.require('admin_plaza_decide', jsonb_build_object('id', p_id, 'decision', p_decision), true); if d is not null then return d; end if;
-  return staff.plaza_decide(p_id, p_decision, staff.caller());
+  d := staff.require('admin_plaza_decide', jsonb_build_object('id', p_id, 'decision', p_decision, 'rev', p_rev), true); if d is not null then return d; end if;
+  return staff.plaza_decide(p_id, p_decision, staff.caller(), p_rev);
 end $$;
 
 -- the friends reports list also says when a report is about a room message
@@ -651,16 +673,16 @@ end $$;
 revoke all on function plaza.guard_chat_grant(), plaza.chat_on(), plaza.live(), plaza.read_problem(uuid), plaza.can_read(uuid), plaza.here(uuid, text, uuid), plaza.room_count(text),
   plaza.flat(text), plaza.text_problem(text), plaza.hold_why(text, boolean), plaza.say_rate(uuid), plaza.sweep(), plaza.row(public.plaza_messages, uuid),
   plaza.shows(public.plaza_messages, uuid), plaza.on_consent() from public, anon, authenticated;
-revoke all on function staff.plaza_queue(text), staff.plaza_decide(bigint, text, uuid) from public, anon, authenticated;
-grant execute on function staff.plaza_queue(text), staff.plaza_decide(bigint, text, uuid) to rhythme_staff_fn;
+revoke all on function staff.plaza_queue(text), staff.plaza_decide(bigint, text, uuid, bigint) from public, anon, authenticated;
+grant execute on function staff.plaza_queue(text), staff.plaza_decide(bigint, text, uuid, bigint) to rhythme_staff_fn;
 revoke all on function public.plaza_rooms_list(text, uuid), public.plaza_room_join(text, uuid, text), public.plaza_room_leave(uuid),
   public.plaza_room_feed(text, uuid, text, text), public.plaza_say(uuid, text, boolean), public.plaza_chat_on(integer, text, text, boolean, uuid, bigint),
   public.plaza_chat_off(integer, text), public.plaza_report_message(bigint, text, boolean), public.plaza_join(text),
-  public.admin_plaza_messages(text), public.admin_plaza_decide(bigint, text) from public, anon;
+  public.admin_plaza_messages(text), public.admin_plaza_decide(bigint, text, bigint) from public, anon;
 grant execute on function public.plaza_rooms_list(text, uuid), public.plaza_room_join(text, uuid, text), public.plaza_room_leave(uuid),
   public.plaza_room_feed(text, uuid, text, text), public.plaza_say(uuid, text, boolean), public.plaza_chat_on(integer, text, text, boolean, uuid, bigint),
   public.plaza_chat_off(integer, text), public.plaza_report_message(bigint, text, boolean), public.plaza_join(text),
-  public.admin_plaza_messages(text), public.admin_plaza_decide(bigint, text) to authenticated;
+  public.admin_plaza_messages(text), public.admin_plaza_decide(bigint, text, bigint) to authenticated;
 
 -- ---------- the hourly clean-up: the 24-hour promise holds even when nobody opens a room ----------
 select cron.schedule('rhythme-plaza-chat-sweep', '7 * * * *', 'select plaza.sweep()');
@@ -669,7 +691,7 @@ select cron.schedule('rhythme-plaza-chat-sweep', '7 * * * *', 'select plaza.swee
 --   select cron.unschedule('rhythme-plaza-chat-sweep');
 --   drop trigger if exists consent_plaza_chat_withdraw on public.consent_events;
 --   drop trigger if exists consent_plaza_chat_grant_guard on public.consent_events;
---   drop function if exists public.admin_plaza_decide(bigint, text), public.admin_plaza_messages(text), staff.plaza_decide(bigint, text, uuid),
+--   drop function if exists public.admin_plaza_decide(bigint, text, bigint), public.admin_plaza_messages(text), staff.plaza_decide(bigint, text, uuid, bigint),
 --     staff.plaza_queue(text), public.plaza_report_message(bigint, text, boolean), public.plaza_chat_off(integer, text),
 --     public.plaza_chat_on(integer, text, text, boolean, uuid, bigint), public.plaza_say(uuid, text, boolean), public.plaza_room_feed(text, uuid, text, text),
 --     public.plaza_room_leave(uuid), public.plaza_room_join(text, uuid, text), public.plaza_rooms_list(text, uuid);

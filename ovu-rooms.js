@@ -73,7 +73,7 @@
   function whyText(j) { var w = j && j.why; if (w === 'text') return PROBLEMS[j.problem] || PROBLEMS.word; return WHY[w] || 'That did not go through. Please try again.'; }
 
   /* the same rules the server keeps (plaza.text_problem); the core suite checks both against one list of cases */
-  var LINK = /(https?:|www\.|[a-z0-9-]+\.[a-z]{2,}\/[a-z0-9]|[a-z0-9-]+\.(com|net|org|io|ly|gg|app|dev|info|xyz|link|site|online|shop|store|biz|health|care|clinic|life|live|world|today|blog|page|club|fun|art|space|tech|news)\b|[a-z0-9-]{3,}\.(co|me|sg|uk|au|ph|my|in|id|us|ca|de|fr|tv|ai|so|to|cc|nz|hk|jp)\b)/;
+  var LINK = /(https?:|www\.|[a-z0-9-]+\.[a-z]{2,}\/[a-z0-9]|[a-z0-9-]+\.(com|net|org|gov|edu|mil|int|io|ly|gg|app|dev|ai|info|xyz|link|site|online|shop|store|biz|health|care|clinic|life|live|world|today|blog|page|club|fun|art|space|tech|news|media|studio|agency|network|digital|cloud|center|group|email|website|web|wiki|pro|name|mobi|asia|travel)\b|[a-z0-9-]{3,}\.[a-z]{2}\b)/;
   var MSG_WORDS = { cunt: 'word', whore: 'word', slut: 'word', nudes: 'word', onlyfans: 'word', porn: 'word', nazi: 'word', hitler: 'word',
     telegram: 'contact', whatsapp: 'contact', kik: 'contact', wechat: 'contact', discord: 'contact', snapchat: 'contact' };
   function squash(s) { return String(s == null ? '' : s).replace(/\s+/g, ' ').replace(/^ | $/g, ''); }
@@ -107,6 +107,10 @@
       'medicine', 'medicines', 'meds', 'drug', 'drugs', 'dose', 'doses', 'steroid', 'steroids', 'birth control', 'contraceptive', 'contraceptives', 'hormones',
       'vitamin', 'vitamins', 'melatonin', 'magnesium', 'folic acid', 'ashwagandha', 'cbd', 'antihistamine', 'antihistamines', 'laxative', 'laxatives',
       'prednisone', 'levothyroxine', 'misoprostol', 'mifepristone'],
+    /* everyday kindness that opens like an instruction, and clears that sentence */
+    ok: ['take care', 'take it easy', 'take your time', 'take a break', 'take a breath', 'take a deep breath', 'take a nap', 'take a rest', 'take a moment',
+      'take a minute', 'take it slow', 'take it one day at a time', 'take each day as it comes', 'take care of yourself', 'try to rest', 'try to sleep',
+      'try to relax', 'try again', 'try your best', 'stop blaming yourself', 'stop being so hard on yourself', 'start small'],
     news: ["i'm pregnant", 'im pregnant', 'i am pregnant', "we're pregnant", 'we are pregnant', "i'm expecting", 'i am expecting', "we're expecting", 'we are expecting',
       'bfp', 'big fat positive', 'got my positive', "it's a girl", "it's a boy", 'its a girl', 'its a boy', 'gender reveal', 'pregnancy announcement',
       'birth announcement', 'baby is here']
@@ -116,10 +120,21 @@
   var DOSE = / [0-9]+ ?(mg|mcg|iu|ml|g|tablets?|pills?|capsules?|caps|drops?|puffs?|units?) /, EVERY = / every [0-9]+ ?(hours?|hrs?|h|days?) /,
     TIMES = / ([0-9]+|once|twice|three|four) times? (a|per) day /, TIMES2 = / (once|twice) (a|per) day /,
     ACT = / (take|taking|start|starting|stop|stopping|try|use|double|increase|up|skip|quit|buy|swap|switch|avoid|reduce|lower|halve|drop|cut|add) /;
+  /* a sentence that tells someone to take, stop, start or try something, whatever it is called (the server's rule) */
+  var DIRECT_YOU = / you (should|must|need to|have to|gotta|ought to) (take|stop|start|try|quit|skip|use|avoid|switch|swap|double|increase|reduce|come off|go off|get off) [a-z0-9]/,
+    LEAD = /^ ((i think|honestly|so|and|but|just|please|maybe|definitely|really|seriously|i would|i d|you (should|must|need to|have to|could|can|might want to|gotta|ought to)) )+/,
+    DIRECT = /^ (take|stop|start|quit|skip|double|halve|increase|decrease|reduce|lower|switch|swap|avoid|try|use|buy|come off|go off|get off) [a-z0-9]/;
+  function directive(s) {
+    if (DIRECT_YOU.test(flat(s))) return true;
+    return straight(String(s == null ? '' : s)).split(/[.!?;:,\n]+/).some(function (cl) {
+      var c = flat(cl).replace(LEAD, ' ');
+      return DIRECT.test(c) && !HOLD.ok.some(function (p) { return c.indexOf(' ' + p + ' ') === 0; });
+    });
+  }
   function holdWhy(s, noNews) {
     var f = flat(s);
     if (hasPhrase(f, HOLD.care)) return 'care';
-    if (hasPhrase(f, HOLD.advice) || DOSE.test(f) || EVERY.test(f) || TIMES.test(f) || TIMES2.test(f) || (hasPhrase(f, HOLD.med) && ACT.test(f))) return 'advice';
+    if (hasPhrase(f, HOLD.advice) || DOSE.test(f) || EVERY.test(f) || TIMES.test(f) || TIMES2.test(f) || (hasPhrase(f, HOLD.med) && ACT.test(f)) || directive(s)) return 'advice';
     if (noNews && hasPhrase(f, HOLD.news)) return 'news';
     return null;
   }
@@ -169,7 +184,7 @@
    * the same, so an old feed never lingers. */
   var missing = false, broken = false, seen = false, probing = null, lastUid = null, wordsHash = '';
   var groups = null, rooms = null, view = null, feed = null, drafts = {}, busy = {}, gens = { groups: 0, rooms: 0, feed: 0 }, els = { groups: null, rooms: null };
-  var timers = [], stick = false;
+  var timers = [], stick = false, joinBusy = false, joinWant = null, chatGen = 0, menuOpen = null;
 
   function esc(s) { return R.esc ? R.esc(s) : String(s == null ? '' : s); }
   function noop() { }
@@ -286,6 +301,7 @@
       if (!Array.isArray(j.ids) || !Array.isArray(j.messages) || !j.messages.every(okMsg) || typeof j.seen !== 'string' || (j.entry != null && typeof j.entry !== 'string')) { malformed(); return; }
       var same = j.same === true && !!had && had.seen === j.seen, rows = same ? had.rows : mergeFeed([], j, []);
       if (!same && rows.length !== Math.min(j.ids.length, SHOWN)) { malformed(); return; } /* one snapshot on the server: every id has its row */
+      if (menuOpen && (menuOpen.room !== room || !rows.some(function (x) { return String(x.id) === menuOpen.id; }))) { closeMine(menuOpen.sh); menuOpen = null; }
       feed = { room: room, visit: v.visit, rows: rows, msgs: unmuted(rows), seen: j.seen, joined: !!j.joined && !!j.entry, entry: j.joined && j.entry ? j.entry : null,
         people: j.people, capacity: j.capacity, open: j.open !== false, mode: j.mode === 'live' ? 'live' : 'review' };
       paint();
@@ -321,7 +337,7 @@
   /* any change of account, in this tab or another: cancel, forget, close, then start again for whoever is signed in */
   function authChanged() {
     var u = uid(); if (u === lastUid) return; lastUid = u;
-    gens.groups++; gens.rooms++; gens.feed++; busy = {};
+    gens.groups++; gens.rooms++; gens.feed++; busy = {}; joinWant = null; menuOpen = null;
     groups = null; rooms = null; view = null; feed = null; drafts = {}; seen = false;
     if (doc.getElementById('rmSheet') && R.sheetOpen && R.sheetOpen()) R.closeSheet();
     var box = els.rooms && els.rooms.querySelector('.rmcompose textarea'); if (box) box.value = '';
@@ -426,16 +442,33 @@
   /* ---------- acting ---------- */
   function openRoom(id) { if (!rooms || !rooms.read || !roomById(id)) return; dropFeed(); view = id; paint(); loadFeed(); }
   function back() { dropFeed(); paint(); loadRooms(); }
+  /* joins go one at a time: a tap while one is on its way is asked after it, so an older answer never overrides a newer
+     choice (Codex diff review round 3) */
   function join() {
-    var v = visit(), u = uid(), room = view; if (!v || !allowed() || !room) return;
-    rpc('plaza_room_join', { p_server: v.server, p_visit: v.visit, p_room: room }, u).then(function (j) {
+    var v = visit(); if (!v || !allowed() || !view) return;
+    joinWant = { uid: uid(), server: v.server, visit: v.visit, room: view };
+    if (!joinBusy) joinNext();
+  }
+  function joinNext() {
+    var w = joinWant; joinWant = null;
+    if (!w) { joinBusy = false; return; }
+    joinBusy = true;
+    var room = w.room, u = w.uid;
+    rpc('plaza_room_join', { p_server: w.server, p_visit: w.visit, p_room: room }, u).then(function (j) {
       var now = visit();
-      if (view !== room || uid() !== u || !now || now.visit !== v.visit) return;
+      if (uid() !== u || !now || now.visit !== w.visit) return;
       if (!j || typeof j.ok !== 'boolean' || (j.ok && typeof j.entry !== 'string')) { malformed(); return; }
-      if (j.ok) { if (rooms) { rooms.room = room; rooms.entry = j.entry; } if (feed && feed.room === room && feed.visit === v.visit) { feed.joined = true; feed.entry = j.entry; } R.chime && R.chime('tap'); paint(); loadFeed(); loadRooms(); var b = els.rooms && els.rooms.querySelector('#rmText'); if (b) try { b.focus({ preventScroll: true }); } catch (e) { } return; }
-      R.toast(j.why === 'full' ? fullText(j) : whyText(j), 'forum');
+      if (joinWant) return; /* a newer choice is on its way: its answer says where she is */
+      if (j.ok) {
+        if (rooms) { rooms.room = room; rooms.entry = j.entry; }
+        if (feed && feed.room === room && feed.visit === w.visit) { feed.joined = true; feed.entry = j.entry; }
+        paint(); loadFeed(); loadRooms();
+        if (view === room) { if (R.chime) R.chime('tap'); var b = els.rooms && els.rooms.querySelector('#rmText'); if (b) try { b.focus({ preventScroll: true }); } catch (e) { } }
+        return;
+      }
+      if (view === room) R.toast(j.why === 'full' ? fullText(j) : whyText(j), 'forum');
       if (j.why === 'not_here' || DENIED[j.why]) { dropFeed(); paint(); loadRooms(); }
-    }, function (e) { if (!(e && e.cancelled)) { failed(e); if (!(e && e.missing)) R.toast('Could not reach the rooms. Check the connection and try again.', 'cloud_off'); } }).catch(malformed);
+    }, function (e) { if (!(e && e.cancelled)) { failed(e); if (!(e && e.missing) && view === room) R.toast('Could not reach the rooms. Check the connection and try again.', 'cloud_off'); } }).catch(malformed).then(joinNext);
   }
   function leave() {
     var u = uid(), entry = entryFor(view); if (!u || !entry) return;
@@ -446,7 +479,9 @@
       paint(); loadRooms();
     }, function (e) { if (!(e && e.cancelled)) R.toast('Could not reach the rooms. Check the connection and try again.', 'cloud_off'); });
   }
-  function rmSheet(id, title, sub, icon, html) { R.openSheet(id, title, sub, icon, '<div id="rmSheet">' + html + '</div>'); return doc.getElementById('rmSheet'); }
+  function rmSheet(id, title, sub, icon, html) { R.openSheet(id, title, sub, icon, '<div id="rmSheet">' + html + '</div>'); var el = doc.getElementById('rmSheet'); el.__seq = R.sheetSeq ? R.sheetSeq() : null; return el; }
+  /* a reply that comes back later closes the sheet it was asked from, never one another feature opened since */
+  function closeMine(sh) { if (sh && (R.sheetSeq ? R.sheetSeq() === sh.__seq : doc.body.contains(sh)) && R.sheetOpen && R.sheetOpen()) R.closeSheet(); }
   /* send: her words are checked here first, then her Room chat yes (asked once, just in time), then the care card or the
      hold notice when the words call for it; only then does anything leave the phone */
   function send() {
@@ -456,10 +491,10 @@
     if (p) { if (msg) msg.textContent = PROBLEMS[p]; return; }
     if (!rooms || !rooms.talk) {
       /* a yes that arrives later sends only this message, from this room, still unchanged in the box (Codex round 2, B1) */
-      var pend = { uid: uid(), visit: v && v.visit, room: room, text: text };
+      var pend = { uid: uid(), visit: v && v.visit, room: room, text: text, entry: entryFor(room) };
       askChat(function () {
         var b = els.rooms && els.rooms.querySelector('#rmText'), now = visit();
-        if (allowed() && uid() === pend.uid && now && now.visit === pend.visit && view === pend.room && b && b.value === pend.text) send();
+        if (allowed() && uid() === pend.uid && now && now.visit === pend.visit && view === pend.room && entryFor(pend.room) === pend.entry && b && b.value === pend.text) send();
         else R.toast('Room chat is on. Tap Send when you are ready.', 'forum');
       });
       return;
@@ -478,8 +513,9 @@
     var el = els.rooms, msg = el && el.querySelector('.rmmsg'), btn = el && el.querySelector('[data-rmact="send"]');
     if (!still(ctx)) { R.toast(WHY.stale, 'forum'); return; }
     if (btn) btn.disabled = true;
+    var cg = chatGen;
     rpc('plaza_say', { p_entry: ctx.entry, p_body: ctx.text, p_hold: !!hold }, ctx.uid).then(function (j) {
-      if (uid() !== ctx.uid) return;
+      if (uid() !== ctx.uid || chatGen !== cg) return; /* Room chat went off meanwhile: whatever this sent was deleted with the rest */
       if (!j || typeof j.ok !== 'boolean' || (j.ok && j.message != null && !okMsg(j.message))) { malformed(); return; }
       var here = still(ctx);
       if (!j.ok) {
@@ -510,7 +546,7 @@
   }
   function holdFirst(kind, ctx) {
     var words = kind === 'news' ? 'This room keeps pregnancy and birth news out, for people who are grieving or still trying. If yours is news like that, Everyone, Wins is the place for it. If it is something else, send it and a person will read it first.'
-      : 'Messages about medicines, doses, or what to take, stop or buy wait for a person to read them first. Sharing what happened to you is still welcome; it may just take longer to show. Your own doctor knows your history.';
+      : 'Messages about medicines and doses, or that tell someone what to take, stop, start or try, wait for a person to read them first. Sharing what happened to you is still welcome; it may just take longer to show. Your own doctor knows your history.';
     var sh = rmSheet('roomHold', kind === 'news' ? 'A quiet room' : 'A gentle check', 'Before it goes', 'hourglass_top',
       '<p>' + esc(words) + '</p><div class="row"><button type="button" class="btn primary" id="rmHoldSend"><span class="ms" aria-hidden="true">hourglass_top</span>Send it for a check</button><button type="button" class="btn soft" id="rmHoldEdit">Edit it</button></div>');
     sh.querySelector('#rmHoldSend').addEventListener('click', function () { R.closeSheet(); say(ctx, true); });
@@ -534,7 +570,7 @@
         if (!j || !j.ok) { m.textContent = whyText(j); if (j && j.why === 'stale') loadRooms(); return; }
         try { if ((j.recorded || []).indexOf('plaza_chat') > -1 && root.OvuConsent && root.OvuConsent.grant) root.OvuConsent.grant('plaza_chat', 'jit', { sent: true }); } catch (e) { }
         if (rooms) { rooms.talk = true; if (j.chat_event) rooms.chat_event = j.chat_event; }
-        R.closeSheet(); R.toast('Room chat is on. You can turn it off in Plaza friends.', 'forum');
+        closeMine(sh); R.toast('Room chat is on. You can turn it off in Plaza friends.', 'forum');
         if (then) then();
       }, function (e) { if (!(e && e.cancelled)) m.textContent = 'Could not reach the rooms. Check the connection and try again.'; });
     });
@@ -545,6 +581,7 @@
     return rpc('plaza_chat_off', { p_notice: noticeV(), p_device: device() || null }, u).then(function (j) {
       if (uid() !== u || !j || !j.ok) return;
       try { if (root.OvuConsent && root.OvuConsent.withdraw) root.OvuConsent.withdraw('plaza_chat', 'you', { sent: true }); } catch (e) { }
+      chatGen++;
       if (rooms) { rooms.talk = false; if (j.chat_event) rooms.chat_event = j.chat_event; }
       if (feed) { setRows(feed.rows.filter(function (m) { return !m.mine; })); refetch(); }
       paint(); R.toast('Room chat is off. Your messages were deleted.', 'forum');
@@ -553,8 +590,12 @@
   function messageMenu(id) {
     var m = feed && feed.msgs.filter(function (x) { return String(x.id) === String(id); })[0]; if (!m || m.mine) return;
     var u = uid(), room0 = feed.room;
-    /* every button checks she may still read this room on this account; a refusal or an age change closes the sheet */
-    function still0() { if (allowed() && uid() === u && feed && feed.room === room0 && rooms && rooms.read) return true; R.closeSheet(); return false; }
+    /* every button checks she may still read this room on this account and the message is still there; a refusal, an age
+       change or the message leaving the window closes the sheet */
+    function still0() {
+      if (allowed() && uid() === u && feed && feed.room === room0 && rooms && rooms.read && feed.rows.some(function (x) { return String(x.id) === String(m.id); })) return true;
+      closeMine(sh); return false;
+    }
     var sh = rmSheet('roomMsg', m.name || 'A message', 'Report, mute or block', 'flag',
       '<blockquote class="rmquote"></blockquote><p class="frcue"><span class="ms" aria-hidden="true">spa</span>Thank you for looking after the plaza.</p>' +
       '<fieldset class="rmreasons"><legend>What is wrong?</legend>' + REASONS.map(function (x, i) { return '<label><input type="radio" name="rmReason" value="' + x[0] + '"' + (i ? '' : ' checked') + '> ' + esc(x[1]) + '</label>'; }).join('') + '</fieldset>' +
@@ -562,6 +603,7 @@
       '<div class="row"><button type="button" class="btn primary" id="rmReport"><span class="ms" aria-hidden="true">flag</span>Report</button></div>' +
       '<div class="row"><button type="button" class="btn soft" id="rmMute"><span class="ms" aria-hidden="true">volume_off</span>Mute her on this phone</button><button type="button" class="btn soft" id="rmBlock"><span class="ms" aria-hidden="true">block</span>Block</button></div><p class="msg" id="rmMenuMsg" role="status"></p>');
     sh.querySelector('.rmquote').textContent = m.body;
+    menuOpen = { id: String(m.id), room: room0, sh: sh };
     var say_ = function (t) { sh.querySelector('#rmMenuMsg').textContent = t; };
     sh.querySelector('#rmReport').addEventListener('click', function () {
       if (!still0()) return;
@@ -569,7 +611,8 @@
       rpc('plaza_report_message', { p_message: Number(m.id), p_reason: reason, p_block: blk }, u).then(function (j) {
         if (uid() !== u) return;
         if (!j || !j.ok) { say_(whyText(j)); return; }
-        R.closeSheet(); R.toast('Reported. Thank you for looking after the plaza.', 'flag'); loadFeed();
+        closeMine(sh); R.toast('Reported. Thank you for looking after the plaza.', 'flag');
+        if (blk && feed) { setRows(feed.rows.filter(function (x) { return x.mine || x.handle !== m.handle; })); paint(); refetch(); } else loadFeed();
       }, function (e) { if (!(e && e.cancelled)) say_('Could not reach the rooms. Check the connection and try again.'); });
     });
     sh.querySelector('#rmMute').addEventListener('click', function () {
@@ -584,7 +627,7 @@
       rpc('social_block', { p_handle: m.handle }, u).then(function (j) {
         if (uid() !== u) return;
         if (j && j.ok === false) { say_(whyText(j)); return; }
-        R.closeSheet(); R.toast('Blocked. She is not told.', 'block'); if (feed) setRows(feed.rows.filter(function (x) { return x.mine || x.handle !== m.handle; })); paint(); refetch();
+        closeMine(sh); R.toast('Blocked. She is not told.', 'block'); if (feed) setRows(feed.rows.filter(function (x) { return x.mine || x.handle !== m.handle; })); paint(); refetch();
       }, function (e) { if (!(e && e.cancelled)) say_('Could not reach the rooms. Check the connection and try again.'); });
     });
   }

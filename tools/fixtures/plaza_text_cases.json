@@ -132,6 +132,18 @@
   {
    "text": "half/half and 1/2 a day",
    "problem": null
+  },
+  {
+   "text": "medlineplus.gov has it",
+   "problem": "link"
+  },
+  {
+   "text": "see hse.ie",
+   "problem": "link"
+  },
+  {
+   "text": "ok.thanks for that",
+   "problem": null
   }
  ],
  "hold": [
@@ -272,6 +284,51 @@
   },
   {
    "text": "I stopped the pill last year",
+   "noNews": false,
+   "hold": null
+  },
+  {
+   "text": "Stop citalopram",
+   "noNews": false,
+   "hold": "advice"
+  },
+  {
+   "text": "Take amoxicillin",
+   "noNews": false,
+   "hold": "advice"
+  },
+  {
+   "text": "Honestly, take amoxicillin for it",
+   "noNews": false,
+   "hold": "advice"
+  },
+  {
+   "text": "the nurse said you should stop the antibiotics",
+   "noNews": false,
+   "hold": "advice"
+  },
+  {
+   "text": "Try a heat pad",
+   "noNews": false,
+   "hold": "advice"
+  },
+  {
+   "text": "Take care of yourself",
+   "noNews": false,
+   "hold": null
+  },
+  {
+   "text": "Take it easy today",
+   "noNews": false,
+   "hold": null
+  },
+  {
+   "text": "Try to rest tonight",
+   "noNews": false,
+   "hold": null
+  },
+  {
+   "text": "Stop. Breathe.",
    "noNews": false,
    "hold": null
   }

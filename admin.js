@@ -8,7 +8,7 @@
   var app = doc.getElementById('app');
   var plaza = null, plazaOk = 0, plazaBad = false, plazaBusy = false; /* admin_plaza: people in each group now, and the daily joins and peak (counts only) */
   var me = null, tab = 'today', ov = null, feed = [], feedTop = 0, findings = null, proposals = null, admins = null, audit = null, timers = [];
-  var reports = null, reportsAll = false, reportsBad = false, reportsMissing = false; /* admin_social_reports: Plaza friends reports, cards only (no account ids, emails or groups) */
+  var reports = null, reportsAll = false, reportsBad = false, reportsMissing = false, reportsGen = 0, reportsNote = null; /* admin_social_reports: Plaza friends reports, cards only (no account ids, emails or groups) */
   var REASONS = { unkind: 'Unkind or upsetting', spam: 'Spam or selling', pretending: 'Pretending to be someone else', under18: 'Seems to be under 18', worried: 'Worried about her safety', other: 'Something else', advice: 'Unsafe health advice', news: 'Pregnancy or birth news in a quiet room' };
   /* why a room message waits for a person (supabase/migrations/20261022120000_plaza_rooms_chat.sql) */
   var HELD = { review: 'Review mode: every message is read first', care: 'Words of self-harm or crisis', advice: 'Tells someone what to take, stop or buy, or a dose', news: 'Pregnancy or birth news in a quiet room', asked: 'Her phone asked for a check (its warning-sign rules matched)', reports: 'Hidden after three reports' };
@@ -268,19 +268,22 @@
         '<div class="meta">Reported by ' + esc(r.from_name || 'an account since deleted') + (r.from_card ? ' (card ' + esc(r.from_card) + ')' : '') + ' · ' + esc(ago(r.at)) + ' · ' + esc(r.open_on_card) + ' open on this card · card now ' + esc(r.card_now) + (r.days ? ' · paused ' + esc(r.days) + ' days' : '') + '</div>' +
         (owner && r.status === 'open' ? '<div class="row acts"><button class="btn sm" data-sdecide="dismiss" data-id="' + r.id + '">Dismiss</button><button class="btn sm primary" data-sdecide="pause" data-id="' + r.id + '">Pause 7 days</button><button class="btn sm danger" data-sdecide="remove" data-id="' + r.id + '">Remove the card</button></div>' : '') + '</div>';
     }).join('');
-    html += '<div class="row"><button class="btn sm" id="reportsAll">' + (reportsAll ? 'Show open only' : 'Show decided too') + '</button></div><p class="msg" id="reportsMsg"></p>' +
+    html += '<div class="row"><button class="btn sm" id="reportsAll">' + (reportsAll ? 'Show open only' : 'Show decided too') + '</button></div><p class="msg' + (reportsNote && reportsNote.bad ? ' bad' : '') + '" id="reportsMsg">' + esc(reportsNote ? reportsNote.text : '') + '</p>' +
       '<p class="srv">A report carries the two plaza cards (a name each person chose and a short card number) and, for a note, the phrase; a report about a room message also carries its group and room. Staff never see accounts, emails or diaries. ' + (owner ? 'A pause stops every Plaza friends call for that account; removing the card makes her choose a new one. Each decision closes every open report on that card.' : 'An owner decides.') + '</p></div>';
     return html;
   }
   /* the reports function arrives with the Plaza friends migration; until then the card says so and nothing is retried
      (Codex pre-merge review, 20 Oct, item 4) */
+  /* the answer for the filter that is chosen now: an older request for the other filter is dropped (Codex round 3) */
   function loadReports() {
     if (reportsMissing) return Promise.resolve();
-    return deadline(rpc('admin_social_reports', { p_status: reportsAll ? null : 'open' }), 10000).then(function (j) {
+    var rg = ++reportsGen, all = reportsAll;
+    return deadline(rpc('admin_social_reports', { p_status: all ? null : 'open' }), 10000).then(function (j) {
+      if (rg !== reportsGen || all !== reportsAll) return;
       if (denied(j) || !j || !Array.isArray(j.reports)) { reportsBad = true; reports = null; return; }
       reports = j.reports; reportsBad = false;
     }).catch(function (e) {
-      if (e && e.cancelled) return;
+      if ((e && e.cancelled) || rg !== reportsGen) return;
       if (/PGRST202|Could not find the function|\b404\b/i.test(String((e && e.message) || ''))) { reportsMissing = true; reportsBad = false; reports = null; return; }
       reportsBad = true; reports = null;
     });
@@ -295,7 +298,7 @@
     else html += list.map(function (m) {
       return '<div class="prop" data-roommsg="' + m.id + '"><div class="h"><b>' + esc(m.group) + ', ' + esc(m.room) + ' · ' + esc(m.name) + ' · card ' + esc(m.card) + '</b><span class="chip ' + (m.why === 'care' || m.why === 'asked' ? 'high' : 'watch') + '">' + esc(m.why || 'held') + '</span></div>' +
         '<div class="why"></div><div class="meta">' + esc(HELD[m.why] || 'Held') + ' · ' + esc(ago(m.at)) + (m.reports ? ' · ' + esc(m.reports) + ' open reports' : '') + '</div>' +
-        (owner ? '<div class="row acts"><button class="btn sm primary" data-rdecide="show" data-id="' + m.id + '">Show in the room</button><button class="btn sm danger" data-rdecide="hide" data-id="' + m.id + '">Hide</button></div>' : '') + '</div>';
+        (owner ? '<div class="row acts"><button class="btn sm primary" data-rdecide="show" data-id="' + m.id + '" data-rev="' + esc(m.rev) + '">Show in the room</button><button class="btn sm danger" data-rdecide="hide" data-id="' + m.id + '" data-rev="' + esc(m.rev) + '">Hide</button></div>' : '') + '</div>';
     }).join('');
     html += '<p class="msg' + (roomMsgsNote && roomMsgsNote.bad ? ' bad' : '') + '" id="roomMsgsMsg">' + esc(roomMsgsNote ? roomMsgsNote.text : '') + '</p><p class="srv">The writer sees her held message as waiting; nobody else does until it is shown. Crisis words and her phone\'s own request mean she may need help now: the room shows her the help card, but nobody is told. ' + (owner ? 'Hide also closes the open reports on that message; Show dismisses them.' : 'An owner decides.') + '</p></div>';
     return html;
@@ -339,11 +342,11 @@
     app.querySelectorAll('[data-decide]').forEach(function (b) { b.addEventListener('click', function () { var id = Number(b.dataset.id), d = b.dataset.decide; b.disabled = true; rpc('admin_decide', { p_id: id, p_decision: d }).then(function () { return Promise.all([loadProposals(), loadOverview()]); }).then(render); }); });
     app.querySelectorAll('[data-sdecide]').forEach(function (b) {
       b.addEventListener('click', function () {
-        var m = doc.getElementById('reportsMsg'); app.querySelectorAll('[data-sdecide]').forEach(function (x) { x.disabled = true; });
+        var g = acctGen; reportsNote = null; app.querySelectorAll('[data-sdecide]').forEach(function (x) { x.disabled = true; });
         rpc('admin_social_decide', { p_id: Number(b.dataset.id), p_decision: b.dataset.sdecide, p_days: b.dataset.sdecide === 'pause' ? 7 : null }).then(function (j) {
-          if (j && (j.error || j.ok === false)) { m.textContent = j.error || 'Not done.'; m.className = 'msg bad'; }
+          if (j && (j.error || j.ok === false)) reportsNote = { text: j.error || 'Not done.', bad: true };
           return loadReports();
-        }).catch(function (e) { m.textContent = e.message; m.className = 'msg bad'; }).then(function () { queueAgain(); });
+        }).catch(function (e) { if (!(e && e.cancelled) && g === acctGen) reportsNote = { text: e.message, bad: true }; }).then(function () { queueAgain(); });
       });
     });
     var ra = doc.getElementById('reportsAll'); if (ra) ra.addEventListener('click', function () { reportsAll = !reportsAll; reports = null; renderQueue(); loadReports().then(function () { queueAgain(); }); });
@@ -351,7 +354,7 @@
     app.querySelectorAll('[data-rdecide]').forEach(function (b) {
       b.addEventListener('click', function () {
         var g = acctGen; roomMsgsNote = null; app.querySelectorAll('[data-rdecide]').forEach(function (x) { x.disabled = true; });
-        rpc('admin_plaza_decide', { p_id: Number(b.dataset.id), p_decision: b.dataset.rdecide }).then(function (j) {
+        rpc('admin_plaza_decide', { p_id: Number(b.dataset.id), p_decision: b.dataset.rdecide, p_rev: Number(b.dataset.rev) }).then(function (j) {
           if (j && (j.error || j.ok === false)) roomMsgsNote = { text: j.error || 'Not done.', bad: true };
           return Promise.all([loadRoomMsgs(), loadReports()]);
         }).catch(function (e) { if (!(e && e.cancelled) && g === acctGen) roomMsgsNote = { text: e.message, bad: true }; }).then(function () { queueAgain(); });
@@ -434,7 +437,7 @@
   function accountChanged() {
     if (who() === acct) return;
     acctGen++; me = null; stopTimers();
-    reports = null; reportsBad = false; roomMsgs = null; roomMsgsBad = false; roomMsgsNote = null; roomMsgsBusy = false; proposals = null; admins = null; audit = null; ov = null; feed = []; feedTop = 0; findings = null; plaza = null; plazaBad = false;
+    reports = null; reportsBad = false; reportsNote = null; reportsGen++; roomMsgs = null; roomMsgsBad = false; roomMsgsNote = null; roomMsgsBusy = false; proposals = null; admins = null; audit = null; ov = null; feed = []; feedTop = 0; findings = null; plaza = null; plazaBad = false;
     app.innerHTML = '';
     boot();
   }

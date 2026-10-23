@@ -251,3 +251,19 @@ New, all P2/P3: a stale staff decision can reverse another owner's; a late Send 
 open Report sheet keeps a message that left the window; a late room action closes another feature's sheet; an older
 Join overrides a newer one; hide-then-show a card can exceed room capacity; report-decision feedback and the report
 filter (pre-existing staff paths); delayed consent ignores a rejoin's new entry. The live dry run waits for the final text.
+
+## 14. Round 3 answered (23 Oct, afternoon; the owner's go-ahead came through the parent session)
+
+| Round 3 item | What changed |
+|---|---|
+| A7 instructions off the list | A word list cannot name every medicine, so the rule now reads the sentence's shape: a sentence that opens by telling someone to take, stop, start or try something (after lead-ins such as "honestly", "just", "you should"), or that says "you should / must / need to" do one of those, waits for a check, whatever the thing is called. A short `ok` list clears everyday kindness that opens the same way ("take care", "take it easy", "try to rest"). Deliberately cautious: "Try a heat pad" waits too, which matches the room note (ask before offering ideas) |
+| A10 general addresses | Any name with a listed ending (com, org, gov, edu, health, ...), any name of three or more letters with any two-letter ending (hse.ie, gov.sg), and any name.ending/path. "it.in" and "ok.thanks" stay allowed; a missed space after a full stop can trip it, and the refusal says so |
+| B3 Report with Block | Takes her messages off at once and drops replies already on their way, as Block does |
+| 1 stale staff decision | Every decision names the revision the queue showed; a message decided or changed since is refused ("Someone decided or changed this message since the queue was shown") |
+| 2 late Send after Off | A Send answer that lands after Room chat went off on this phone adds nothing and says nothing |
+| 3 report sheet after its message left | The open report sheet closes when its message leaves the window, and its buttons check the message is still there |
+| 4 sheets closing others | A late answer closes only the sheet it was asked from |
+| 5 joins out of order | Joins go one at a time; a newer choice is asked after the one on its way, so the last room chosen is where she ends up |
+| 6 capacity after hide and show | A hidden or paused card keeps its place in the room count, so showing it again cannot overfill a room |
+| 7, 8 staff reports | A failed report decision keeps its reason; a reports answer for a filter no longer chosen is dropped |
+| 9 late yes after a rejoin | The late Room chat yes also checks her entry to the room is the same |
