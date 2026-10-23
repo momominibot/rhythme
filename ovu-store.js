@@ -14,7 +14,11 @@
   var listeners = [];
   var cache = null;
   var seenRaw = null, baseText = null; /* the stored text this tab last read or wrote, and its own copy at that moment: the base of mergeStored() */
-  var REV = 'ovumind_db_rev', seenRev = null; /* a short token every save changes, so a read can tell cheaply that another tab wrote */
+  var REV = 'ovumind_db_rev', seenRev = null;
+  /* a fresh token whenever the diary is replaced as a whole (Delete everything, a restore that replaces it): another tab tells a
+     new diary from an ordinary save by it, even when a restored backup keeps the old createdAt. Not diary data */
+  var EPOCH = 'ovumind_db_epoch_v1';
+  function newEpoch() { try { localStorage.setItem(EPOCH, Date.now().toString(36) + Math.random().toString(36).slice(2, 8)); } catch (e) { } } /* a short token every save changes, so a read can tell cheaply that another tab wrote */
   function readRev() { try { return localStorage.getItem(REV); } catch (e) { return null; } }
 
   function nowIso() { return new Date().toISOString(); }
@@ -88,11 +92,14 @@
     (theirs || []).concat(mine || []).forEach(function (x) { if (!x || x.id === undefined || seen[x.id]) return; seen[x.id] = true; var k = pick(x.id); if (k) out.push(k); });
     return out;
   }
+  /* a module may merge its own state key by id (water records, 21 Oct): fn(mine, base, theirs) returns the merged value */
+  var MERGERS = {};
+  function registerMerge(key, fn) { if (typeof fn === 'function') MERGERS[key] = fn; }
   function mergeKeys(mine, base, theirs, byIdKeys) {
     var out = {}, keys = {};
     [mine, base, theirs].forEach(function (o) { Object.keys(o || {}).forEach(function (k) { keys[k] = true; }); });
     Object.keys(keys).forEach(function (k) {
-      var v = byIdKeys && byIdKeys[k] && (Array.isArray(mine[k]) || Array.isArray(theirs[k])) ? mergeById(mine[k], base[k], theirs[k]) : (!same(mine[k], base[k]) ? mine[k] : theirs[k]);
+      var v = MERGERS[k] && (mine[k] !== undefined || theirs[k] !== undefined) && !same(mine[k], theirs[k]) ? MERGERS[k](mine[k], base[k], theirs[k]) : byIdKeys && byIdKeys[k] && (Array.isArray(mine[k]) || Array.isArray(theirs[k])) ? mergeById(mine[k], base[k], theirs[k]) : (!same(mine[k], base[k]) ? mine[k] : theirs[k]);
       if (v !== undefined) out[k] = v;
     });
     return out;
@@ -210,7 +217,8 @@
     if (existing) { return update(existing.id, { data: opts && opts.merge ? mergeData(type, existing.data, data) : data, source: IMPORTED[existing.source] ? (source || 'room') : undefined }); }
     var ev = { id: uid(), type: type, date: date, createdAt: nowIso(), updatedAt: nowIso(), source: source || 'room', data: data };
     db.events.push(ev);
-    try { save('add:' + type); } catch (e) { var at = db.events.indexOf(ev); if (at > -1) db.events.splice(at, 1); throw e; } /* a failed write leaves memory as it was, so a retry is clean */
+    /* A confirmed practice and its exploration count share one rollback-capable write. */
+    try { if (opts && opts.statePatch) commit(opts.statePatch); else save('add:' + type); } catch (e) { var at = db.events.indexOf(ev); if (at > -1) db.events.splice(at, 1); throw e; } /* a failed write leaves memory as it was, so a retry is clean */
     mirrorLegacy(ev);
     return ev;
   }
@@ -379,7 +387,7 @@
    * Answers that are not measurements: "no bleeding today", "not sure", "nothing to log". They only mark a check-in as
    * answered on this device: never an entry, a flow, coverage, a cycle or hearts, and anything logged later wins.
    * The write lands whole or not at all (commit), so a full storage never shows a tick (Codex design review, 20 Oct). */
-  var CHECKIN = { bleeding: ['none', 'unsure'], sleep: ['unsure'], mood: ['unsure'], food: ['skip'] };
+  var CHECKIN = { bleeding: ['none', 'unsure'], sleep: ['unsure'], mood: ['unsure'], food: ['skip'], water: ['skip'] }; /* water replaced food in Today's check-in (21 Oct); old food answers stay readable */
   function checkinAnswers(date) { var c = load().state.checkin || {}; return Object.assign({}, c[date] || {}); }
   function setCheckinAnswer(date, domain, status) {
     if (!validDate(date) || !CHECKIN[domain] || (status !== null && CHECKIN[domain].indexOf(status) < 0)) throw new Error('That is not a check-in answer.');
@@ -530,7 +538,7 @@
         Object.keys(j).forEach(function (d) { var r = j[d]; if (!r || typeof r !== 'object') return; ['breakfast', 'lunch', 'dinner', 'snack'].forEach(function (m) { if (Array.isArray(r[m])) r[m] = r[m].filter(function (it) { return !it || it.ovuId !== ev.id; }); }); }); /* every date: a meal moved to another day leaves no copy behind */
         var dayRec = j[ev.date] || (j[ev.date] = { breakfast: [], lunch: [], dinner: [], snack: [] });
         var meal = ['breakfast', 'lunch', 'dinner', 'snack'].indexOf(ev.data.meal) > -1 ? ev.data.meal : 'snack';
-        if (!removed) dayRec[meal].push({ ovuId: ev.id, emoji: ({ breakfast: '🥣', lunch: '🥗', dinner: '🍲', snack: '🍓' })[meal], name: ev.data.foods || 'Meal', tags: (ev.data.tags || []).join(' · ') || 'Logged in your room' });
+        if (!removed) dayRec[meal].push({ ovuId: ev.id, emoji: '', name: ev.data.foods || 'Meal', tags: (ev.data.tags || []).join(' · ') || 'Logged in your room' });
         localStorage.setItem('ovumind_food_journal', JSON.stringify(j));
       }
       if (ev.type === 'sleep') {
@@ -565,6 +573,7 @@
       db.profile = Object.assign(db.profile, incoming.profile);
     }
     var pf = load().profile; ['owner', 'cloud', 'consent', 'consentEvents', 'ageAttest'].forEach(function (k) { if (k in keep) pf[k] = keep[k]; else delete pf[k]; }); /* a backup never brings an account, not even an old one onto a fresh phone */
+    if (mode === 'replace') newEpoch(); /* before the save, so another tab's storage event already reads the new diary */
     save('import', mode === 'replace');
     return load().events.length;
   }
@@ -573,18 +582,18 @@
    * and cycle copies, the earlier Ovuluna pages' logs, scores and choices, and Erin's podcast listening all go (launch
    * sweep, 20 Oct 2026: they used to stay). Kept, and named on the Delete screen: the sign-in, the backup bookkeeping
    * and Rhythme Plus access, which are not diary data; the privacy page can remove them one by one. */
-  var OWN_KEYS = ['ovumind_food_journal', 'ovumind_cycle', 'ovumind_ai_v1', 'ovumind_reminders_v1', 'ovumind_nova_words', 'ovumind_room', 'ovumind_room_skipped', 'ovumind_device_v1', 'ovumind_desk_v1',
+  var OWN_KEYS = ['ovumind_gamesave_v1', 'ovumind_food_journal', 'ovumind_cycle', 'ovumind_ai_v1', 'ovumind_reminders_v1', 'ovumind_nova_words', 'ovumind_room', 'ovumind_room_skipped', 'ovumind_device_v1', 'ovumind_desk_v1',
     'rhythme_podcast_v1', 'rhythme_voice_muted',
     'ovuluna_observations_v1', 'ovuluna_lab_records_v1', 'ovuluna_wellness_journal_v1', 'ovuluna_daily_checkins_v1', 'ovuluna_daily_context_v1', 'ovuluna_daily_routine_v1', 'ovuluna_daily_completions_v1',
     'ovuluna_ovarian_assessments_v2', 'ovuluna_phenoage_records_v1', 'ovuluna_profile', 'ovuluna_label_scans', 'ovuluna_medas14', 'ovuluna_pss10', 'ovuluna_sleep_logs', 'ovuluna_cycle', 'ovuluna_cycles',
     'ovuluna_footsoak_reminder', 'ovuluna_luna', 'ovuluna_luna_seen', 'ovuluna_ovarian_age', 'ovuluna_labs', 'ovuluna_wellness_data', 'ovuluna_cycle_data', 'ovuluna_onboarding', 'ovuluna_language', 'ovuluna_units',
     'ovuluna_auth', 'ovuluna_preferences_v1', 'ovuluna_persona', 'ovuluna_theme', 'ovuluna_fontsize', 'ovuluna_font_size', 'ovuluna_hormone_view',
     'ov_hydro', 'ov_acupoint_routine', 'ov_result', 'ov_mascot_hide'];
-  var KEEP_ON_CLEAR = ['ovumind_auth_v1', 'ovumind_sync_v1', 'rhythme_plus_v1', 'rhythme_plus_v1_pending'];
+  var KEEP_ON_CLEAR = ['ovumind_auth_v1', 'ovumind_sync_v1', 'ovumind_sync_pos_v1', 'ovumind_sync_reset_v1', 'rhythme_plus_v1', 'rhythme_plus_v1_pending']; /* the two sync_pos/reset keys are backup bookkeeping too (ovu-sync.js) */
   var DAILY_LOG = /^ovuluna_daily_log_\d{4}-\d{2}-\d{2}$/;
   function clearAll() {
     try { if (root.OvuPodcast && root.OvuPodcast.forget) root.OvuPodcast.forget(); } catch (e) { } /* its page-close save would write the listening back */
-    cache = empty(); save('clear', true);
+    cache = empty(); newEpoch(); save('clear', true);
     try { localStorage.removeItem(REV); } catch (e) { } /* not diary data; another tab reads its absence as a change */
     try {
       var keys = []; for (var i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i));
@@ -641,9 +650,19 @@
   /* same-day duplicates (a sync can bring two checks for one day): the newest edit is the answer; on a tie, the later row (Codex, 21 Oct) */
   function newestFirst(a, b) { var ta = String(a.updatedAt || a.createdAt || ''), tb = String(b.updatedAt || b.createdAt || ''); return tb > ta ? 1 : tb < ta ? -1 : 0; }
   function latestOnDate(type, date) { var l = list(type, { from: date, to: date }).map(function (e, i) { return { e: e, i: i }; }).sort(function (x, y) { return newestFirst(x.e, y.e) || (y.i - x.i); }); return l.length ? l[0].e : null; }
-  root.OvuStore = {
+  /* which diary this is, as stored: Delete everything or a restore that replaces the diary changes it, and another tab sees it
+     at once (ovu-gym.js ends a workout on it; that tab's merge keeps its own createdAt in memory). Before any replacement the
+     diary's createdAt stands in */
+  function born() {
+    try {
+      var e = localStorage.getItem(EPOCH); if (e) return 'e:' + e;
+      var raw = localStorage.getItem(KEY), m = raw && /"createdAt"\s*:\s*"([^"]{1,40})"/.exec(raw.slice(0, 400)); if (m) return m[1];
+    } catch (err) { }
+    return load().createdAt || null;
+  }
+  root.OvuStore = { registerMerge: registerMerge, born: born,
     /* the current first-visit data notice (ovu-consent.js asks again below it; the gate below sends people to the room) */
-    NOTICE_V: 4, /* v4, 20 Oct 2026: backup and improve-logging wording says who can reach records (Codex legal review) */
+    NOTICE_V: 5, /* v5, 21 Oct 2026: an optional birthday, the year only if she adds it, kept on this phone for the birthday card (the sheet promises to ask again when what is collected changes); v4, 20 Oct 2026: backup and improve-logging wording says who can reach records (Codex legal review) */
     KEY: KEY, TYPES: TYPES, checkinAnswers: checkinAnswers, setCheckinAnswer: setCheckinAnswer, today: today, validDate: validDate, validTime: validTime, addDays: addDays, diffDays: diffDays,
     load: load, list: list, get: get, latestOnDate: latestOnDate, newestFirst: newestFirst, byDate: byDate, add: add, update: update, remove: remove, sandbox: sandbox, isSandbox: isSandbox,
     putEvent: putEvent, applyRemote: applyRemote,

@@ -1,6 +1,7 @@
 /* Rhythme Harbour Lane: the grocer (Hay & Harvest), the boutique (Petal & Thread), the gym (Tideline Gym), the fish store
- * (Bait & Fin) and the post box. Until the lane's plate is drawn, the harbour's signpost opens the lane as a sheet and
- * every place is a sheet, the way Dream Street's stores were before their interiors existed. No place here awards hearts,
+ * (Bait & Fin) and the post box. The lane is drawn (ovu-lanescene.js, 21 Oct): the harbour's signpost walks her up it,
+ * and the grocer, the boutique and the gym are rooms she walks into, whose counters open these sheets; the fish store
+ * keeps its sheet until its room is drawn. The lane's own sheet is still where every place's Back row goes. No place here awards hearts,
  * and the gym and the post box never spend them. Nothing here writes a diary entry: the gym opens the movement log and
  * only her own save writes. Design: docs/design/2026-10-21-harbour-lane.md. Pure rules first (testable in node), then
  * the sheets. */
@@ -117,14 +118,18 @@
   function F() { return root.OvuFarm; }
   function KT() { return root.OvuKitchen; } /* the farm kitchen's staples (ovu-kitchen.js) */
   function hearts() { var rw = RW(); return rw ? (rw.tester && rw.tester() ? Infinity : rw.ledger().hearts) : 0; }
-  function heartTxt(n) { return n + ' ♥'; }
+  function heartTxt(n) { return n + ' hearts'; }
   function num(v) { var x = Math.floor(Number(v)); return isFinite(x) && x > 0 ? x : 0; } /* a restored backup's counts reach the page as numbers only (review, 21 Oct) */
   function dateText(d) { try { return new Date(d + 'T12:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: d.slice(0, 4) === today().slice(0, 4) ? undefined : 'numeric' }); } catch (e) { return d; } }
   /* the back row: with the hearts she has (a shop), "Free" (the gym) or nothing beside it */
-  function nav(mode) { var h = hearts(), side = mode === 'hearts' ? '<span class="heartsmini"><span class="ms fill">favorite</span>' + (h === Infinity ? '∞' : h) + '</span>' : mode === 'free' ? '<span class="heartsmini"><span class="ms">volunteer_activism</span>Free</span>' : ''; return '<div class="streetnav"><button type="button" class="back" data-lane="back"><span class="ms">arrow_back</span>Harbour Lane</button>' + side + '</div>'; }
+  /* with the lane drawn (ovu-lanescene.js), a place's sheet is the counter of the room she stands in: Back closes it, and the
+   * lane's own sheet only lists, so no sheet carries her from one shop to another (Codex, 21 Oct) */
+  function walkable() { return !!(root.OvuLaneScene && R.LAYOUTS && R.LAYOUTS.lane); }
+  function standing() { var L = R.layout && R.layout(); return walkable() && root.OvuLaneScene.onLane(L) ? L : null; }
+  function nav(mode) { var here = standing(), h = hearts(), side = mode === 'hearts' ? '<span class="heartsmini"><span class="ms fill">favorite</span>' + (h === Infinity ? '∞' : h) + '</span>' : mode === 'free' ? '<span class="heartsmini"><span class="ms">volunteer_activism</span>Free</span>' : ''; return '<div class="streetnav"><button type="button" class="back" data-lane="back"><span class="ms">arrow_back</span>' + esc(here ? here.name : 'Harbour Lane') + '</button>' + side + '</div>'; }
   function mind(text) { return text ? '<p class="mindline"><span class="ms">spa</span><span>' + esc(text) + '</span></p>' : ''; }
   /* every place sheet: Back goes to the lane; a closed place shows its hours instead */
-  function wireBack() { var b = doc.querySelector('#sheet [data-lane=back]'); if (b) b.addEventListener('click', function () { R.chime('tap'); openLane(); }); }
+  function wireBack() { var b = doc.querySelector('#sheet [data-lane=back]'); if (b) b.addEventListener('click', function () { R.chime('tap'); if (standing()) R.closeSheet(); else openLane(); }); }
   function shut(id) {
     var p = place(id), now = new Date(), h = now.getHours() + now.getMinutes() / 60, when = h < p.hours[0] ? 'It opens at ' + fmtHour(p.hours[0]) + ' today.' : 'It opens again at ' + fmtHour(p.hours[0]) + ' tomorrow.';
     R.openSheet('lane-closed', p.name, 'Opening hours', 'schedule', nav() +
@@ -137,10 +142,10 @@
     var post = unread(S, today()).length;
     R.openSheet('lane', 'Harbour Lane', 'Four shops and a post box, up from the harbour', 'signpost',
       '<div class="street lane">' + PLACES.map(function (p) {
-        var on = openNow(p.id); return '<button type="button" class="store' + (on ? '' : ' closed') + '" data-place="' + p.id + '"><span class="ms storeic">' + p.icon + '</span><span><b>' + esc(p.name) + '</b><small>' + esc(p.kind) + ' · ' + esc(p.blurb) + (p.id === 'post' && post ? ' · <em class="postnew">post for you</em>' : '') + '</small><small class="hours">' + (on ? (p.hours ? 'Open now · ' : '') : 'Closed · opens ') + esc(hoursText(p.id)) + '</small></span><span class="ms">chevron_right</span></button>';
+        var on = openNow(p.id), tag = walkable() ? 'div' : 'button'; return '<' + tag + (tag === 'button' ? ' type="button"' : '') + ' class="store' + (on ? '' : ' closed') + '" data-place="' + p.id + '"><span class="ms storeic">' + p.icon + '</span><span><b>' + esc(p.name) + '</b><small>' + esc(p.kind) + ' · ' + esc(p.blurb) + (p.id === 'post' && post ? ' · <em class="postnew">post for you</em>' : '') + '</small><small class="hours">' + (on ? (p.hours ? 'Open now · ' : '') : 'Closed · opens ') + esc(hoursText(p.id)) + '</small></span>' + (tag === 'button' ? '<span class="ms">chevron_right</span>' : '') + '</' + tag + '>';
       }).join('') + '</div>' +
-      '<p class="help">The lane itself is still being drawn. Until then the signpost brings each place to you, and everything in it works.</p>');
-    var box = doc.querySelector('#sheet .lane'); if (box) box.addEventListener('click', function (e) { var b = e.target.closest('[data-place]'); if (!b) return; R.chime('tap'); openPlace(b.dataset.place); });
+      '<p class="help">' + (R.LAYOUTS && R.LAYOUTS.lane ? 'Walk up the lane from the harbour signpost and go in: the grocer, the boutique and the gym are rooms, and Bait &amp; Fin and the post box open on the lane.' : 'The lane itself is still being drawn. Until then the signpost brings each place to you, and everything in it works.') + '</p>');
+    var box = doc.querySelector('#sheet .lane'); if (box && !walkable()) box.addEventListener('click', function (e) { var b = e.target.closest('[data-place]'); if (!b) return; R.chime('tap'); openPlace(b.dataset.place); });
   }
   function openPlace(id) {
     if (!place(id)) return;
@@ -159,14 +164,14 @@
     if (swapGive && give.indexOf(swapGive) < 0) swapGive = null;
     var html = nav('hearts') + mind('Choose one thing you would like to grow in yourself this week.') +
       '<h4 class="shedh"><span class="ms">redeem</span>Seed packs <small>' + FM.PACK.seeds + ' seeds · ' + heartTxt(FM.PACK.cost) + '</small></h4>' +
-      '<div class="seedlist" id="grocerBuy">' + grow.map(function (k) { var c = FM.CROPS[k]; return '<button type="button" class="btn soft" data-pack="' + k + '"' + (h >= FM.PACK.cost ? '' : ' disabled') + '><span class="ms">redeem</span><span><b>' + esc(c.name) + '</b><small>' + c.days + ' days · have ' + num(f.seeds[k]) + '</small></span></button>'; }).join('') +
-      locked.map(function (k) { var c = FM.CROPS[k]; return '<button type="button" class="btn soft" data-unlock="' + k + '"' + (h >= c.cost ? '' : ' disabled') + '><span class="ms">lock_open</span><span><b>Grow ' + esc(c.name.toLowerCase()) + '</b><small>' + c.days + ' days · for good, one seed to start · ' + heartTxt(c.cost) + '</small></span></button>'; }).join('') + '</div>' +
+      '<div class="seedlist" id="grocerBuy">' + grow.map(function (k) { var c = FM.CROPS[k]; return '<button type="button" class="btn soft" data-pack="' + k + '"' + (h >= FM.PACK.cost ? '' : ' disabled') + '>' + FM.cropPic(k) + '<span><b>' + esc(c.name) + '</b><small>' + c.days + ' days · have ' + num(f.seeds[k]) + '</small></span></button>'; }).join('') +
+      locked.map(function (k) { var c = FM.CROPS[k]; return '<button type="button" class="btn soft" data-unlock="' + k + '"' + (h >= c.cost ? '' : ' disabled') + '>' + FM.cropPic(k) + '<span><b>Grow ' + esc(c.name.toLowerCase()) + '</b><small>' + c.days + ' days · for good, one seed to start · ' + heartTxt(c.cost) + '</small></span></button>'; }).join('') + '</div>' +
       (KT() ? (function () { var kt = KT(), have = kt.staplesOf(S); return '<h4 class="shedh"><span class="ms">kitchen</span>Kitchen staples <small>one portion each</small></h4>' +
-        '<div class="seedlist" id="grocerStaples">' + Object.keys(kt.STAPLES).map(function (k) { var st = kt.STAPLES[k]; return '<button type="button" class="btn soft" data-staple="' + k + '"' + (h >= st.cost ? '' : ' disabled') + '><span class="ms">' + st.icon + '</span><span><b>' + esc(st.name) + '</b><small>have ' + num(have[k]) + ' · ' + heartTxt(st.cost) + '</small></span></button>'; }).join('') + '</div>' +
+        '<div class="seedlist" id="grocerStaples">' + Object.keys(kt.STAPLES).map(function (k) { var st = kt.STAPLES[k]; return '<button type="button" class="btn soft" data-staple="' + k + '"' + (h >= st.cost ? '' : ' disabled') + '>' + (kt.staplePic ? kt.staplePic(k) : '<span class="ms">' + st.icon + '</span>') + '<span><b>' + esc(st.name) + '</b><small>you have ' + num(have[k]) + ' · buy one for ' + heartTxt(st.cost) + '</small></span></button>'; }).join('') + '</div>' +
         '<p class="help" style="margin-top:6px">For cooking what you grow: open the basket on the farm, or the stove in the family home.</p>'; })() : '') +
       (GH ? '<h4 class="shedh"><span class="ms">local_florist</span>For the greenhouse <small>' + (free ? 'your first one is free' : 'for the planters') + '</small></h4>' +
         (free ? '<p class="help" style="margin-top:0">Choose any one to start with, free. After that, each costs what it says.</p>' : '') +
-        '<div class="seedlist" id="grocerHerbs">' + GH.HERB_IDS.map(function (k) { var hb = GH.HERBS[k]; return '<button type="button" class="btn soft" data-herbstart="' + k + '"' + (free || h >= hb.cost ? '' : ' disabled') + '><span class="ms">spa</span><span><b>' + esc(hb.start) + '</b><small>ready in ' + hb.ripe + ' days, again every ' + hb.regrow + ' · have ' + num(gs.seeds[k]) + ' · ' + (free ? 'free' : heartTxt(hb.cost)) + '</small></span></button>'; }).join('') + '</div>' : '') +
+        '<div class="seedlist" id="grocerHerbs">' + GH.HERB_IDS.map(function (k) { var hb = GH.HERBS[k]; return '<button type="button" class="btn soft" data-herbstart="' + k + '"' + (free || h >= hb.cost ? '' : ' disabled') + '><img class="croppic" src="assets/room/dream/gh-' + k + '.webp" alt=""><span><b>' + esc(hb.start) + '</b><small>plant it in a greenhouse planter · ready in ' + hb.ripe + ' days, again every ' + hb.regrow + ' · you have ' + num(gs.seeds[k]) + ' · ' + (free ? 'first one free' : heartTxt(hb.cost)) + '</small></span></button>'; }).join('') + '</div>' : '') +
       '<h4 class="shedh"><span class="ms">swap_horiz</span>Seed swap <small>no hearts</small></h4>' +
       '<p class="help" style="margin-top:0">Three from your basket for one seed of any crop you grow' + (GH ? ', or a start of any herb. Herbs count too' : '') + '. A pumpkin counts as three.</p>';
     if (!give.length) html += '<p class="help pantryline"><span class="ms">shopping_basket</span>Nothing to swap yet: the basket needs three of one kind, or a pumpkin.</p>';
@@ -178,47 +183,64 @@
     wireBack();
     var buy = doc.getElementById('grocerBuy'); if (buy) buy.addEventListener('click', function (e) {
       var btn = e.target.closest('[data-pack],[data-unlock]'); if (!btn || btn.disabled || !stillOpen('grocer')) return;
-      var res = btn.dataset.pack ? FM.buyPack(S, RW(), btn.dataset.pack) : FM.unlockCrop(S, RW(), btn.dataset.unlock);
-      if (!res.ok) { R.toast(res.why, 'info'); return; }
-      R.chime('save'); var line = R.moment ? R.moment('shop', { quiet: true }) : '';
-      R.toast(btn.dataset.pack ? res.n + ' ' + FM.CROPS[btn.dataset.pack].name.toLowerCase() + ' seeds are in the shed.' : FM.CROPS[res.crop].name + ' grows on your farm now.', 'redeem', line);
-      if (R.renderDeck) R.renderDeck(); openGrocer();
+      var go = function () {
+        if (!stillOpen('grocer')) return;
+        var res = btn.dataset.pack ? FM.buyPack(S, RW(), btn.dataset.pack) : FM.unlockCrop(S, RW(), btn.dataset.unlock);
+        if (!res.ok) { R.toast(res.why, 'info'); return; }
+        R.chime('save'); var line = R.moment ? R.moment('shop', { quiet: true }) : '';
+        R.toast(btn.dataset.pack ? res.n + ' ' + FM.CROPS[btn.dataset.pack].name.toLowerCase() + ' seeds are in the shed.' : FM.CROPS[res.crop].name + ' grows on your farm now.', 'redeem', line);
+        if (R.renderDeck) R.renderDeck(); openGrocer();
+      };
+      if (FM.locked) FM.locked(S, go); else go(); /* the farm lock: hearts and seeds in one save, after other tabs' saves */
     });
     var sp = doc.getElementById('grocerStaples'); if (sp) sp.addEventListener('click', function (e) {
       var btn = e.target.closest('[data-staple]'); if (!btn || btn.disabled || !stillOpen('grocer')) return;
-      var res = KT().buyStaple(S, RW(), btn.dataset.staple); if (!res.ok) { R.toast(res.why, 'info'); return; }
-      R.chime('save'); var line = R.moment ? R.moment('shop', { quiet: true }) : '', st = KT().STAPLES[res.id];
-      R.toast(st.pantry ? 'An egg is in the pantry.' : st.name + (st.pl ? ' are' : ' is') + ' in the kitchen.', 'kitchen', line);
-      if (R.renderDeck) R.renderDeck(); openGrocer();
+      var go = function () {
+        if (!stillOpen('grocer')) return;
+        var res = KT().buyStaple(S, RW(), btn.dataset.staple); if (!res.ok) { R.toast(res.why, 'info'); return; }
+        R.chime('save'); var line = R.moment ? R.moment('shop', { quiet: true }) : '', st = KT().STAPLES[res.id];
+        R.toast(st.pantry ? 'An egg is in the pantry.' : st.name + (st.pl ? ' are' : ' is') + ' in the kitchen.', 'kitchen', line);
+        if (R.renderDeck) R.renderDeck(); openGrocer();
+      };
+      if (FM.locked) FM.locked(S, go); else go(); /* the farm lock: the pantry is read again after other tabs' saves */
     });
     var hs = doc.getElementById('grocerHerbs'); if (hs) hs.addEventListener('click', function (e) {
       var btn = e.target.closest('[data-herbstart]'); if (!btn || btn.disabled || !stillOpen('grocer')) return;
-      var res = GH.freeStartOpen(S) ? GH.freeStart(S, btn.dataset.herbstart, today()) : GH.buyStart(S, RW(), btn.dataset.herbstart); if (!res.ok) { R.toast(res.why, 'info'); return; }
-      R.chime('save'); var line = R.moment ? R.moment('shop', { quiet: true }) : '';
-      R.toast(GH.HERBS[res.herb].start + ' for the greenhouse. Plant it in a planter by the door.', 'local_florist', line);
-      if (R.renderDeck) R.renderDeck(); openGrocer();
+      var go = function () {
+        if (!stillOpen('grocer')) return;
+        var res = GH.freeStartOpen(S) ? GH.freeStart(S, btn.dataset.herbstart, today()) : GH.buyStart(S, RW(), btn.dataset.herbstart); if (!res.ok) { R.toast(res.why, 'info'); return; }
+        R.chime('save'); var line = R.moment ? R.moment('shop', { quiet: true }) : '';
+        R.toast(GH.HERBS[res.herb].start + ' for the greenhouse. Plant it in a planter by the door.', 'local_florist', line);
+        if (R.renderDeck) R.renderDeck(); openGrocer();
+      };
+      if (FM.locked) FM.locked(S, go); else go();
     });
     var gv = doc.getElementById('swapGive'); if (gv) gv.addEventListener('click', function (e) { var b = e.target.closest('[data-give]'); if (!b) return; R.chime('tap'); swapGive = b.dataset.give === swapGive ? null : b.dataset.give; openGrocer(); });
     var tk = doc.getElementById('swapTake'); if (tk) tk.addEventListener('click', function (e) {
       var b = e.target.closest('[data-take]'); if (!b || !swapGive || !stillOpen('grocer')) return;
-      var res = GH ? GH.swapAny(S, swapGive, b.dataset.take) : FM.swapSeed(S, swapGive, b.dataset.take); swapGive = null;
+      var giving = swapGive; swapGive = null;
+      var go = function () {
+      if (!stillOpen('grocer')) return;
+      var res = GH ? GH.swapAny(S, giving, b.dataset.take) : FM.swapSeed(S, giving, b.dataset.take);
       if (!res.ok) { R.toast(res.why, 'info'); openGrocer(); return; }
       R.chime('save'); var line = R.moment ? R.moment('seedswap', { quiet: true }) : '';
       var gc = kind(res.give), took = res.take || res.crop; R.toast('Swapped ' + res.gave + ' ' + (res.gave === 1 ? gc.name.toLowerCase() : gc.plural) + (res.herb ? ' for ' + GH.HERBS[took].start.toLowerCase() + '. It is ready for the greenhouse.' : ' for a ' + FM.CROPS[took].name.toLowerCase() + ' seed. It is in the shed.'), 'swap_horiz', line);
       openGrocer();
+      };
+      if (FM.locked) FM.locked(S, go); else go(); /* the farm lock: the basket is read again inside */
     });
   }
 
   /* Petal & Thread: the fitting room is her wardrobe (every outfit she has stays free); the new rail waits for its art */
   function openBoutique() {
     R.openSheet('lane-boutique', 'Petal & Thread', 'Boutique · ' + hoursText('boutique'), 'checkroom', nav('hearts') +
-      '<div class="row"><button type="button" class="btn primary" id="fitRoom"><span class="ms">checkroom</span>The fitting room</button></div>' +
-      '<p class="help">Every outfit you have is free to wear, and always will be.</p>' +
-      '<p class="shelf"><span class="ms">new_releases</span>The new rail</p>' +
-      '<div class="seedlist one" id="railList">' + RAIL.map(function (o) { return '<button type="button" class="btn soft" data-rail="' + o.id + '" disabled><span class="ms">checkroom</span><span><b>' + esc(o.name) + '</b><small>' + esc(o.note) + ' · ' + heartTxt(o.cost) + ' · Arriving with the next art run</small></span></button>'; }).join('') + '</div>' +
+      '<div class="row"><button type="button" class="btn primary" id="railOpen"><span class="ms">apparel</span>The rails</button><button type="button" class="btn soft" id="fitRoom"><span class="ms">checkroom</span>The fitting room</button></div>' +
+      '<p class="help">Look along the rails at every outfit, on its hanger and on you. What you have is free to wear, always; Plus drops and new arrivals say what they cost.</p>' +
       mind('Notice how the fabric feels. Nothing to fix about you.'));
     wireBack();
-    var fr = doc.getElementById('fitRoom'); if (fr) fr.addEventListener('click', function () { R.chime('tap'); if (R.openWardrobe) R.openWardrobe(); });
+    var BT = root.OvuBoutique, inShop = function () { var L = R.layout && R.layout(); return !!(BT && L && L.id === 'lane-boutique'); };
+    var ro = doc.getElementById('railOpen'); if (ro) ro.addEventListener('click', function () { R.chime('tap'); if (inShop() && BT.openRail) BT.openRail(); else if (R.openWardrobe) R.openWardrobe(); });
+    var fr = doc.getElementById('fitRoom'); if (fr) fr.addEventListener('click', function () { R.chime('tap'); if (inShop() && BT.openFitting) BT.openFitting(); else if (R.openWardrobe) R.openWardrobe(); }); /* in the shop she tries things on; elsewhere it is her wardrobe */
   }
 
   /* Tideline Gym: free, earns nothing by itself, logs nothing; a station opens the movement log with its activity chosen */

@@ -2,8 +2,7 @@
  "source": "Ovuluna food database (food-journal.html FOOD_DB and PHASE_INFO): TCM and Western notes, phase matching; nutrient maths uses the USDA table where a match exists",
  "foods": [
   {
-   "name": "Salmon",
-   "emoji": "🐟",
+   "name": "Wild Caught Salmon",
    "tags": "Omega-3 · Vitamin D · Protein",
    "tcm": "Nourishes blood, warms yang",
    "phase": [
@@ -16,7 +15,6 @@
   },
   {
    "name": "Eggs",
-   "emoji": "🥚",
    "tags": "Protein · Choline · B12",
    "tcm": "Nourishes yin, builds blood",
    "phase": [
@@ -29,7 +27,6 @@
   },
   {
    "name": "Spinach",
-   "emoji": "🥬",
    "tags": "Iron · Folate · Magnesium",
    "tcm": "Clears heat, nourishes blood",
    "phase": [
@@ -41,7 +38,6 @@
   },
   {
    "name": "Sweet Potato",
-   "emoji": "🍠",
    "tags": "Beta-carotene · Fibre · Vitamin A",
    "tcm": "Tonifies qi, harmonizes stomach",
    "phase": [
@@ -52,8 +48,7 @@
    "img": "assets/food/sweet-potato.webp"
   },
   {
-   "name": "Oats",
-   "emoji": "🥣",
+   "name": "Organic Oats",
    "tags": "Fibre · B vitamins · Iron",
    "tcm": "Tonifies spleen, nourishes qi",
    "phase": [
@@ -65,18 +60,17 @@
   },
   {
    "name": "Ginger",
-   "emoji": "🫚",
    "tags": "Spice · Gingerols",
    "tcm": "Warms middle, dispels cold",
    "phase": [
     "menstrual",
     "luteal"
    ],
-   "usda": null
+   "usda": null,
+   "img": "assets/food/ginger.webp"
   },
   {
    "name": "Turmeric",
-   "emoji": "🟡",
    "tags": "Spice · Curcumin",
    "tcm": "Invigorates blood, moves qi",
    "phase": [
@@ -88,7 +82,6 @@
   },
   {
    "name": "Berries",
-   "emoji": "🫐",
    "tags": "Vitamin C · Fibre",
    "tcm": "Nourishes yin, generates fluids",
    "phase": [
@@ -100,7 +93,6 @@
   },
   {
    "name": "Avocado",
-   "emoji": "🥑",
    "tags": "Healthy fats · Vitamin E",
    "tcm": "Nourishes blood, moistens",
    "phase": [
@@ -112,7 +104,6 @@
   },
   {
    "name": "Walnuts",
-   "emoji": "🌰",
    "tags": "Omega-3 · Vitamin E",
    "tcm": "Tonifies kidney, warms yang",
    "phase": [
@@ -124,7 +115,6 @@
   },
   {
    "name": "Dark Chocolate",
-   "emoji": "🍫",
    "tags": "Magnesium · Iron",
    "tcm": "Moves blood, lifts mood",
    "phase": [
@@ -135,40 +125,39 @@
   },
   {
    "name": "Chamomile Tea",
-   "emoji": "🍵",
    "tags": "Caffeine-free herbal tea",
    "tcm": "Calms spirit, soothes liver",
    "phase": [
     "luteal",
     "menstrual"
    ],
-   "usda": "tea"
+   "usda": "tea",
+   "img": "assets/food/chamomile-tea.webp"
   },
   {
    "name": "Bone Broth",
-   "emoji": "🍲",
    "tags": "Protein · Minerals",
    "tcm": "Nourishes yin, builds blood",
    "phase": [
     "menstrual",
     "follicular"
    ],
-   "usda": null
+   "usda": null,
+   "img": "assets/food/bone-broth.webp"
   },
   {
    "name": "Beetroot",
-   "emoji": "🟣",
    "tags": "Iron · Folate · Nitrates",
    "tcm": "Builds blood, moves stagnation",
    "phase": [
     "follicular",
     "menstrual"
    ],
-   "usda": null
+   "usda": null,
+   "img": "assets/food/beetroot.webp"
   },
   {
    "name": "Pumpkin Seeds",
-   "emoji": "🎃",
    "tags": "Zinc · Magnesium · Iron",
    "tcm": "Tonifies kidney, anchors spirit",
    "phase": [
@@ -180,18 +169,17 @@
   },
   {
    "name": "Citrus",
-   "emoji": "🍊",
    "tags": "Vitamin C · Fibre",
    "tcm": "Moves qi, regulates liver",
    "phase": [
     "ovulatory",
     "luteal"
    ],
-   "usda": "orange"
+   "usda": "orange",
+   "img": "assets/food/citrus.webp"
   },
   {
    "name": "Leafy Greens",
-   "emoji": "🥗",
    "tags": "Iron · Calcium · Folate",
    "tcm": "Clears heat, nourishes blood",
    "phase": [
@@ -203,7 +191,6 @@
   },
   {
    "name": "Lentils",
-   "emoji": "🫘",
    "tags": "Protein · Iron · Folate",
    "tcm": "Tonifies qi, builds blood",
    "phase": [
@@ -215,7 +202,6 @@
   },
   {
    "name": "Yogurt",
-   "emoji": "🥛",
    "tags": "Calcium · Protein",
    "tcm": "Nourishes yin, clears heat",
    "phase": [
@@ -227,58 +213,58 @@
   },
   {
    "name": "Quinoa",
-   "emoji": "🌾",
    "tags": "Complete protein · Iron · Magnesium",
    "tcm": "Tonifies spleen, harmonizes",
    "phase": [
     "follicular",
     "luteal"
    ],
-   "usda": "quinoa"
+   "usda": "quinoa",
+   "img": "assets/food/quinoa.webp"
   },
   {
    "name": "Cinnamon",
-   "emoji": "🪵",
    "tags": "Spice",
    "tcm": "Warms yang, invigorates blood",
    "phase": [
     "menstrual",
     "luteal"
    ],
-   "usda": null
+   "usda": null,
+   "img": "assets/food/cinnamon.webp"
   },
   {
    "name": "Sesame Seeds",
-   "emoji": "⚪",
    "tags": "Calcium · Iron · Healthy fats",
    "tcm": "Nourishes liver blood, moistens",
    "phase": [
     "follicular",
     "menstrual"
    ],
-   "usda": null
+   "usda": null,
+   "img": "assets/food/sesame-seeds.webp"
   },
   {
    "name": "Green Tea",
-   "emoji": "🍃",
    "tags": "Catechins · L-theanine · Caffeine",
    "tcm": "Clears heat, calms spirit",
    "phase": [
     "ovulatory",
     "follicular"
    ],
-   "usda": "green-tea"
+   "usda": "green-tea",
+   "img": "assets/food/green-tea.webp"
   },
   {
    "name": "Mushrooms",
-   "emoji": "🍄",
    "tags": "B vitamins · Selenium · Fibre",
    "tcm": "Tonifies qi, nourishes yin",
    "phase": [
     "follicular",
     "luteal"
    ],
-   "usda": "mushroom"
+   "usda": "mushroom",
+   "img": "assets/food/mushrooms.webp"
   }
  ],
  "phases": {
@@ -288,7 +274,7 @@
    "foods": [
     "Bone Broth",
     "Ginger",
-    "Oats",
+    "Organic Oats",
     "Eggs",
     "Beetroot",
     "Cinnamon",
@@ -299,7 +285,7 @@
    "label": "Follicular phase",
    "text": "Ordinary balanced meals: vegetables, whole grains, beans and lentils, and some protein at each meal.",
    "foods": [
-    "Salmon",
+    "Wild Caught Salmon",
     "Eggs",
     "Spinach",
     "Berries",
@@ -317,7 +303,7 @@
     "Leafy Greens",
     "Green Tea",
     "Yogurt",
-    "Salmon"
+    "Wild Caught Salmon"
    ]
   },
   "luteal": {

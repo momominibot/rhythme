@@ -92,7 +92,7 @@
     return record;
   }
   function compareLimits(record) {
-    if (record.qualifier !== '=') return 'Reported bound — no automatic range comparison.';
+    if (record.qualifier !== '=') return 'Reported as a bound, so there is no automatic range comparison.';
     const low = record.referenceLow, high = record.referenceHigh;
     if (low === null && high === null) return 'No report limits entered.';
     if (low !== null && record.value < low) return 'Below your entered lower limit.';
@@ -140,7 +140,7 @@
         article.append(textNode('h3', MARKERS[record.analyte].label + ' · ' + record.collectedOn));
         article.append(textNode('p', (record.qualifier === '=' ? '' : record.qualifier + ' ') + record.value + ' ' + record.unit, 'result-value'));
         article.append(textNode('p', compareLimits(record), 'lab-comparison'));
-        if (record.referenceLow !== null || record.referenceHigh !== null) article.append(textNode('p', 'Entered report limits: ' + (record.referenceLow === null ? '—' : record.referenceLow) + ' to ' + (record.referenceHigh === null ? '—' : record.referenceHigh) + ' ' + record.unit, 'lab-note'));
+        if (record.referenceLow !== null || record.referenceHigh !== null) article.append(textNode('p', 'Entered report limits: ' + (record.referenceLow === null ? 'not given' : record.referenceLow) + ' to ' + (record.referenceHigh === null ? 'not given' : record.referenceHigh) + ' ' + record.unit, 'lab-note'));
         if (record.sourceName) article.append(textNode('p', 'Report source: ' + record.sourceName, 'lab-note'));
         if (record.assay) article.append(textNode('p', 'Assay / method: ' + record.assay, 'lab-note'));
         if (record.context) article.append(textNode('p', record.context, 'lab-note'));

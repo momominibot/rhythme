@@ -25,7 +25,7 @@
     return inside;
   }
   function inZones(zones, x, y) { if (!zones || !zones.length) return true; for (var i = 0; i < zones.length; i++) if (inPoly(zones[i], x, y)) return true; return false; }
-  function inBox(b, x, y) { return x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1; }
+  function inBox(b, x, y) { if (b.poly) return inPoly(b.poly, x, y); return x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1; } /* a solid may be a polygon: the farm's bed frame (22 Oct) */
   function blocked(solids, x, y) { for (var i = 0; i < (solids || []).length; i++) if (inBox(solids[i], x, y)) return solids[i]; return null; }
   /* the box a prop or pet takes up at its feet: narrower than the sprite and shallow in y */
   function propBox(p) { var w = p.w || 8; return { id: p.id, x0: p.x - w * 0.34, x1: p.x + w * 0.34, y0: p.y - w * 0.22, y1: p.y + w * 0.12 }; }
@@ -62,11 +62,19 @@
   function cycleAdvance(acc, distIso) { return acc + distIso / STRIDE; }
   function frameOf(acc) { return Math.floor(((acc % 1) + 1) % 1 * FRAMES); }
   /* depth: things lower on the plate draw in front. Ranks are packed into z 2..9 so nothing ever rises
-   * above the hotspot pins (10) or the HUD (11); ties keep DOM order. items: [{y, ...}] */
+   * above the hotspot pins (10) or the HUD (11); ties keep DOM order. items: [{y, x?, w?}]. Up to eight, each has its own
+   * rank. More than eight (a busy plaza: the neighbours, their pets, a villager, her), only sprites that overlap across
+   * need different levels, so each takes one more than the highest overlapping sprite behind it; a sprite without an x
+   * (her) overlaps everything. Only a chain of more than eight overlapping sprites is packed, as before (Codex, 22 Oct:
+   * a villager and her tied at z 2 in the plaza's crowd) */
+  function overlapsAcross(a, b) { return !isFinite(a.x) || !isFinite(b.x) || Math.abs(a.x - b.x) < ((a.w || 8) + (b.w || 8)) / 2; }
   function depthRank(items) {
     var idx = items.map(function (it, i) { return i; }).sort(function (a, b) { return (items[a].y - items[b].y) || (a - b); });
     var n = idx.length, z = new Array(n);
-    idx.forEach(function (i, rank) { z[i] = 2 + (n <= 8 ? rank : Math.floor(rank * 8 / n)); });
+    if (n <= 8) { idx.forEach(function (i, rank) { z[i] = 2 + rank; }); return z; }
+    var lvl = new Array(n), top = 0;
+    idx.forEach(function (i, k) { var l = 0; for (var m = 0; m < k; m++) { var j = idx[m]; if (lvl[j] >= l && overlapsAcross(items[i], items[j])) l = lvl[j] + 1; } lvl[i] = l; if (l > top) top = l; });
+    idx.forEach(function (i) { z[i] = 2 + (top < 8 ? lvl[i] : Math.floor(lvl[i] * 8 / (top + 1))); });
     return z;
   }
   /* the world the avatar walks in: the layout's zones, its baked solids plus the props standing in it */
@@ -252,12 +260,13 @@
   var cyc = { box: null, img: null, sheets: {}, key: '', frame: -1, acc: 0, dir: 'side', on: false, cssFrom: null, cssRaf: 0 };
   var EASE = 6, MIN_EASE = 0.35, SNAP = 8, lastTap = { t: 0, x: -99, y: -99 };
   var KEYS = { ArrowUp: 'u', ArrowDown: 'd', ArrowLeft: 'l', ArrowRight: 'r', w: 'u', s: 'd', a: 'l', d: 'r', W: 'u', S: 'd', A: 'l', D: 'r' };
-  var INTERACTIVE = '.hotspot,.avatar,.prop.owned.pet,.prop.owned.tool,.poop,.nb,.camctl,.topbar,.chip,.bubble,.visitbar,.propctl,.minimap,.hud,.sleeper,.meditator,.holo,.phase-chip,.greeting,.hint,button,a,input,textarea,select,label';
+  var INTERACTIVE = '.hotspot,.avatar,.prop.owned.pet,.prop.owned.tool,.poop,.nb,.tidy,.camctl,.topbar,.chip,.bubble,.visitbar,.propctl,.minimap,.hud,.sleeper,.meditator,.holo,.phase-chip,.greeting,.hint,button,a,input,textarea,select,label';
 
   /* a foreground cutout (.plate-occ) is ranked by its base, not its top edge, and is never a solid: its object's solid is
-   * already in the layout */
+   * already in the layout. A shopkeeper (.keeper) is ranked by its feet and is not a solid either: its block is in the layout; so is a
+   * villager (.villager, ovu-villagers.js) */
   function sprites() {
-    return Array.prototype.slice.call(doc.querySelectorAll('#ownedProps .prop.owned, #ownedProps .nb, #ownedProps .plot, #plateOcc .plate-occ')).map(function (el) { var occ = el.classList.contains('plate-occ'); return { el: el, id: el.dataset.id, x: parseFloat(el.style.left), y: parseFloat(occ ? el.dataset.base : el.style.top), w: parseFloat(el.style.width) || 8, solid: !occ && !el.classList.contains('plot') }; }).filter(function (p) { return isFinite(p.x) && isFinite(p.y); });
+    return Array.prototype.slice.call(doc.querySelectorAll('#ownedProps .prop.owned, #ownedProps .nb, #ownedProps .plot, #ownedProps .keeper, #ownedProps .villager, #plateOcc .plate-occ, #tidyLayer .tidy')).map(function (el) { var occ = el.classList.contains('plate-occ'), x = parseFloat(el.style.left), w = parseFloat(el.style.width) || 8; return { el: el, id: el.dataset.id, x: x, cx: occ ? x + w / 2 : x, y: parseFloat(occ ? el.dataset.base : el.style.top), w: w, solid: !occ && !el.classList.contains('plot') && !el.classList.contains('keeper') && !el.classList.contains('villager') && !el.classList.contains('tidy') && !el.classList.contains('nosolid') }; }).filter(function (p) { return isFinite(p.x) && isFinite(p.y); }); /* cx: a cutout is placed by its left edge, the rest by their centre */
   }
   /* the layout's foreground cutouts (L.occluders; only the wide street has any). They live in #plateOcc, a layer of their own
    * beside #ownedProps with no stacking context, so the one depth sort covers them with her and the pets, while a props
@@ -313,7 +322,7 @@
   function herY() { if (active && cur) return cur.y; if (cyc.cssRaf && avatar.classList.contains('walking')) return liveY(); return R.pos().y; }
   function sortDepth(avatarY) {
     var list = sprites(), ay = typeof avatarY === 'number' ? avatarY : herY();
-    var items = list.map(function (p) { return { y: p.y }; }).concat([{ y: ay }]);
+    var items = list.map(function (p) { return { y: p.y, x: p.cx, w: p.w }; }).concat([{ y: ay }]);
     var z = depthRank(items);
     list.forEach(function (p, i) { if (p.el.style.zIndex !== String(z[i])) p.el.style.zIndex = z[i]; });
     if (avatar.style.zIndex !== String(z[z.length - 1])) avatar.style.zIndex = z[z.length - 1];
@@ -346,15 +355,20 @@
     sortDepth(cur.y);
   }
   /* ---------- the walk cycle ---------- */
-  function outfitNow() { var m = /avatar-([a-z0-9-]+)\.webp/.exec(avatar.querySelector('#avatarImg').getAttribute('src') || ''); return m && m[1].indexOf('act-') !== 0 && m[1] !== 'meditate' && m[1] !== 'sleeping' ? m[1] : null; }
+  function outfitNow() { var m = /avatar-([a-z0-9-]+?)(?:-blink)?\.webp/.exec(avatar.querySelector('#avatarImg').getAttribute('src') || ''); return m && m[1].indexOf('act-') !== 0 && m[1] !== 'meditate' && m[1] !== 'sleeping' ? m[1] : null; }
+  /* the outfits with walk strips drawn (tools/art/walkcycle.py). An outfit missing here, or a missing direction, falls back
+     without a request, so a drop without strips yet (the gown, the kebayas, the tudung) does not log a 404 per direction */
+  var STRIPS = { base: 'side away towards', cozy: 'side away towards', pajamas: 'side away towards', party: 'side away', sundress: 'side away towards', yoga: 'side away towards', 'gym-tudung': 'side' }; /* the gym's covered-head kit walks on the treadmill (ovu-gym.js) */
   function sheet(outfit, dir) {
     var k = outfit + '-' + dir, e = cyc.sheets[k];
+    if (!e && (!STRIPS[outfit] || STRIPS[outfit].indexOf(dir) < 0)) return (cyc.sheets[k] = { ok: false, img: { src: '' } });
     if (!e) { e = cyc.sheets[k] = { ok: null, img: new Image() }; e.img.onload = function () { if (e.img.decode) e.img.decode().then(function () { e.ok = true; }, function () { e.ok = true; }); else e.ok = true; }; e.img.onerror = function () { e.ok = false; }; e.img.src = R.ART + 'avatar-walk-' + k + '.webp'; }
     return e;
   }
   var BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
   function preloadCycle() {
     var o = outfitNow(); if (!o) return;
+    if (cyc.on && cyc.key && cyc.key.indexOf(o + '-') !== 0) cycleHide(); /* a new outfit mid-walk: the old strip goes at once, and the walk shows the new one when it is ready (Codex verification, 21 Oct) */
     Object.keys(cyc.sheets).forEach(function (k) { if (k.indexOf(o + '-') !== 0) { cyc.sheets[k].img.src = BLANK; delete cyc.sheets[k]; } }); /* only her current outfit stays decoded; a blank data URI, not an empty src, so Safari lets go of the pixels */
     ['side', 'away', 'towards'].forEach(function (d) { sheet(o, d); });
   }
@@ -511,6 +525,7 @@
     var fromL = R.layout(), from = fromL.id, fromScene = sceneOf(fromL), target = to === 'home' ? R.homeId() : to, T = R.LAYOUTS[target];
     if (!T) return false;
     if (T.store && !storeOpen(T.store)) { hoursCard(T.store); return false; } /* each interior keeps its own store's hours */
+    if (T.admit && !T.admit()) { if (T.refused) T.refused(); return false; } /* a room with its own rule (Harbour Lane's shops keep their own hours) */
     travelling = true; clearInput(); if (active) commit();
     R.emit('travel', target, T); /* the music fades before the plate swaps (the cave is reached in silence) */
     scene.classList.add('fading'); if (root.OvuSound) root.OvuSound.play('door'); else R.chime('tap');
@@ -518,8 +533,10 @@
     Promise.all([preload(R.ART + T.img), occWait(T)]).then(function () { /* the plate, and its cutouts decoded or the cap reached */
       var left = Math.max(0, (reduced ? 80 : 380) - (Date.now() - t0));
       root.setTimeout(function () {
-        if (napping() || (T.store && !storeOpen(T.store))) { /* she fell asleep or the store shut during the fade */
+        var refused = !!(T.admit && !T.admit());
+        if (napping() || (T.store && !storeOpen(T.store)) || refused) { /* she fell asleep or the store shut during the fade */
           if (T.store && !storeOpen(T.store) && !(R.asleep && R.asleep())) hoursCard(T.store);
+          if (refused && !napping() && T.refused) T.refused();
           scene.classList.remove('fading'); travelling = false; return;
         }
         R.applyLayout(target, !!opts.visit);
@@ -584,7 +601,7 @@
     var old = doc.getElementById('walkDebug'); if (old) old.remove(); if (!on) return;
     var L = R.layout(), w = worldNow(), m = rasterise(w), sw = 100 * w.span, s = '<svg id="walkDebug" viewBox="0 0 ' + sw + ' 100" preserveAspectRatio="none" style="position:absolute;left:0;top:0;width:' + sw + '%;height:100%;z-index:50;pointer-events:none">';
     for (var r = 0; r < ROWS; r++) for (var c = 0; c < m.cols; c++) if (m[r * m.cols + c]) s += '<rect x="' + (c * CELL) + '" y="' + (r * ROWH) + '" width="' + CELL + '" height="' + ROWH + '" fill="rgba(80,200,120,.16)"/>';
-    (w.solids || []).forEach(function (b) { s += '<rect x="' + b.x0 + '" y="' + b.y0 + '" width="' + (b.x1 - b.x0) + '" height="' + (b.y1 - b.y0) + '" fill="rgba(220,60,60,.2)" stroke="#c33" stroke-width=".3"/>'; });
+    (w.solids || []).forEach(function (b) { s += b.poly ? '<polygon points="' + b.poly.map(function (p) { return p.join(','); }).join(' ') + '" fill="rgba(220,60,60,.2)" stroke="#c33" stroke-width=".3"/>' : '<rect x="' + b.x0 + '" y="' + b.y0 + '" width="' + (b.x1 - b.x0) + '" height="' + (b.y1 - b.y0) + '" fill="rgba(220,60,60,.2)" stroke="#c33" stroke-width=".3"/>'; });
     (w.doors || []).forEach(function (d) { s += '<ellipse cx="' + d.x + '" cy="' + d.y + '" rx="' + (d.r || 4) + '" ry="' + ((d.r || 4) * Y_SCALE) + '" fill="rgba(60,120,240,.25)" stroke="#36c" stroke-width=".3"/>'; });
     (L.hotspots || []).forEach(function (h) { if (h.wp) s += '<circle cx="' + h.wp.x + '" cy="' + h.wp.y + '" r=".8" fill="#fff" stroke="#639" stroke-width=".3"/>'; });
     if (L.home) s += '<circle cx="' + L.home.x + '" cy="' + L.home.y + '" r="1" fill="#fc0"/>';
@@ -605,6 +622,7 @@
     if (R.setWalkTo) R.setWalkTo(routeTo); /* the room's own walks route around furniture */
   }
   W.setSpeedScale = function (k) { speedScale = Math.min(1, Math.max(0.4, Number(k) || 1)); }; W.speedScale = function () { return speedScale; };
+  W.canWalkTo = function (wp) { return !!(wp && !travelling && plan(worldNow(), livePos(), { x: wp.x, y: wp.y }, 2)); }; /* a route exists from where she is (a villager's side, 22 Oct) */
   W.sortDepth = function () { sortDepth(); }; /* a scene that recreates its sprites after the props event (the barn's animals) ranks them itself */
   W.travel = travel; W.mount = mount; W.walking = function () { return active; }; W.travelling = function () { return !!travelling; }; W.stop = commit; W.debug = debug; W.travelling = function () { return travelling; }; W.tapWalk = tapWalk; W.napping = napping; W.shopsOpen = shopsOpen; W.storeOpen = storeOpen; W.livePos = livePos; W.sortDepth = function () { sortDepth(); }; W.routeTo = routeTo; W.OCC_CAP = OCC_CAP; W.route = function () { return route; }; W.cycle = function () { return { on: cyc.on, dir: cyc.dir, frame: cyc.frame, key: cyc.key, acc: cyc.acc }; };
   R.on('boot', mount);

@@ -8,7 +8,7 @@
   var doc = root.document;
 
   /* where each known place sits on the world map (x 0-100, y 0-80); a new place is set beside a neighbour */
-  var POS = { home: [10, 34], garden: [34, 34], farm: [34, 58], street: [66, 34], plaza: [88, 58], 'shop-pet': [50, 10], 'shop-furniture': [66, 10], 'shop-homes': [82, 10], greenhouse: [20, 12], barn: [56, 60], barninside: [44, 71], heninside: [66, 71], cave: [86, 70] }; /* the barn below the street, the hidden spring beside it once found */ /* the greenhouse up beside the garden, away from the row of shops */
+  var POS = { home: [10, 34], garden: [34, 34], farm: [34, 58], street: [66, 34], plaza: [88, 58], 'shop-pet': [50, 10], 'shop-furniture': [66, 10], 'shop-homes': [82, 10], greenhouse: [20, 12], barn: [56, 60], barninside: [44, 71], heninside: [66, 71], cave: [86, 70], harbour: [47, 71] }; /* the harbour down the farm's steps, below the farm and the barn */ /* the barn below the street, the hidden spring beside it once found */ /* the greenhouse up beside the garden, away from the row of shops */
   var ICON = { barn: 'cottage', barninside: 'cottage', heninside: 'egg', cave: 'auto_awesome', home: 'home', garden: 'yard', farm: 'agriculture', street: 'storefront', plaza: 'groups', 'shop-pet': 'pets', 'shop-furniture': 'chair', 'shop-homes': 'cottage' };
   var H = 80; /* the world map's height in its own units */
   /* a little clay drawing for each known place on the painted map (Jamie, 20 Oct: "a damn cute map"); a new place keeps its icon */
@@ -53,19 +53,33 @@
     }
     return null;
   }
+  /* the built corner (Jamie, 21 Oct: "whatever we built will be at a corner of it, the rest of the area will be just the
+   * field, the land unbuilt"): the places sit in the map's own box (100 x H units) at the world's top-left, and a new place
+   * goes beside a neighbour it joins, inside that box while there is room and then just outside it to the right and below,
+   * never further than GROW; the open land beyond stays empty */
+  var GROW = { x: 132, y: 106 };
   function place(g) {
     var P = {}, ids = Object.keys(g.nodes);
     ids.forEach(function (id) { if (POS[id]) P[id] = POS[id].slice(); });
-    var far = function (x, y) { return Object.keys(P).every(function (k) { return Math.hypot(P[k][0] - x, P[k][1] - y) > 13; }); };
+    var far = function (x, y, d) { return Object.keys(P).every(function (k) { return Math.hypot(P[k][0] - x, P[k][1] - y) > d; }); };
+    var segDist = function (x, y, a, b) { var dx = b[0] - a[0], dy = b[1] - a[1], t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / (dx * dx + dy * dy || 1))); return Math.hypot(a[0] + t * dx - x, a[1] + t * dy - y); };
+    var offLines = function (x, y) { return g.edges.every(function (e) { return !P[e.from] || !P[e.to] || segDist(x, y, P[e.from], P[e.to]) > 6; }); };
+    var inside = function (x, y) { return x >= 8 && y >= 8 && x <= GROW.x - 8 && y <= GROW.y - 8; };
     ids.forEach(function (id) {
       if (P[id]) return;
       var nb = g.edges.filter(function (e) { return (e.from === id && P[e.to]) || (e.to === id && P[e.from]); })[0];
-      var base = nb ? P[nb.from === id ? nb.to : nb.from] : [50, 40], tries = [[0, -24], [-14, -24], [14, -24], [0, 24], [-14, 24], [14, 24], [-22, 0], [22, 0]];
-      for (var i = 0; i < tries.length; i++) {
-        var x = Math.max(8, Math.min(92, base[0] + tries[i][0])), y = Math.max(8, Math.min(H - 10, base[1] + tries[i][1]));
-        if (far(x, y)) { P[id] = [x, y]; return; }
+      var base = nb ? P[nb.from === id ? nb.to : nb.from] : [50, 40], best = null;
+      for (var pass = 0; pass < 3 && !best; pass++) { /* 1: clear of places and lines; 2: clear of places; 3: as clear as the corner allows */
+        for (var r = 18; r <= 60; r += 6) {
+          for (var k = 0; k < 16; k++) {
+            var a = (k * 22.5 + 45) * Math.PI / 180, x = Math.round(base[0] + r * Math.cos(a)), y = Math.round(base[1] + r * Math.sin(a));
+            if (!inside(x, y) || !far(x, y, pass < 2 ? 13 : 9) || (pass === 0 && !offLines(x, y))) continue;
+            var score = r + (x > 92 || y > H - 8 ? 14 : 0) + k * 0.01; /* the map's own box first, then just outside it */
+            if (!best || score < best.score) best = { x: x, y: y, score: score };
+          }
+        }
       }
-      P[id] = [Math.max(8, Math.min(92, base[0] + 10)), Math.max(8, Math.min(H - 10, base[1] + 12))];
+      P[id] = best ? [best.x, best.y] : [Math.min(GROW.x - 8, base[0] + 12), Math.min(GROW.y - 8, base[1] + 12)];
     });
     return P;
   }
@@ -83,34 +97,39 @@
     });
     return out;
   }
-  var AT = { home: 'at home', garden: 'in the garden', farm: 'on the farm', street: 'on Dream Street', plaza: 'in the plaza' };
+  var AT = { home: 'at home', garden: 'in the garden', farm: 'on the farm', street: 'on Dream Street', plaza: 'in the plaza', lane: 'on Harbour Lane' };
   function at(g, id) { var n = g.nodes[id]; return AT[id] || (n && n.store ? 'in ' + n.name : 'in the ' + String(n ? n.name : id).toLowerCase()); }
   function stepText(g, e) { return { where: g.nodes[e.from] ? g.nodes[e.from].name : e.from, door: e.label }; }
 
-  /* the wider world (Jamie, 21 Oct: "a map to entice people that there are more to come so the map will be in the middle
-   * where can we zoom in, the surrounding will be ???"): the known world sits in the middle third of a canvas three times
-   * its size; the ring around it is fog with ??? patches. Three carry a hint of what may come; none names a partner, a
-   * product or a promise. Positions are percentages of the wide canvas; the known world is the square from 33.3 to 66.7. */
-  var FOG = [
-    { id: 'north', x: 50, y: 20, hint: 'A city of tomorrow, some day.' },
-    { id: 'east', x: 80, y: 50, hint: 'A kingdom of stories, some day.' },
-    { id: 'south', x: 50, y: 80, hint: 'A place for check-ups, some day.' },
-    { id: 'nw', x: 22, y: 22, hint: '' }, { id: 'ne', x: 78, y: 22, hint: '' }, { id: 'west', x: 20, y: 50, hint: '' }, { id: 'sw', x: 22, y: 78, hint: '' }, { id: 'se', x: 78, y: 78, hint: '' }
-  ];
-  var ZOOM = { min: 0.36, max: 1.6, start: 0.5, names: 0.75 }; /* names show from 0.75; at 0.5, centred, the known world fills the middle and the ??? patches peek in at the edges */
-  /* the translation that puts the known world (the canvas centre) in the middle of the view at scale s */
-  function centred(s, vw, vh) { return zoomClamp(s, vw * (0.5 - 1.5 * s), vh * (0.5 - 1.5 * s), vw, vh); }
-  /* the wide canvas is 3 by 3 viewports; keep it covering the viewport, or centred when smaller than it */
+  /* the wider world (Jamie, 21 Oct: "The whole map must be filled just that whatever we built will be at a corner of it,
+   * the rest of the area will be just the field, the land unbuilt"): one plate of open country, map-world.webp, three of
+   * the map's boxes wide and three tall (tools/art/world_plate.py blends the known map into its top-left box and painted
+   * fields, meadows, a stream and woods everywhere else). The places sit in that corner; nothing else is drawn or named.
+   * Units: the built map's box is 100 x H units at the top-left, so the plate is 300 x 3H units; one unit is the same
+   * size across and down. The plate always covers the view: zooming out stops when the whole world fills it. */
+  var WORLD = { cols: 3, rows: 3 };
+  var ZOOM = { min: 1 / 3, max: 1.8, names: 1, fit: 0.8 }; /* s = 1: the built box is one view wide; names show from 1 */
+  function minScale(vw, vh) { return Math.max(ZOOM.min, vh / (WORLD.rows * vw * H / 100)); }
+  /* clamp the scale to its range and keep the plate covering the whole view: a pan or a zoom never shows past the land */
   function zoomClamp(s, tx, ty, vw, vh) {
-    s = Math.max(ZOOM.min, Math.min(ZOOM.max, s));
-    var ww = 3 * vw * s, wh = 3 * vh * s;
-    tx = ww <= vw ? (vw - ww) / 2 : Math.max(vw - ww, Math.min(0, tx));
-    ty = wh <= vh ? (vh - wh) / 2 : Math.max(vh - wh, Math.min(0, ty));
+    s = Math.max(minScale(vw, vh), Math.min(ZOOM.max, s));
+    var ww = WORLD.cols * vw * s, wh = WORLD.rows * vw * s * H / 100;
+    tx = Math.max(vw - ww, Math.min(0, tx)); ty = Math.max(vh - wh, Math.min(0, ty));
     return { s: s, tx: tx, ty: ty };
   }
-  function fogText(f) { return f.hint ? '<b>???</b> ' + f.hint + ' Nothing to do here yet; the known places are in the middle.' : '<b>???</b> Still unexplored. Something may be built here one day.'; }
+  /* the opening view: fit the built places (their drawings and names included) and centre them as far as the land allows,
+   * so the corner opens with a strip of open country to the right and below */
+  function opening(P, vw, vh) {
+    var ids = Object.keys(P), pad = 40 * 100 / (vw || 300); /* half a place's drawing, in units (it keeps its size in px as the plate scales) */
+    var xs = ids.map(function (k) { return P[k][0]; }).concat([10, 90]), ys = ids.map(function (k) { return P[k][1]; }).concat([10, H - 10]);
+    var x0 = Math.max(0, Math.min.apply(null, xs) - pad), y0 = Math.max(0, Math.min.apply(null, ys) - pad);
+    var x1 = Math.max.apply(null, xs) + pad, y1 = Math.max.apply(null, ys) + pad * 1.25; /* the name sits under the drawing */
+    var u = vw / 100, s = Math.min(ZOOM.fit * vw / ((x1 - x0) * u), ZOOM.fit * vh / ((y1 - y0) * u), ZOOM.names * 0.95);
+    return zoomClamp(s, vw / 2 - (x0 + x1) / 2 * u * s, vh / 2 - (y0 + y1) / 2 * u * s, vw, vh);
+  }
+  function inCorner(p) { return p[0] >= 0 && p[1] >= 0 && p[0] <= GROW.x && p[1] <= GROW.y; }
 
-  var M = { POS: POS, FOG: FOG, ZOOM: ZOOM, zoomClamp: zoomClamp, centred: centred, fogText: fogText, at: at, nodeOf: nodeOf, placeName: placeName, graph: graph, route: route, place: place, lines: lines, stepText: stepText };
+  var M = { POS: POS, GROW: GROW, WORLD: WORLD, ZOOM: ZOOM, zoomClamp: zoomClamp, minScale: minScale, opening: opening, inCorner: inCorner, at: at, nodeOf: nodeOf, placeName: placeName, graph: graph, route: route, place: place, lines: lines, stepText: stepText };
   root.OvuMap = M;
 
   /* ---------- the sheet ---------- */
@@ -123,18 +142,21 @@
     if (R.visiting()) return 'Visiting';
     var h = nodeOf(L.id, R.homeId()); return placeName(L, h);
   };
-  function routeHTML(g, here, to) {
+  function routeHTML(g, here, to, lead) {
     var n = g.nodes[to]; if (!n) return '';
     if (to === here) return '<b>You are here, ' + esc(at(g, to)) + '.</b> Tap another place to see the way there.';
     var r = route(g, here, to);
     if (!r) return '<b>' + esc(n.name) + '</b> No path from here yet.';
     return '<b>' + (to === 'home' ? 'The way home' : 'The way to ' + esc(n.name)) + '</b>' + (storeShut(n) ? '<small>It is closed right now; the hours are on its door.</small>' : '') +
-      '<ol>' + r.map(function (e) { var s = stepText(g, e); return '<li><span>' + esc(s.where) + '</span>' + esc(s.door) + '</li>'; }).join('') + '</ol>';
+      '<ol>' + (lead ? '<li><span>' + esc(lead.where) + '</span>' + esc(lead.door) + '</li>' : '') + r.map(function (e) { var s = stepText(g, e); return '<li><span>' + esc(s.where) + '</span>' + esc(s.door) + '</li>'; }).join('') + '</ol>';
   }
   function open() {
     var L = R.layout(), g = graph(R.LAYOUTS, R.homeId()), here = hereNow(g), P = place(g), p = R.pos();
     var span = L.span > 1 ? L.span : 1, aspect = (L.w && L.h ? L.w / L.h : 0.8) * span;
-    var exits = here ? g.edges.filter(function (e) { return e.from === here; }) : [];
+    var room = !!(here && L.mapParent && L.mapParent === here && nodeOf(L.id, R.homeId()) !== here); /* inside a building: its own doors, not its yard's (Codex, 21 Oct) */
+    var exits = room ? (L.doors || []).filter(function (d) { return d.to; }).concat(L.mapExits || []).map(function (d) { return { from: here, to: nodeOf(d.to, R.homeId()), door: d.tap || d.id, x: d.x, y: d.y }; })
+      : here ? g.edges.filter(function (e) { return e.from === here; }) : [];
+    var way = room && exits[0] ? (L.hotspots || []).filter(function (h) { return h.id === exits[0].door; })[0] : null, lead = way ? { where: placeName(L, L.id), door: way.label } : null;
     var plate = '<div class="mapplate" style="aspect-ratio:' + aspect.toFixed(4) + '"><img src="' + esc(R.ART + L.img) + '" alt="">' +
       exits.map(function (e) { return '<span class="mapexit" style="left:' + (e.x / span).toFixed(1) + '%;top:' + e.y.toFixed(1) + '%"><span class="ms">' + esc(g.nodes[e.to] ? g.nodes[e.to].icon : 'door_open') + '</span>' + esc(g.nodes[e.to] ? g.nodes[e.to].name : e.to) + '</span>'; }).join('') +
       '<i class="mapme" style="left:' + (p.x / span).toFixed(1) + '%;top:' + p.y.toFixed(1) + '%" aria-hidden="true"></i></div>';
@@ -151,35 +173,34 @@
     R.openSheet('map', 'Map', 'Where you are, and the way around', 'map',
       '<div class="mapnow"><span class="ms">location_on</span><div><b>' + esc(head) + '</b><small>' + (here ? 'The pins show the ways out. Walk to one and through it.' : 'Tap Back when you are ready to return to the plaza.') + '</small></div></div>' +
       plate + '<div class="worldzoom far" id="worldZoom" style="aspect-ratio:100/' + H + '"><div class="worldwide" id="worldWide">' +
-        FOG.map(function (f) { return '<button type="button" class="fog" data-fog="' + f.id + '" style="left:' + f.x + '%;top:' + f.y + '%" aria-label="Unknown place, not built yet">???</button>'; }).join('') +
         '<div class="worldmap known">' + svg + nodes + '</div></div></div>' +
-      '<div class="zoomctl"><button type="button" id="mapZoomOut" aria-label="Zoom out"><span class="ms" aria-hidden="true">remove</span></button><button type="button" id="mapZoomIn" aria-label="Zoom in"><span class="ms" aria-hidden="true">add</span></button><span class="zoomnote">The known world is in the middle. Pinch or drag to look around; the ??? places are not built yet.</span></div>' +
-      '<div class="maproute" id="mapRoute" aria-live="polite">' + (here ? routeHTML(g, here, first) : '') + '</div>' +
+      '<div class="zoomctl"><button type="button" id="mapZoomOut" aria-label="Zoom out"><span class="ms" aria-hidden="true">remove</span></button><button type="button" id="mapZoomIn" aria-label="Zoom in"><span class="ms" aria-hidden="true">add</span></button><span class="zoomnote">Your places are in this corner. All around is open country, not built yet. Pinch or drag to look around.</span></div>' +
+      '<div class="maproute" id="mapRoute" aria-live="polite">' + (here ? routeHTML(g, here, first, lead) : '') + '</div>' +
       '<p class="help">The map shows the way; it does not move you. Doors and paths are labelled in each place.</p>');
-    wireZoom();
+    wireZoom(P);
     var b = doc.getElementById('sheetBody');
     if (b) b.addEventListener('click', function (e) {
-      var fg = e.target.closest('[data-fog]');
-      if (fg) { var f = FOG.filter(function (x) { return x.id === fg.dataset.fog; })[0], out0 = doc.getElementById('mapRoute'); if (out0 && f) out0.innerHTML = fogText(f); if (R.chime) R.chime('tap'); return; }
       var n = e.target.closest('[data-node]'); if (!n || !here) return;
       Array.prototype.slice.call(b.querySelectorAll('.mapnode')).forEach(function (x) { x.classList.toggle('picked', x === n); });
-      var out = doc.getElementById('mapRoute'); if (out) out.innerHTML = routeHTML(g, here, n.dataset.node);
+      var out = doc.getElementById('mapRoute'); if (out) out.innerHTML = routeHTML(g, here, n.dataset.node, lead);
       if (R.chime) R.chime('tap');
     });
   }
   M.open = open;
   /* zoom and pan on the wide canvas: buttons, a drag, or two fingers; names appear once zoomed in */
-  var zoom = null;
-  function wireZoom() {
+  var zoom = null, repaint = null;
+  /* a turned phone or a resized window changes the box: keep the land covering it */
+  if (root.addEventListener) root.addEventListener('resize', function () { if (repaint && doc.getElementById('worldZoom')) repaint(); });
+  function wireZoom(P) {
     var vp = doc.getElementById('worldZoom'), wide = doc.getElementById('worldWide'); if (!vp || !wide) return;
-    var vw = vp.clientWidth || 300, vh = vp.clientHeight || 240, st = centred(ZOOM.start, vw, vh), ptrs = {}, pinch = null;
+    var vw = vp.clientWidth || 300, vh = vp.clientHeight || 240, st = opening(P, vw, vh), ptrs = {}, pinch = null;
     zoom = st;
     function paint() { wide.style.transform = 'translate(' + zoom.tx.toFixed(1) + 'px,' + zoom.ty.toFixed(1) + 'px) scale(' + zoom.s.toFixed(3) + ')'; vp.classList.toggle('far', zoom.s < ZOOM.names); }
     function zoomTo(s, cx, cy) { /* keep the point under (cx, cy) in place */
-      var k = Math.max(ZOOM.min, Math.min(ZOOM.max, s)) / zoom.s, tx = cx - (cx - zoom.tx) * k, ty = cy - (cy - zoom.ty) * k;
+      var k = Math.max(minScale(vp.clientWidth || vw, vp.clientHeight || vh), Math.min(ZOOM.max, s)) / zoom.s, tx = cx - (cx - zoom.tx) * k, ty = cy - (cy - zoom.ty) * k;
       zoom = zoomClamp(zoom.s * k, tx, ty, vp.clientWidth || vw, vp.clientHeight || vh); paint();
     }
-    paint();
+    paint(); repaint = function () { zoom = zoomClamp(zoom.s, zoom.tx, zoom.ty, vp.clientWidth || vw, vp.clientHeight || vh); paint(); };
     var zi = doc.getElementById('mapZoomIn'), zo = doc.getElementById('mapZoomOut');
     if (zi) zi.addEventListener('click', function () { zoomTo(zoom.s * 1.4, (vp.clientWidth || vw) / 2, (vp.clientHeight || vh) / 2); if (R.chime) R.chime('tap'); });
     if (zo) zo.addEventListener('click', function () { zoomTo(zoom.s / 1.4, (vp.clientWidth || vw) / 2, (vp.clientHeight || vh) / 2); if (R.chime) R.chime('tap'); });

@@ -3,7 +3,7 @@
  * a timber jetty on stilts with a lantern shelter, a moored bumboat, a hut, a bench under a sea-almond tree, rocks.
  * Fishing is catch-and-release only. Cast, watch the float, and when a fish comes, Lift gently whenever you like: no
  * reaction window, no tension bar, no escape, no bait to lose. See it, write it in the catch book, let it go. Six
- * Singapore species, each with one plain fact from a named source; they prefer a spot and a time of day, that is all.
+ * Singapore species, each with one plain fact (no citations on screen or in the data, Jamie 22 Oct); they prefer a spot and a time of day, that is all.
  * No hearts, no rarity tiers, no clocks, no completion. The bench just watches the water, for anyone who would rather
  * not hook a fish. A cast costs the energy of a cast (OvuStamina.COSTS.fish), charged only when a fish is written in the
  * book, in the same save; Stop at any point changes nothing. Nothing here writes a diary entry.
@@ -12,17 +12,17 @@
   'use strict';
   var SPECIES = [
     { id: 'grouper', name: 'Orange-spotted grouper', local: 'kerapu', spots: ['rocks', 'jetty'], time: 'any', img: 'fish-grouper.webp',
-      fact: 'Young groupers grow up in estuaries and mangroves; the adults live out on the reefs.', source: 'Wikipedia, orange-spotted grouper', url: 'https://en.wikipedia.org/wiki/Orange-spotted_grouper' },
+      fact: 'Young groupers grow up in estuaries and mangroves; the adults live out on the reefs.' },
     { id: 'snapper', name: 'Mangrove red snapper', local: 'ikan merah', spots: ['rocks'], time: 'any', img: 'fish-snapper.webp',
-      fact: 'At home among mangrove roots when young, it moves out to open water to breed.', source: 'Wikipedia, mangrove red snapper', url: 'https://en.wikipedia.org/wiki/Mangrove_red_snapper' },
+      fact: 'At home among mangrove roots when young, it moves out to open water to breed.' },
     { id: 'barramundi', name: 'Barramundi', local: 'siakap', spots: ['jetty'], time: 'any', img: 'fish-barramundi.webp',
-      fact: 'Barramundi start life as males. In one study at a Singapore farm, most had become females by two to three years old.', source: 'Aquaculture Reports, 2021', url: 'https://doi.org/10.1016/j.aqrep.2021.100712' },
+      fact: 'Barramundi start life as males. In one study at a Singapore farm, most had become females by two to three years old.' },
     { id: 'mullet', name: 'Flathead grey mullet', local: 'belanak', spots: ['jetty', 'rocks'], time: 'day', img: 'fish-mullet.webp',
-      fact: 'It feeds by sucking up the top layer of the sea floor, for tiny algae and bits of food.', source: 'FAO species fact sheet', url: 'https://www.fao.org/fishery/culturedspecies/mugil_cephalus/en' },
+      fact: 'It feeds by sucking up the top layer of the sea floor, for tiny algae and bits of food.' },
     { id: 'rabbitfish', name: 'White-spotted rabbitfish', local: 'pek tor her', spots: ['rocks'], time: 'day', img: 'fish-rabbitfish.webp',
-      fact: 'A grazer of seaweed and seagrass, with venom in its fin spines, so fishers handle it with care. Teochew families prize it at Chinese New Year.', source: 'Wikipedia, white-spotted rabbitfish', url: 'https://en.wikipedia.org/wiki/Siganus_canaliculatus' },
+      fact: 'A grazer of seaweed and seagrass, with venom in its fin spines, so fishers handle it with care. Teochew families prize it at Chinese New Year.' },
     { id: 'squid', name: 'Bigfin reef squid', local: 'sotong', spots: ['jetty'], time: 'night', img: 'fish-squid.webp',
-      fact: 'It changes the colour of its skin to match the sea floor beneath it.', source: 'Scientific Reports, 2022', url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC8960755/' }
+      fact: 'It changes the colour of its skin to match the sea floor beneath it.' }
   ];
   var SPOTS = { jetty: { name: 'The jetty', where: 'out over the deep water', float: { x: 89, y: 60 } }, rocks: { name: 'The rocks', where: 'by the shore', float: { x: 46, y: 68 } } };
   function species(id) { return SPECIES.filter(function (s) { return s.id === id; })[0] || null; }
@@ -60,7 +60,7 @@
       { id: 'hbrocks', x: 11, y: 58, label: 'Rocks · cast from the shore', prompt: 'Tap to fish from the rocks', icon: 'phishing', wp: { x: 26, y: 58, flip: true } },
       { id: 'hbbench', x: 40, y: 39, label: 'Bench · watch the water', prompt: 'Tap to sit a while', icon: 'chair', wp: { x: 41, y: 47, flip: false } },
       { id: 'hbhut', x: 27, y: 43, label: 'Harbour hut · the catch book', prompt: 'Tap to open the catch book', icon: 'menu_book', wp: { x: 31, y: 51, flip: true } },
-      /* the little post by the hut points up Harbour Lane (ovu-lane.js, 21 Oct): its shops are sheets until the lane's plate is drawn */
+      /* the little post by the hut points up Harbour Lane: ovu-lanescene.js makes it a walk up the lane (and says so); without it, the lane's sheet */
       { id: 'hblane', x: 19, y: 44, label: 'Signpost · Harbour Lane', prompt: 'Tap to read the signpost', icon: 'signpost', wp: { x: 23, y: 51, flip: true } }
     ],
     home: { x: 34, y: 73, flip: false },
@@ -113,25 +113,44 @@
   function bookLine() { var n = seenCount(S), c = harbourState(S).casts; return '<p class="help pantryline"><span class="ms">menu_book</span>' + (n ? n + ' of ' + SPECIES.length + ' kinds met, ' + c + ' fish recorded.' : 'Nothing in the catch book yet.') + ' Every fish goes back in the water.</p>'; }
   function step(box, o, done) { if (!CARE || !CARE.step) { done(); return; } CARE.step(box, Object.assign({ scene: 'harbour' }, o), done); }
 
-  /* one spot: Cast, the float drifts (a slow step; Stop reels in nothing), a fish comes, Lift gently whenever she likes, see it, let it go */
+  /* one spot, Harvest Moon style (Jamie, 22 Oct: "casting a line at the harbour needs actions"): hold Cast to fill a power
+   * ring and let go to throw (a tap is a medium throw); the float drifts and nibbles for a while; a bite dips it and Erin
+   * says so; Reel in within a few seconds (no clock with reduced motion), then hold Reel while the fish tugs. Nothing is
+   * lost by missing: the fish swims on, no cast is counted and no energy is spent. Every fish goes back. */
+  var BITE_MS = 4000, REEL_MS = 2600;
+  function reduced() { try { return root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } }
+  function fast() { return !!(CARE && CARE.slowMs === 0); } /* the smoke suite's instant mode */
   function openSpot(spot) {
     var sp = SPOTS[spot]; if (!sp) return;
     R.openSheet('harbour-' + spot, sp.name, 'Catch and release, ' + sp.where, 'phishing',
-      '<div class="bedcard"><div class="bedpic hbpic">' + waterSVG('ready') + '</div><div class="bedtext"><b>Cast a line</b><span>Then lift whenever you like. Nothing bites back, nothing is lost, and every fish goes home.</span></div></div>' +
+      '<div class="bedcard"><div class="bedpic hbpic">' + waterSVG('ready') + '</div><div class="bedtext"><b>Hold Cast, then let go</b><span>The longer you hold, the further it flies.</span></div></div>' +
+      '<div class="castpower" aria-hidden="true"><i id="castFill"></i></div>' +
       '<div class="row" id="spotActs"><button type="button" class="btn primary" data-act="cast"><span class="ms">phishing</span>Cast</button><button type="button" class="btn ghost" data-act="book"><span class="ms">menu_book</span>Catch book</button></div>' +
-      bookLine() + '<p class="help">A cast costs a little energy once a fish is in the book. Fish prefer a spot and a time of day; there is nothing to complete.</p>');
+      bookLine());
     var acts = doc.getElementById('spotActs'); if (!acts) return;
+    var castBtn = acts.querySelector('[data-act=cast]'), fill = doc.getElementById('castFill'), held = null, raf = 0;
+    function power() { if (!held) return 0.5; var t = (Date.now() - held) / 900; return 0.15 + 0.85 * (0.5 - 0.5 * Math.cos(Math.PI * Math.min(2, t) )); } /* rises and falls back while held */
+    function drawPower() { if (fill) fill.style.width = Math.round(power() * 100) + '%'; if (held) raf = root.requestAnimationFrame(drawPower); }
+    function canCast() { if (!idle()) return false; if (ST && !ST.can('fish')) { R.toast('Not enough play energy for that just now. It comes back after a sleep saved from the bed, or with the new day.', 'bedtime'); return false; } if (!here()) { R.hideSheet(); return false; } return true; }
+    castBtn.addEventListener('pointerdown', function () { if (!idle()) return; held = Date.now(); drawPower(); });
     acts.addEventListener('click', function (e) {
-      var btn = e.target.closest('[data-act]'); if (!btn || !idle()) return;
+      var btn = e.target.closest('[data-act]'); if (!btn) return;
       if (btn.dataset.act === 'book') { openBook(spot); return; }
-      if (ST && !ST.can('fish')) { R.toast('Not enough play energy for that just now. It comes back after a sleep saved from the bed, or with the new day.', 'bedtime'); return; }
-      if (!here()) { R.hideSheet(); return; }
-      var pic = doc.querySelector('#sheet .hbpic'); if (pic) pic.innerHTML = waterSVG('cast');
-      castLine(spot);
-      step(acts, { ms: 7000, moment: 'cast', verb: 'The float drifts…', cancel: function () { clearLine(); openSpot(spot); }, undo: clearLine }, function () {
-        var fish = pick(spot, phaseNow(), Math.random()); if (!fish) { clearLine(); openSpot(spot); return; }
-        bite(spot, fish);
-      });
+      var p = held ? power() : 0.5; held = null; root.cancelAnimationFrame(raf);
+      if (!canCast()) return;
+      throwLine(spot, acts, p);
+    });
+  }
+  function throwLine(spot, acts, p) {
+    if (root.OvuSound) root.OvuSound.play('cast');
+    var pic = doc.querySelector('#sheet .hbpic'); if (pic) pic.innerHTML = waterSVG('cast');
+    castLine(spot);
+    var my = ++enc, wait = fast() ? 0 : 3000 + Math.random() * 5000 + p * 1500; /* a long throw reaches deeper water and a little more patience */
+    var nib = []; if (!fast()) [0.35, 0.7].forEach(function (f) { if (Math.random() < 0.7) nib.push(root.setTimeout(function () { if (my !== enc) return; var fl = doc.querySelector('#sheet .hbfloat'); if (fl) { fl.classList.remove('nibble'); void fl.getBoundingClientRect(); fl.classList.add('nibble'); } if (root.OvuSound) root.OvuSound.play('drop'); }, wait * f)); });
+    step(acts, { ms: wait, moment: 'cast', verb: 'Watch the float…', cancel: function () { nib.forEach(root.clearTimeout); clearLine(); openSpot(spot); }, undo: clearLine }, function () {
+      nib.forEach(root.clearTimeout);
+      var fish = pick(spot, phaseNow(), Math.random()); if (!fish) { clearLine(); openSpot(spot); return; }
+      bite(spot, fish);
     });
   }
   function bite(spot, fish) {
@@ -139,27 +158,55 @@
     var my = ++enc;
     R.els.scene.classList.add('bite');
     var pic = doc.querySelector('#sheet .hbpic'); if (pic) pic.innerHTML = waterSVG('bite');
-    var line2 = R.moment ? R.moment('bite', { quiet: true }) : '';
+    if (R.moment) R.moment('bite', { quiet: true });
     var acts = doc.getElementById('spotActs'); if (!acts) return;
     var old = acts.parentNode.querySelector('.hbline'); if (old) old.remove();
-    if (line2) { var pl = doc.createElement('p'); pl.className = 'mindline hbline'; pl.innerHTML = '<span class="ms">phishing</span><span>' + esc(line2) + '</span>'; acts.parentNode.insertBefore(pl, acts); } /* the line sits above the row, never inside it */
-    acts.className = 'row'; acts.innerHTML = '<button type="button" class="btn primary" data-bite="lift"><span class="ms">phishing</span>Lift gently</button><button type="button" class="btn ghost" data-bite="leave">Let it be</button>';
+    var pl = doc.createElement('p'); pl.className = 'mindline keep hbline biteline'; pl.innerHTML = '<span class="ms">priority_high</span><span>A bite! Reel in.</span>'; acts.parentNode.insertBefore(pl, acts);
+    acts.className = 'row'; acts.innerHTML = '<button type="button" class="btn primary" data-bite="lift"><span class="ms">phishing</span>Reel in</button><button type="button" class="btn ghost" data-bite="leave">Let it be</button>';
+    var timeout = (reduced() || fast()) ? 0 : root.setTimeout(function () { if (my !== enc) return; acts.onclick = null; clearLine(); R.toast('It slipped away. Nothing lost.', 'water'); openSpot(spot); }, BITE_MS);
     acts.onclick = function (e) {
-      var btn = e.target.closest('[data-bite]'); if (!btn) return; acts.onclick = null;
-      if (btn.dataset.bite === 'leave') { clearLine(); R.toast('It swims on. Nothing lost.', 'water'); openSpot(spot); return; }
+      var btn = e.target.closest('[data-bite]'); if (!btn) return; acts.onclick = null; root.clearTimeout(timeout);
+      if (btn.dataset.bite === 'leave') { if (R.erin) R.erin('let-pass'); clearLine(); R.toast('It swims on. Nothing lost.', 'water'); openSpot(spot); return; }
       if (my !== enc || !here() || S.state().sleeping || (CARE && CARE.asleepNow && CARE.asleepNow())) { clearLine(); R.hideSheet(); return; } /* the moment passed: a reset, another tab, sleep */
+      reel(spot, fish, my);
+    };
+  }
+  /* hold Reel (or keep tapping it) while the fish tugs; letting go just pauses; the bar never goes back */
+  function reel(spot, fish, my) {
+    if (R.erin) R.erin('reel');
+    var acts = doc.getElementById('spotActs'); if (!acts) return;
+    var bl = acts.parentNode.querySelector('.biteline'); if (bl) bl.innerHTML = '<span class="ms">phishing</span><span>Hold Reel. Ease off when it tugs.</span>';
+    acts.innerHTML = '<div class="reelbar" aria-hidden="true"><i id="reelFill"></i></div><button type="button" class="btn primary reelbtn" id="reelBtn"><span class="ms">sync</span>Reel</button>';
+    var btn = doc.getElementById('reelBtn'), fill = doc.getElementById('reelFill'), got = 0, holding = false, last = Date.now(), tugUntil = 0, raf = 0, done = false;
+    function land() {
+      if (done) return; done = true; root.cancelAnimationFrame(raf);
+      if (my !== enc || !here()) { clearLine(); R.hideSheet(); return; }
       if (ST && !ST.can('fish')) { R.toast('Not enough play energy for that just now. It comes back after a sleep saved from the bed, or with the new day.', 'bedtime'); clearLine(); openSpot(spot); return; }
       var r = record(S, fish.id, today(), ST);
       clearLine();
       if (!r.ok) { R.toast(r.why, 'info'); openSpot(spot); return; }
       R.chime('save'); reveal(spot, r);
-    };
+    }
+    if (fast()) { land(); return; }
+    function frame() {
+      var now = Date.now(), dt = now - last; last = now;
+      if (now > tugUntil && Math.random() < dt / 1400) { tugUntil = now + 450; if (btn) btn.classList.add('tug'); if (root.OvuSound) root.OvuSound.play('drop'); }
+      if (now > tugUntil && btn) btn.classList.remove('tug');
+      if (holding) got += dt / REEL_MS * (now < tugUntil ? 0.25 : 1);
+      if (fill) fill.style.width = Math.min(100, got * 100).toFixed(1) + '%';
+      if (got >= 1) { land(); return; }
+      raf = root.requestAnimationFrame(frame);
+    }
+    btn.addEventListener('pointerdown', function (e) { e.preventDefault(); holding = true; });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (n) { btn.addEventListener(n, function () { holding = false; }); });
+    btn.addEventListener('click', function () { got += 0.12; }); /* tapping works too */
+    raf = root.requestAnimationFrame(frame);
   }
   function reveal(spot, r) {
     var sp = r.species, line3 = R.moment ? R.moment('release', { quiet: true }) : '';
     R.openSheet('harbour-fish', sp.name, (r.first ? 'First time! ' : '') + esc(sp.local) + (r.n > 1 ? ' · met ' + r.n + ' times' : ''), 'set_meal',
       '<div class="fishcard"><img src="' + ART + sp.img + '" alt="' + esc(sp.name) + '"><div><b>' + esc(sp.name) + '</b><small>' + esc(sp.local) + '</small></div></div>' +
-      '<p class="fishfact">' + esc(sp.fact) + ' <span class="fishsrc">' + esc(sp.source) + (sp.url ? ' <a class="fishlink" href="' + esc(sp.url) + '" target="_blank" rel="noopener">Read the source</a>' : '') + '</span></p>' +
+      '<p class="fishfact">' + esc(sp.fact) + '</p>' + /* the citation stays in the data, not on screen (Jamie, 22 Oct) */
       (line3 ? '<p class="mindline"><span class="ms">spa</span><span>' + esc(line3) + '</span></p>' : '') +
       '<div class="row"><button type="button" class="btn primary" id="fishGo"><span class="ms">water</span>Let it go</button><button type="button" class="btn ghost" id="fishBook"><span class="ms">menu_book</span>Catch book</button></div>' +
       '<p class="help">It is already written in your catch book. Back it goes, the same as every fish here.</p>');
@@ -217,7 +264,8 @@
   R.on('boot', function () {
     R.on('layout', function (L) { if (!L || L.id !== 'harbour') { standUp(); invalidate(false); } });
     R.on('props', function () { if (sitting && !sitting.el.isConnected) R.els.props.appendChild(sitting.el); if (line && !line.isConnected) R.els.props.appendChild(line); });
-    R.on('beforeWalk', standUp); R.on('walk', standUp); R.on('activity', function () { standUp(); invalidate(false); });
+    R.on('beforeWalk', standUp); R.on('walk', standUp); R.on('meditate', standUp); R.on('activity', function () { standUp(); invalidate(false); });
+    R.on('outfit', function () { if (sitting && sitting.el && root.OvuGarden && root.OvuGarden.reseat) root.OvuGarden.reseat(sitting.el, HARBOUR.seat); });
     R.on('sheetHide', function () { invalidate(false); }); /* the line comes in with the sheet */
     R.on('sheetReplace', function () { invalidate(false); });
     doc.addEventListener('visibilitychange', function () { if (doc.hidden) invalidate(false); else if (spotSheet()) invalidate(true); }); /* away and back: the float is gone, the spot sheet is drawn fresh */

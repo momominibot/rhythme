@@ -64,10 +64,11 @@
     }
   </style>
 <link rel="stylesheet" href="dreamy.css">
+<link rel="stylesheet" href="rhythme-legacy.css"><!-- the room's look, last so it wins -->
 </head>
-<body>
+<body class="rh-column">
   <!-- Always-rendered shared video + processing canvas (never display:none) -->
-<div class="expbanner" role="note" style="margin:10px 16px;padding:10px 12px;border-radius:14px;background:#fff4ec;border:1px solid #f1c7a8;color:#5b3a2e;font:600 12.5px/1.45 Manrope,system-ui,sans-serif"><b style="display:block;margin-bottom:2px">Experimental. Not a medical test.</b>Camera readings are rough, change with light and movement, and cannot diagnose stress, calm or a heart problem. For chest pain, fainting, severe breathlessness or a racing heart that will not settle, call 995.</div>
+<div class="expbanner" role="note" style="margin:10px 16px;padding:10px 12px;border-radius:14px;background:#fff4ec;border:1px solid #f1c7a8;color:#5b3a2e;font:600 12.5px/1.45 Manrope,system-ui,sans-serif"><b style="display:block;margin-bottom:2px">Experimental. Not a medical test.</b>Camera readings are rough, change with light and movement, and cannot diagnose stress, calm or a heart problem. For chest pain, fainting, severe breathlessness or a racing heart that will not settle, call your local emergency number.</div>
   <div class="ppg-shared-media">
     <video id="ppgVideo" playsinline muted></video>
     <canvas id="ppgCanvas" width="640" height="480"></canvas>
@@ -92,7 +93,7 @@
     <!-- STEP 1: Welcome -->
     <div id="step1" class="ppg-step">
       <div style="text-align:center;padding:30px 20px">
-        <div style="font-size:64px;margin-bottom:16px">💗</div>
+        <div style="font-size:64px;margin-bottom:16px"><span class="ms" aria-hidden="true">favorite</span></div>
         <h1 style="font-family:var(--serif);font-size:24px;font-weight:700;color:var(--ink);margin-bottom:8px">Camera Heart Rate</h1>
         <p style="font-size:14px;color:var(--taupe);line-height:1.6;margin-bottom:24px;max-width:320px;margin-left:auto;margin-right:auto">
           Place your index finger over the rear camera and flash. 
@@ -125,7 +126,7 @@
         <canvas id="previewCanvas2" class="ppg-preview-canvas" width="640" height="480"></canvas>
         <div class="ppg-sample-box" id="sampleBox"></div>
         <div class="ppg-calibration-overlay" id="calibrationOverlay">
-          <div class="ppg-warning-icon">👆</div>
+          <div class="ppg-warning-icon"><span class="ms" aria-hidden="true">touch_app</span></div>
           <p><b>Please place your index finger firmly over the camera lens and flash.</b></p>
           <p class="ppg-tip">Keep your hand steady. Measurement starts automatically when finger is detected.</p>
         </div>
@@ -192,7 +193,7 @@
     <!-- STEP 4: Results -->
     <div id="step4" class="ppg-step ppg-results" style="display:none">
       <div style="text-align:center;margin-bottom:16px">
-        <div style="font-size:40px;margin-bottom:8px">✨</div>
+        <div style="font-size:40px;margin-bottom:8px"><span class="ms" aria-hidden="true">auto_awesome</span></div>
         <h2 style="font-family:var(--serif);font-size:22px;font-weight:700;color:var(--ink)">Your Pulse Reading</h2>
         <div id="qualityBadge" class="ppg-quality good" style="margin-top:8px">Good Quality</div>
       </div>
@@ -550,5 +551,6 @@
 <script defer src="evidence-merge.js"></script>
 <script defer src="evidence.js"></script>
 <script defer src="dreamy.js"></script>
+<script src="appnav.js" defer></script>
 </body>
 </html>

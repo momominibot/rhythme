@@ -496,7 +496,7 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .confirm label{display:flex;gap:8px;align-items:flex-start;font:600 12px var(--sans);color:var(--rm-ink);padding:6px 0;border-bottom:1px solid rgba(107,82,142,.08);cursor:pointer}
 .confirm label:last-of-type{border-bottom:none}
 .confirm input{accent-color:var(--rm-mauve);margin-top:2px}
-.quick{display:flex;gap:6px;overflow-x:auto;padding:4px 0;scrollbar-width:none}
+.quick{flex-wrap:wrap;display:flex;gap:6px;padding:4px 0;scrollbar-width:none}
 .quick::-webkit-scrollbar{display:none}
 .quick .qchip{flex-shrink:0;display:inline-flex;align-items:center;background:#fff;border:1.5px solid rgba(107,82,142,.14);border-radius:99px;overflow:hidden}
 .quick .qsend{border:none;background:none;padding:8px 6px 8px 12px;font:700 12px var(--sans);color:var(--rm-ink-2);cursor:pointer;white-space:nowrap}
@@ -688,6 +688,12 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .dicons.free{display:block;inset:0}
 .dicons.free .dicon{position:absolute;width:22%;touch-action:none;user-select:none;-webkit-user-select:none;transition:transform .15s,background .15s}
 .dicon.lift{transform:scale(1.1);z-index:3;background:rgba(255,255,255,.22)}
+/* the folder icon and its name scale with the desk (cqw, capped at the usual sizes), so on the 16:10 desk a folder with a
+   two-line name stays under 31% of the desk's height at any width and with any font (the name never takes three lines):
+   the grid's rows are 31% apart, and deskSpots in room.js uses that 31 */
+.dicons.free{container-type:inline-size}
+.dicons.free .dicon svg{width:min(40px,10.1cqw);height:min(34px,8.6cqw)}
+.dicons.free .dicon span{font-size:min(9.5px,2.9cqw)}
 .menubar .mbtn{border:none;background:none;color:var(--rm-plum);cursor:pointer;display:flex;align-items:center;padding:0 4px}
 .menubar .mbtn .ms{font-size:17px}
 .wallpanel{display:none;margin-top:10px;background:#fff;border-radius:16px;padding:12px;box-shadow:var(--rm-shadow)}
@@ -808,8 +814,7 @@ textarea.input{min-height:72px;resize:vertical;line-height:1.4}
 .welcome .btn{min-width:210px;justify-content:center;flex:0 0 auto}
 .welcome .btn.primary{box-shadow:0 10px 26px rgba(117,86,196,.42),0 0 28px rgba(226,210,255,.75)}
 .welcome .btn.ghost{background:rgba(255,255,255,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-/* the welcome keeps its light look after sunset: the night ghost button (light text, no fill) vanished on it */
-html[data-sky="night"] .welcome .btn.ghost{background:rgba(255,255,255,.62);color:#5a4274;border-color:rgba(122,92,150,.28)}
+
 .welcome .btn+.btn{margin-top:8px}
 .w-auth{display:flex;flex-direction:column;gap:8px;width:min(100%,290px);margin-top:2px}
 .w-auth .btn,.w-email .btn{width:100%;min-width:0;margin:0}
@@ -827,8 +832,7 @@ html[data-sky="night"] .welcome .btn.ghost{background:rgba(255,255,255,.62);colo
 .w-email .msg.err{color:#b23b5b}
 .w-fine{font:500 11px/1.5 var(--sans);color:var(--rm-ink-2);max-width:290px;margin-top:14px}
 .w-fine a{color:var(--rm-plum);font-weight:700}
-html[data-sky="night"] .welcome .btn.w-apple{background:#111;color:#fff;border-color:#111}
-html[data-sky="night"] .welcome .btn.w-google{background:#fff;color:#1f1f1f;border-color:#dadce0}
+
 .onb{display:flex;flex-direction:column}
 .onb-head{display:flex;gap:12px;align-items:flex-end;margin-top:4px}
 .onb-head img{width:70px;height:104px;object-fit:contain;flex-shrink:0;filter:drop-shadow(0 8px 10px rgba(90,66,116,.25))}
@@ -1212,6 +1216,8 @@ html[data-sky="night"] .welcome .btn.w-google{background:#fff;color:#1f1f1f;bord
 .podsug .ms{color:var(--rm-mauve);font-size:18px;flex:none}
 .linkbtn{border:none;background:none;padding:0;font:800 12.5px var(--sans);color:var(--rm-plum);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
 .podlist{display:flex;flex-direction:column;gap:6px}
+.podlist .podlocked{margin:10px 0 2px}
+.lbl-row #podShuffle{margin-left:auto;font:800 12px var(--sans)}
 .podep{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:#fff;border:1px solid rgba(150,120,190,.16);border-radius:14px;padding:8px 10px;cursor:pointer;font:inherit;color:inherit}
 .podep.on{border-color:var(--rm-mauve);background:#faf6fd}
 .podep i{font-style:normal;flex:none;width:30px;height:30px;border-radius:10px;display:grid;place-items:center;background:linear-gradient(145deg,#fbe3ef,#e6dbf7);font:900 11px var(--sans);color:var(--rm-plum)}
@@ -1254,7 +1260,8 @@ html[data-sky="night"] .welcome .btn.w-google{background:#fff;color:#1f1f1f;bord
 .plushero b{display:block;font-family:var(--serif);font-weight:600;font-size:18px;color:var(--rm-plum);line-height:1.2}
 .plushero span{display:block;font:600 12.5px/1.45 var(--sans);color:var(--rm-ink-2);margin-top:3px}
 
-.c-choices{display:flex;flex-direction:column;gap:8px}
+.c-choices{display:block}.c-choices>#cChoices{display:flex;flex-direction:column;gap:8px;margin-top:8px} /* a closed details with display:flex showed its content (live check, 22 Oct) */
+summary.c-lbl{cursor:pointer;list-style-position:inside}
 .c-lbl{font:800 10.5px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--rm-ink-3)}
 .c-opt.c-req{border-style:solid;border-color:rgba(122,92,150,.45);background:rgba(255,255,255,.7)}
 .consent #cAgree:disabled{opacity:.5;cursor:not-allowed}
@@ -1332,21 +1339,16 @@ html[data-sky="night"] .welcome .btn.w-google{background:#fff;color:#1f1f1f;bord
 .mapexit{position:absolute;transform:translate(-50%,-115%);display:flex;align-items:center;gap:3px;white-space:nowrap;background:rgba(255,255,255,.92);color:var(--rm-plum);font:800 10px var(--sans);padding:3px 7px 3px 4px;border-radius:999px;box-shadow:0 2px 8px rgba(90,66,116,.22)}
 .mapexit .ms{font-size:13px}
 .worldmap{position:relative;width:100%;max-width:100%;background:linear-gradient(160deg,#f6effb,#eef6f1);border:1px solid rgba(150,120,190,.18);border-radius:18px;margin-bottom:10px}
-/* the wider world: the known map in the middle third of a canvas three times its size, fog and ??? around it (21 Oct) */
-.worldzoom{position:relative;width:100%;max-width:100%;overflow:hidden;border-radius:18px;border:1px solid rgba(150,120,190,.18);background:#e9edf6;touch-action:none;margin-bottom:8px;user-select:none;-webkit-user-select:none}
-.worldwide{position:absolute;left:0;top:0;width:300%;height:300%;transform-origin:0 0;background:radial-gradient(ellipse at 50% 50%,#f4eefb 0 22%,#e6e9f3 40%,#dfe3ee 60%,#d6dbe8 100%);will-change:transform}
-.worldmap.known{position:absolute;left:33.333%;top:33.333%;width:33.334%;height:33.334%;margin:0;box-shadow:0 0 0 1px rgba(150,120,190,.18),0 10px 40px rgba(90,66,116,.12)}
-.fog{position:absolute;transform:translate(-50%,-50%);width:22%;aspect-ratio:1.35;border:0;padding:0;cursor:pointer;color:#9d8fbb;font:800 clamp(14px,6vw,30px)/1 var(--sans);letter-spacing:.08em;background:radial-gradient(ellipse at center,rgba(255,255,255,.95) 0 28%,rgba(240,237,247,.85) 52%,rgba(240,237,247,0) 72%);animation:fogdrift 11s ease-in-out infinite alternate}
-.fog:nth-child(2n){animation-duration:14s;animation-delay:-5s}.fog:nth-child(3n){animation-duration:17s;animation-delay:-9s}
-@keyframes fogdrift{from{transform:translate(-50%,-50%) translate(-1.5%,1%)}to{transform:translate(-50%,-50%) translate(1.5%,-1%)}}
-.fog:focus-visible{outline:3px solid #b9a3e3;outline-offset:-6px;border-radius:50%}
+/* the wider world (21 Oct): one plate of open country three of the map's boxes wide and three tall; the places sit in its top-left box, the rest is unbuilt land, edge to edge */
+.worldzoom{position:relative;width:100%;max-width:100%;overflow:hidden;border-radius:18px;border:1px solid rgba(150,120,190,.18);background:#dfeadb;touch-action:none;margin-bottom:8px;user-select:none;-webkit-user-select:none}
+.worldwide{position:absolute;left:0;top:0;width:300%;height:auto;aspect-ratio:5/4;transform-origin:0 0;background:#dfeadb url(assets/room/dream/map-world.webp) 0 0/100% 100% no-repeat;will-change:transform}
+.worldmap.known{position:absolute;left:0;top:0;width:33.3333%;height:33.3333%;margin:0;border:0;border-radius:0;box-shadow:none;background:none;overflow:visible} /* the places and their paths over the plate's top-left box; the plate draws the land under them */
 .worldzoom.far .mapnode b,.worldzoom.far .mapnode em{display:none}
 .worldzoom.far .mapnode{width:44px}
 .zoomctl{display:flex;gap:8px;align-items:center;margin-bottom:10px}
 .zoomctl button{width:40px;height:40px;flex:0 0 40px;border-radius:50%;border:1px solid rgba(150,120,190,.3);background:#fff;color:var(--rm-plum);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
 .zoomctl .zoomnote{font:600 12px/1.35 var(--sans);color:var(--rm-ink-2)}
-@media (prefers-reduced-motion: reduce){.fog{animation:none}}
-.worldlines{position:absolute;inset:0;width:100%;height:100%}
+.worldlines{position:absolute;inset:0;width:100%;height:100%;overflow:visible} /* a place set just outside the box keeps its path */
 .worldlines path{fill:none;stroke:#c9b6e6;stroke-width:1.6;stroke-dasharray:2.4 2;vector-effect:non-scaling-stroke}
 .mapnode{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:2px;width:64px;border:0;background:none;padding:0;cursor:pointer;color:var(--rm-plum)}
 .mapnode>.ms{width:34px;height:34px;line-height:34px;font-size:19px;text-align:center;border-radius:50%;background:#fff;box-shadow:0 2px 8px rgba(90,66,116,.2);border:2px solid #fff}
@@ -1378,7 +1380,7 @@ html[data-sky="night"] .welcome .btn.w-google{background:#fff;color:#1f1f1f;bord
 .meditator.onseat.faceright img.seated{transform:scaleX(-1)}
 .nb img{width:100%;display:block}
 .nb.flip img{transform:scaleX(-1)}
-.nbperson{pointer-events:auto;cursor:pointer}
+.nbperson{pointer-events:none;cursor:pointer}.nbperson img{pointer-events:auto} /* only her figure, clipped to its outline, takes a tap (22 Oct) */
 .nbperson img{animation:alive 4.4s ease-in-out infinite;transform-origin:50% 100%}
 .nbperson.flip img{animation:aliveflip 4.4s ease-in-out infinite}
 .nbperson.wave img{animation:joyhop .55s ease-out!important}
@@ -1593,11 +1595,7 @@ body.btap-open{overflow:hidden}
 .mvperiod .mvflags b{display:inline;font-weight:800;color:var(--rm-plum)}
 .mvperiod .btn{margin-top:8px;flex:none;width:auto;padding:8px 12px}
 .mvsec{display:block}
-html[data-sky="night"] :is(.mvweek,.mvact,.mvvar){background:var(--rm-card);border-color:rgba(255,255,255,.08)}
-html[data-sky="night"] .mvact.on{background:var(--rm-mauve)}
-html[data-sky="night"] .mvvar.on{border-color:#b89be6;background:rgba(155,127,208,.3)}
-html[data-sky="night"] .matnow{background:linear-gradient(135deg,#3b2e5a,#4d3252)}
-html[data-sky="night"] :is(.mattile,.matlast li){background:var(--rm-card);border-color:rgba(255,255,255,.08)}
+
 /* ---------- the pets walk (ovu-petwalk.js): a strip box inside the pet's body, shown while it walks; the strip is clipped
  * in its own element so a hat or bow riding on the head anchor can reach past the cell ---------- */
 .petwalk{display:none;position:absolute;left:50%;bottom:0;transform:translateX(-50%);pointer-events:auto}
@@ -1668,11 +1666,16 @@ html[data-sky="night"] :is(.mattile,.matlast li){background:var(--rm-card);borde
 @media (prefers-reduced-motion: reduce){.zonename,.nearpill,.gamehud .gh-stam b{transition:none}}
 
 /* ---------- the farm (ovu-farm.js): beds drawn on the plate, the bed and shed sheets ---------- */
-.bed{position:absolute;transform:translate(-50%,-62%);background:none;border:0;padding:0;cursor:pointer;pointer-events:auto;filter:drop-shadow(0 3px 4px rgba(70,40,100,.16))}
-.bed svg{width:100%;height:auto;display:block;overflow:visible}
+.bed{position:absolute;transform:translate(-50%,-50%);width:16.47%;aspect-ratio:1.838;background:none;border:0;padding:0;margin:0;cursor:pointer;pointer-events:auto;clip-path:polygon(47.8% 4%,96% 51.8%,52.2% 96%,4% 48.2%)} /* one bed's soil: E1 + E2 across, 1472x1840 plate */
+.bedplants{position:absolute;transform:translate(-50%,-100%);width:13%;aspect-ratio:1;pointer-events:none;filter:drop-shadow(0 3px 4px rgba(70,40,100,.16))}
+.bedplants.focus{filter:drop-shadow(0 0 2px #fff) drop-shadow(0 0 4px #7a5c96)}
+.bedplants.focus::after{content:"";position:absolute;left:50%;bottom:-25%;width:118%;height:52%;transform:translateX(-50%);border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 2px #7a5c96,0 0 10px rgba(122,92,150,.6)} /* a ring round the bed's soil, so an empty bed shows focus too (Codex, 22 Oct) */
+.bedplants .bedcrop,.bedpic .bedcrop{position:absolute;left:22.5%;bottom:0;width:55%;height:auto;display:block;pointer-events:none}
+.bedplants .bedcrop.back,.bedpic .bedcrop.back{left:2.5%;bottom:10.8%}.bedplants .bedcrop.front,.bedpic .bedcrop.front{left:42.5%;bottom:-10.8%}
+.bedplants .bedover,.bedpic .bedover{position:absolute;inset:0;width:100%;height:100%;display:block;overflow:visible;pointer-events:none}
 .bed:focus-visible{outline:2px solid #fff;outline-offset:2px;border-radius:10px}
 .bedcard{display:flex;gap:12px;align-items:center;background:var(--rm-card,#fff);border-radius:16px;padding:12px;margin-top:4px}
-.bedcard .bedpic{width:84px;flex:none;background:#f6eefb;border-radius:12px;padding:6px}
+.bedcard .bedpic{position:relative;width:84px;aspect-ratio:1;flex:none;background:#f6eefb;border-radius:12px;padding:6px}
 .bedcard .bedpic svg{width:100%;height:auto;display:block}
 .bedcard .bedtext{display:flex;flex-direction:column;gap:3px;font-size:13.5px}
 .bedcard .bedtext b{font-size:15px}
@@ -1693,7 +1696,8 @@ html[data-sky="night"] :is(.mattile,.matlast li){background:var(--rm-card);borde
 .snapbtns + .help,.snapbtns ~ p.help{margin-top:12px;line-height:1.5}
 .phasechips{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 12px}
 /* the bed card shows soil, not a blank square */
-.bedcard .bedpic{background:radial-gradient(ellipse 46% 30% at 50% 66%,#7a5034 0 62%,#5e3c27 63% 100%,transparent 101%),#f6eefb}
+.bedcard .bedpic{overflow:hidden;background:radial-gradient(ellipse 46% 20% at 50% 74%,#8a5a44 0 62%,#6e4535 64% 100%,transparent 102%),linear-gradient(180deg,#f8f1fd,#efe4f7)}
+.bedpic .bedover{transform:translateY(-24%)}.bedpic .bedcrop{bottom:24%}.bedpic .bedcrop.back{bottom:33%}.bedpic .bedcrop.front{bottom:15%}
 
 /* plaza servers (ovu-plaza.js): a pill in screen space while she is in the plaza, and the chooser sheet */
 .plazapill{position:absolute;left:10px;top:12px;z-index:7;display:inline-flex;align-items:center;gap:6px;max-width:calc(100% - 120px);padding:7px 12px 7px 9px;border:1.5px solid rgba(255,255,255,.9);border-radius:99px;background:rgba(255,255,255,.86);backdrop-filter:blur(8px);box-shadow:0 4px 14px rgba(80,50,110,.14);font:800 12px var(--sans);color:var(--rm-ink);cursor:pointer}
@@ -1769,8 +1773,7 @@ span.frchip{cursor:default}
 /* display:flex on these beat the hidden attribute: the low-mood note showed under every mood, and the consent sheet told everyone
    their earlier answers said they were under 18 (Jamie's screenshot, 20 Oct) */
 .flag[hidden],.moodcare[hidden]{display:none}
-html[data-sky="night"] .moodcare{background:#3b2e5a;color:#f1e9fb}
-html[data-sky="night"] .moodcare .ms{color:#f6c9d6}
+
 /* the mindful line under a toast's message (ovu-moments.js) */
 .toast.two{border-radius:18px;align-items:flex-start;text-align:left;padding:10px 14px}
 .toast .toastsub{display:block;margin-top:3px;font:600 12px/1.35 var(--sans);color:#f3e6ff;opacity:.92}
@@ -1820,10 +1823,12 @@ html[data-sky="night"] .moodcare .ms{color:#f6c9d6}
  * contact shadow at its true base, sized to its footprint, with the pivot at that base: so every placed object (her,
  * room furniture and pets, shop stock, greenhouse plants, neighbours) gets a dark ellipse right where it meets the
  * surface, a hair of overlap into it, and only a tight 1 px edge shadow. --cs is the footprint as a share of the width. */
-.nb,.prop.owned,.avatar{isolation:isolate}
-.nb::before,.prop.owned::before,.avatar::before{content:'';position:absolute;left:50%;bottom:0;width:calc(var(--cs,.7) * 100%);aspect-ratio:4/1;transform:translate(-50%,48%);border-radius:50%;
+.nb,.prop.owned,.avatar,.villager{isolation:isolate}
+.nb::before,.prop.owned::before,.avatar::before,.keeper::before,.villager::before{content:'';position:absolute;left:50%;bottom:0;width:calc(var(--cs,.7) * 100%);aspect-ratio:4/1;transform:translate(-50%,48%);border-radius:50%;
   background:radial-gradient(closest-side,rgba(52,26,72,.46),rgba(52,26,72,.2) 58%,rgba(52,26,72,0));z-index:-1;pointer-events:none;opacity:var(--co,1)}
 .avatar::before{--cs:.62}
+.keeper::before{--cs:.62} /* the same ground shadow under a keeper's feet as under hers: without it they read as hovering (Jamie, 22 Oct: "make sure the people dont float") */
+.villager{--cs:.62} /* her footprint; a wider canvas sets a smaller share inline (ovu-villagers.js), so his contact shadow is her size */
 .avatar.hidden::before,.avatar.walking.cycling::before{opacity:.85}
 /* footprints: narrow bases get small shadows, flat or wide pieces get wide thin ones */
 [data-id=lamp],[data-item=lamp]{--cs:.36}
@@ -1840,7 +1845,7 @@ html[data-sky="night"] .moodcare .ms{color:#f6c9d6}
 .nb.nbperson,.nb.sitter{--cs:.6}
 /* lifted in arrange mode: the shadow stays on the floor, smaller and fainter */
 .prop.owned.lift::before{opacity:.35;width:calc(var(--cs,.7) * 80%)}
-@media (prefers-reduced-motion:reduce){.nb::before,.prop.owned::before,.avatar::before{transition:none}}
+@media (prefers-reduced-motion:reduce){.nb::before,.prop.owned::before,.avatar::before,.keeper::before,.villager::before{transition:none}}
 /* the storybook map: a painted meadow, a clay drawing at every place, labels on white pills so they read on the painting */
 .worldmap{background:#e9f1ea url(assets/room/dream/map-bg.webp) center/cover no-repeat;border:0;box-shadow:inset 0 0 0 1px rgba(150,120,190,.18),0 6px 18px rgba(90,66,116,.12);overflow:hidden}
 .worldlines path{stroke:#fff;stroke-width:3.2;stroke-dasharray:1.2 3.2;stroke-linecap:round;filter:drop-shadow(0 1px 1px rgba(90,66,116,.35))}
@@ -1855,6 +1860,34 @@ html[data-sky="night"] .moodcare .ms{color:#f6c9d6}
 /* shop names sit side by side on the map: let each wrap under its own shop rather than run into the next */
 .mapnode b{white-space:normal;max-width:66px;line-height:1.15}
 
+/* recipes and the Mediterranean check (ovu-recipes.js): cards that open the source's own page */
+.rnote{font:600 12.5px var(--sans);color:var(--rm-ink-2);line-height:1.55;margin:12px 2px 0}
+.rsub{font-family:var(--serif);font-weight:600;font-size:15px;color:var(--rm-plum);display:flex;align-items:center;gap:6px;margin:16px 2px 0}
+.rsub .ms{font-size:18px;color:var(--rm-mauve)}
+.rlist{display:grid;gap:8px;margin-top:10px}
+.rcard{display:flex;gap:11px;align-items:flex-start;background:#fff;border-radius:18px;padding:11px 12px;box-shadow:0 4px 14px rgba(90,66,116,.10);border:1.5px solid rgba(201,182,230,.45);text-decoration:none;color:var(--rm-ink);transition:transform .15s ease,box-shadow .15s ease}
+.rcard:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(90,66,116,.16)}
+.rcard .ric{flex-shrink:0;width:38px;height:38px;border-radius:13px;display:grid;place-items:center;font-size:21px;color:var(--rm-plum);background:linear-gradient(135deg,var(--rm-blush-2),var(--rm-lilac-2))}
+.rcard .rtx{min-width:0}
+.rcard b{display:block;font:800 13px/1.3 var(--sans);color:var(--rm-ink)}
+.rcard small{display:block;font:600 11.5px/1.45 var(--sans);color:var(--rm-ink-2);margin-top:3px}
+.rcard i{display:inline-flex;align-items:center;gap:3px;font:800 10px var(--sans);font-style:normal;letter-spacing:.03em;color:var(--rm-mauve);margin-top:5px}
+.rcard i .ms{font-size:13px}
+.mcount{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-top:12px;background:linear-gradient(135deg,var(--rm-cream),var(--rm-blush-2));border-radius:18px;padding:12px 14px}
+.mcount b{font-family:var(--serif);font-weight:600;font-size:22px;color:var(--rm-plum)}
+.mcount span{font:700 12px var(--sans);color:var(--rm-ink-2)}
+.mqs{display:grid;gap:8px;margin-top:10px}
+.mq{background:#fff;border-radius:18px;padding:11px 12px;box-shadow:0 4px 14px rgba(90,66,116,.08);border:1.5px solid rgba(201,182,230,.4)}
+.mq p{font:700 12.5px/1.45 var(--sans);color:var(--rm-ink)}
+.mq p b{color:var(--rm-mauve)}
+.mq small{display:block;font:600 11px/1.4 var(--sans);color:var(--rm-ink-2);margin-top:2px} /* 5.7:1 on white: these hints say what a serving is */
+.yn{display:flex;gap:6px;margin-top:8px}
+.yn button{flex:1;border:1.5px solid rgba(107,82,142,.16);background:var(--rm-paper);border-radius:99px;padding:7px 10px;font:800 12px var(--sans);color:var(--rm-ink-2);cursor:pointer;transition:background .15s ease,color .15s ease,border-color .15s ease}
+.yn button[data-yn="1"].on{background:#3a7559;border-color:#3a7559;color:#fff} /* white on it is 5.4:1 */
+.yn button[data-yn="0"].on{background:var(--rm-lilac);border-color:var(--rm-lilac);color:var(--rm-plum)}
+.yn button:focus-visible{outline:2px solid var(--rm-mauve);outline-offset:2px}
+.rsafe{display:flex;gap:8px;align-items:flex-start;background:var(--rm-paper-2);border-radius:14px;padding:10px 12px;margin-top:12px}
+.rsafe .ms{font-size:18px;color:var(--rm-mauve);flex-shrink:0;margin-top:1px}
 /* Today's check-in: six tiles, a calm status line, quick answers; a tick only for what she chose to count */
 .cihead{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .cichoose{border:none;background:none;font:800 11.5px var(--sans);color:var(--rm-mauve);cursor:pointer;padding:10px 4px;min-height:44px}
@@ -1885,8 +1918,7 @@ html[data-text="larger"] .tiles.ci{grid-template-columns:minmax(0,1fr)}
 .ciquick:empty{display:none}
 .ciquick .qchip{border:1.5px solid var(--rm-lilac);background:var(--rm-card,#fff);color:var(--rm-plum);border-radius:99px;padding:8px 12px;min-height:40px;font:700 11.5px var(--sans);cursor:pointer}
 .ciquick .qchip.undo{border-style:dashed;color:var(--rm-ink-2)}
-html[data-sky="night"] .cistatus.done .ms{color:#86c7a6}
-html[data-sky="night"] .cimark.uns{background:#2f5a45;color:#c8f0da}
+
 /* farm: the watering can and mindful care steps (Jamie, 20 Oct) */
 .bedcard .bedpic.canpic{background:#eef4fb}
 .bedcard .canline{display:inline-flex;align-items:center;gap:4px;font-weight:700;color:#3f6f96}
@@ -1944,14 +1976,7 @@ html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.lo
 .sqnote.info b{color:var(--rm-ink)}
 .sqnote p{margin:0;font:600 12.5px var(--sans);line-height:1.45}
 .sqsmall{display:block;font:600 11px var(--sans);color:var(--rm-ink-3);line-height:1.4}
-/* night: the shared chip rule in ovu-night.css outranks a plain .chipbtn.on, so the chosen answer gets its own deeper rule */
-html[data-sky="night"] .sqf .chips .chipbtn.on{background:#5b477f;border-color:#8f74b8;color:#fff}
-html[data-sky="night"] .sqbody{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.08)}
-html[data-sky="night"] .sqnote{background:#3a2a40;border-color:#8a5a52;color:#f3eaff}
-html[data-sky="night"] .sqnote.today{background:#45252c;border-color:#c0645e}
-html[data-sky="night"] .sqnote.info{background:var(--rm-card);border-color:rgba(255,255,255,.12)}
-html[data-sky="night"] .sqnote b{color:#ffd7c8}
-html[data-sky="night"] .sqnote.info b{color:#f3eaff}
+
 /* the barn and the hidden spring (ovu-barn.js, 21 Oct) */
 .barnthing{position:absolute;pointer-events:auto;border:0;background:none;padding:0}
 .barnthing.animal{transform:translate(-50%,-100%);cursor:pointer;z-index:2}
@@ -1961,7 +1986,7 @@ html[data-sky="night"] .sqnote.info b{color:#f3eaff}
 @keyframes animalidle{0%,100%{transform:scale(1,1)}50%{transform:scale(1.012,.988)}}
 @keyframes animalidleflip{0%,100%{transform:scaleX(-1) scale(1,1)}50%{transform:scaleX(-1) scale(1.012,.988)}}
 .barnthing.animal:focus-visible{outline:2px solid #fff;outline-offset:2px;border-radius:12px}
-.barnthing.nestegg{width:2.2%;transform:translate(-50%,-100%);pointer-events:none;transition:transform .9s ease,opacity .9s ease}
+.barnthing.nestegg{width:3.6%;filter:drop-shadow(0 2px 3px rgba(120,90,60,.35));transform:translate(-50%,-100%);pointer-events:none;transition:transform .9s ease,opacity .9s ease}
 .barnthing.nestegg svg{width:100%;display:block}
 .barnthing.nestegg.lifted{transform:translate(-50%,-180%);opacity:0}
 .barnlist{list-style:none;margin:4px 0 10px;padding:0;display:flex;flex-direction:column;gap:8px}
@@ -2095,7 +2120,7 @@ html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.lo
 .ready .dots{display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin:4px 0 8px}
 .ready .dot{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;position:relative}
 .ready .dot i{width:40px;height:40px;border-radius:50%;border:2px solid #d9cdee;background:#fff;display:flex;align-items:center;justify-content:center;font:800 15px var(--sans);color:#a394bd;font-style:normal}
-.ready .dot.on i{background:linear-gradient(135deg,#c8a9ee,#e9b5d0);border-color:transparent;color:#fff}
+.ready .dot.on i{background:linear-gradient(135deg,#c8a9ee,#e9b5d0);border-color:transparent;color:#2a1d44} /* dark plum on the pale gradient (Codex, 22 Oct: white was under 2:1) */
 .ready .dot em{font:700 10px/1.2 var(--sans);font-style:normal;color:var(--rm-ink-2);text-align:center}
 .ready .dot+.dot::before{content:"";position:absolute;left:-50%;right:50%;top:20px;height:2px;background:#e4dbf2;z-index:-1}
 .ready p{margin:0;font:600 13px/1.45 var(--sans);color:var(--rm-ink)}
@@ -2120,7 +2145,7 @@ html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.lo
 .sheet.luna-sheet .lunaico{width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 4px 10px rgba(120,90,170,.25))}
 .sheet.luna-sheet h2{font-size:22px}
 .sheet.luna-sheet h2 small{display:flex;align-items:center;gap:6px;color:var(--rm-ink-2)}
-.lunastrip{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px -16px 6px;padding:8px 16px;background:#f6f1fc;border-bottom:1px solid rgba(150,120,190,.1);font:700 12px var(--sans);color:var(--rm-ink-2)}
+.lunastrip{flex-wrap:wrap;row-gap:4px;display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px -16px 6px;padding:8px 16px;background:#f6f1fc;border-bottom:1px solid rgba(150,120,190,.1);font:700 12px var(--sans);color:var(--rm-ink-2)}
 .lunastrip .lstate{display:inline-flex;align-items:center;gap:7px}
 .ldot{width:8px;height:8px;border-radius:50%;background:#c9c2d6;display:inline-block}.ldot.on{background:#4fbf7f;box-shadow:0 0 0 3px rgba(79,191,127,.18)}
 .lunastrip .lmore{border:none;background:none;color:#8a63c9;font:800 12px var(--sans);cursor:pointer;padding:4px 0}
@@ -2133,19 +2158,365 @@ html[data-text] :is(.deck,.nav,.sheet,.welcome,.toast,.mpanel,.podmini,.luna,.lo
 .lunanote{margin:10px 0 0;text-align:center;font:600 11.5px/1.45 var(--sans);color:var(--rm-ink-3)}
 @media(min-width:520px){.sheet.luna-sheet{left:50%;right:auto;width:min(480px,92vw);transform:translate(-50%,105%)}.sheet.luna-sheet.on{transform:translate(-50%,0)}}
 
-/* night: the rhythm panel and Luna's card take the dark surfaces, as every other sheet does (Codex collation review, 21 Oct) */
-html[data-sky=night] .ready,html[data-sky=night] .rcard{background:var(--rm-card);border-color:rgba(255,255,255,.1)}
-html[data-sky=night] .ready .dot i{background:var(--rm-paper-2);border-color:#5b477f;color:#cdbfe4}
-html[data-sky=night] .ready .dot.on i{background:linear-gradient(135deg,#c8a9ee,#e9b5d0);border-color:transparent;color:#2a1d44} /* the completed dots keep their gradient at night (Codex re-check) */
-html[data-sky=night] .ready .dot+.dot::before{background:#3b2e5a}
-html[data-sky=night] .rband{background:var(--rm-paper-2)}
-html[data-sky=night] .chip-th{background:#3b2e5a;color:#e3d4fa;border-color:#7a62a6}
-html[data-sky=night] .chip-e{background:#26344d;color:#b9d2f5}
-html[data-sky=night] .sheet.luna-sheet{background:linear-gradient(180deg,#2a2044,#1f1733 60px);border-color:rgba(255,255,255,.08)}
-html[data-sky=night] .lunastrip{background:#2a2044;border-color:rgba(255,255,255,.08)}
-html[data-sky=night] .lunastrip .lmore{color:#cbb2ec}
-html[data-sky=night] .askchip{background:#2b2147;color:#dccdf6;border-color:rgba(203,178,236,.35)}
-html[data-sky=night] .askchip:hover{background:#3b2e5a}
+ /* the completed dots keep their gradient at night (Codex re-check) */
+
 /* closed, Luna's top-anchored card is hidden and untappable once it has slid away: on a tall screen its own height is not enough to leave the frame */
 .sheet.luna-sheet:not(.on){visibility:hidden;pointer-events:none;transition:transform .38s cubic-bezier(.32,.72,0,1),visibility 0s linear .38s}
+
+/* water in the food diary (21 Oct): a record, examples of amounts, information with sources; no bar, no target */
+.wstrip{margin:0 0 12px;padding:12px;border-radius:14px;background:rgba(255,255,255,.7);border:1px solid rgba(160,130,190,.18);color:#3b2d52}
+.wstrip .whead{display:flex;gap:10px;align-items:center}.wstrip .whead .ms{font-size:26px;color:#5f7fb8}.wstrip .whead b{display:block;font:800 15px var(--sans)}.wstrip .whead small{display:block;font:600 12px var(--sans);color:#6f5f8c}
+.wstrip .wadd{margin-top:10px}.wstrip .wrow{flex-wrap:wrap;gap:6px}.wstrip .wrow .btn small{display:block;font:600 10.5px var(--sans);opacity:.8}
+.wlist{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}.wlist li{display:flex;justify-content:space-between;align-items:center;gap:8px;font:700 13px var(--sans)}.wlist li small{font-weight:600;color:#6f5f8c;margin-left:6px}
+.winfo{margin-top:10px}.winfo summary{cursor:pointer;font:800 12.5px var(--sans);color:#4b5f8a;display:flex;align-items:center;gap:6px;list-style:none}.winfo summary::-webkit-details-marker{display:none}.winfo p{margin:6px 0 0;font:600 12.5px/1.5 var(--sans);color:#3b2d52}.winfo .evid a{margin-right:6px}
+.wstrip .help,.wstrip .lbl{color:#3b2d52}.wstrip .help.muted{color:#6f5f8c}.wbf{display:flex;align-items:center;gap:8px;margin:8px 0;font:700 13px var(--sans)}
+
+/* How to practise, on the koi pond and Light Flower cards (Jamie, 21 Oct); the flower's breath words */
+.btap-how{margin:4px 0 2px;text-align:left}
+.btap-how summary{cursor:pointer;font:800 12.5px var(--sans);color:#f1e9fb;display:flex;align-items:center;gap:6px;list-style:none;padding:6px 0}
+.btap-how summary::-webkit-details-marker{display:none}
+.btap-how summary .ms{font-size:18px}
+.btap-how ol{margin:4px 0 2px;padding-left:18px;font:600 12.5px/1.5 var(--sans);color:#d9cdef}
+.btap-how li{margin:3px 0}
+.btap-chips button small{display:block;font:600 10.5px var(--sans);opacity:.8}
+.lf-breath{position:absolute;left:50%;top:12%;transform:translateX(-50%);font:600 24px var(--serif);color:rgba(255,255,255,.82);letter-spacing:.08em;pointer-events:none}
 @media (prefers-reduced-motion: reduce){.sheet.luna-sheet:not(.on){transition:none}}
+/* in-app page viewer (ovu-pageview.js): older Rhythme pages slide over the room instead of leaving it */
+.pageview{position:fixed;inset:0;z-index:90;display:flex;flex-direction:column;background:var(--rm-bg,#f6f0fb);transform:translateX(100%);transition:transform .3s cubic-bezier(.2,.8,.2,1);box-shadow:-12px 0 40px rgba(60,30,90,.18)}
+.pageview.on{transform:none}
+.pv-bar{display:flex;align-items:center;gap:10px;padding:calc(env(safe-area-inset-top,0px) + 10px) max(14px,env(safe-area-inset-right,0px)) 10px max(14px,env(safe-area-inset-left,0px));background:rgba(255,255,255,.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid rgba(150,120,190,.18)}
+.pv-back{width:38px;height:38px;border-radius:50%;border:0;background:rgba(122,92,150,.1);color:var(--rm-plum,#5b3f7a);display:grid;place-items:center;cursor:pointer}
+.pv-bar b{font:600 18px/1.2 var(--serif,Georgia,serif);color:var(--rm-plum,#5b3f7a);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pageview iframe{flex:1;width:100%;border:0;background:transparent}
+@media (prefers-reduced-motion:reduce){.pageview{transition:none}}
+/* hint dots and route markers sit lighter on the art (Jamie, 22 Oct: "more transparent ... looks nicer"); a seat's own dot hides while she sits there */
+.hotspot .pulse{opacity:.45}
+.hotspot:hover .pulse,.hotspot:focus-visible .pulse,.hotspot.show-tip .pulse{opacity:.85}
+#scene:has(.nb.sitter) .hotspot[data-id="bench"] .pulse,#scene:has(.nb.sitter) .hotspot[data-id="hbbench"] .pulse{opacity:0}
+/* the data notice, simple (Jamie, 22 Oct): an emoji grid of what Rhythme does, two promises, the full notice folded away */
+.c-caps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.c-caps div{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px 9px;border-radius:16px;background:rgba(255,255,255,.62);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.95);box-shadow:0 6px 16px rgba(122,92,150,.12);text-align:center}
+.c-caps i{font-style:normal;font-size:26px;line-height:1}
+.c-caps i img{width:40px;height:40px;display:block;object-fit:contain;filter:drop-shadow(0 3px 5px rgba(120,90,160,.18))} /* drawn icons, never emoji (Jamie, 22 Oct) */
+.c-caps span{font:800 11.5px/1.25 var(--sans);color:var(--rm-plum)}
+.c-promise{display:flex;flex-direction:column;gap:6px}
+.c-promise p{display:flex;gap:8px;align-items:center;margin:0;font:700 12.5px/1.4 var(--sans);color:var(--rm-ink-2)}
+.c-promise i{font-style:normal;font-size:17px;flex:none}
+.c-promise i img{width:26px;height:26px;display:block;object-fit:contain}
+.c-full{border-radius:14px;background:rgba(255,255,255,.4);padding:2px 12px}
+.c-full summary,.c-more summary{cursor:pointer;font:800 12px var(--sans);color:var(--rm-plum);padding:8px 0;list-style:none}
+.c-full summary::-webkit-details-marker,.c-more summary::-webkit-details-marker{display:none}
+.c-full summary::after,.c-more summary::after{content:' ›';display:inline-block;transition:transform .2s}
+.c-full[open] summary::after,.c-more[open] summary::after{transform:rotate(90deg)}
+.c-full .c-list{padding-bottom:10px}
+.c-pick{display:flex;flex-direction:column}
+.c-pick .c-opt{border-style:solid;border-color:rgba(255,255,255,.95);background:rgba(255,255,255,.62)}
+.c-emo{font-style:normal;font-size:18px;margin-right:6px;vertical-align:-2px}
+.c-pick .c-opt b{display:inline}
+.c-more{margin:2px 0 0 38px}
+.c-more summary{padding:4px 0;font-size:11px;color:var(--rm-ink-3)}
+.c-more p{margin:0 0 6px;font:600 11.5px/1.45 var(--sans);color:var(--rm-ink-3)}
+
+/* fasting timing in the food diary (design 2026-10-21-fasting-timing.md): plain, no counter, no colour for lengths */
+.fstrip{margin-top:12px;padding:12px;border-radius:14px;background:rgba(255,255,255,.7);border:1px solid rgba(160,130,190,.18)}
+.fstrip .lbl{display:block;margin-bottom:6px}
+.fstrip .row{margin-top:8px;flex-wrap:wrap}
+.fstrip .btn.small{padding:7px 11px;font-size:13px;min-height:40px}
+.fstrip .fopen{margin:4px 0 2px;font-size:14px}
+.fstrip .foffer{margin:8px 0;padding:10px;border-radius:12px;background:#f6effd;font-size:14px}
+.fstrip .fconflict{margin:6px 0;padding:10px;border-radius:12px;background:#fff4ea;font-size:14px}
+.fstrip .frow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px;font-size:13px}
+.fstrip .frow span{flex:1 1 180px;min-width:0}
+.fstrip .fgaps,.fstrip .fcare,.fstrip .freason{margin-top:8px;font-size:13px;line-height:1.4}
+.fstrip .muted{color:#8d7fa0}
+.fstrip .evid a{color:#7b5bb5;text-decoration:none;margin-right:4px;font-size:12px}
+.fq .chips{display:flex;gap:6px;flex-wrap:wrap}
+.fq .chipbtn[disabled]{opacity:.6}
+.fastingcard .ilist{margin-top:6px}
+
+/* ---------- the Today card's three tabs (21 Oct): Today, Channel once she has joined a plaza group, Inventory ---------- */
+.decktabs{margin:0 0 4px}
+.decktabs button{display:flex;align-items:center;justify-content:center;gap:5px;min-height:40px;position:relative}
+.decktabs button .ms{font-size:18px}
+.dbadge{position:absolute;top:3px;right:6px;min-width:18px;height:18px;border-radius:9px;background:var(--rm-blush);color:var(--rm-plum);font:800 11px/18px var(--sans);text-align:center;padding:0 5px}
+.dbadge[hidden]{display:none}
+.deckpane[hidden]{display:none}
+.deckpane>h2{margin-bottom:2px}
+.chhead,.chfriends,.invhearts{display:flex;align-items:center;gap:10px;padding:12px;border-radius:16px;background:var(--rm-paper-2);margin-top:10px}
+.chhead>.ms,.chfriends>.ms,.invhearts>.ms{font-size:26px;color:var(--rm-mauve)}
+.chhead>div,.chfriends>div,.invhearts>div{flex:1;min-width:0}
+.chhead b,.chfriends b,.invhearts b{display:block;font:800 14px var(--sans);color:var(--rm-plum)}
+.chhead small,.chfriends small,.invhearts small{display:block;font:600 12.5px/1.35 var(--sans);color:var(--rm-ink-2)}
+.invhearts .btn{flex:0 0 auto;padding:10px 14px;min-height:40px}
+.chprompt{margin-top:10px;padding:12px;border-radius:16px;background:var(--rm-cream)}
+.chprompt .lbl{display:block;font:800 10px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--rm-mauve)}
+.chprompt p{margin:4px 0 0;font:600 13.5px/1.4 var(--sans);color:var(--rm-ink)}
+.chrow{flex-wrap:wrap}
+.chrow .btn{min-height:44px;flex:1 1 40%}
+.chbadge{display:inline-block;min-width:18px;height:18px;border-radius:9px;background:#fff;color:var(--rm-plum);font:800 11px/18px var(--sans);text-align:center;padding:0 5px}
+.invsec{margin-top:12px}
+.invsec h3{display:flex;align-items:center;gap:6px;margin:0;font:800 11px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--rm-mauve)}
+.invsec h3 .ms{font-size:16px}
+.invsec h3 small{font:800 11px var(--sans);color:var(--rm-ink-3);letter-spacing:0}
+.invlist{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:4px}
+.invlist li{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;background:var(--rm-paper-2);font:600 13px/1.3 var(--sans);color:var(--rm-ink)}
+.invlist li b{font-weight:800;color:var(--rm-plum)}
+.invlist li i{font:800 11px/18px var(--sans);min-width:18px;padding:0 6px;border-radius:9px;background:var(--rm-lilac-2);color:var(--rm-plum);text-align:center}
+.invlist li span{margin-left:auto;font:600 12px var(--sans);color:var(--rm-ink-3);text-align:right}
+.invsec .help{margin-top:6px}
+.invgo{display:inline-flex;align-items:center;gap:2px;margin-top:6px;border:none;background:transparent;padding:6px 2px;font:800 12px var(--sans);color:var(--rm-plum);cursor:pointer}
+.invgo .ms{font-size:18px}
+
+/* ---------- the drops (21 Oct): the Starlight gown as a Rhythme Plus drop, her birthday week ---------- */
+.outfit.locked{position:relative;opacity:.82}
+.outfit.locked img{filter:saturate(.7)}
+.outfit .olock{position:absolute;top:6px;right:6px;font-size:16px;color:var(--rm-plum);background:#fff;border-radius:50%;padding:3px;box-shadow:0 1px 4px rgba(90,66,116,.18)}
+.prop.event{position:absolute;transform:translate(-50%,-98.5%);z-index:7;pointer-events:auto;cursor:pointer;border:none;background:transparent;padding:0;filter:drop-shadow(0 1px 1.5px rgba(60,30,80,.22));animation:propin .6s ease-out}
+.prop.event img{width:100%;display:block}
+.prop.event:focus-visible{outline:3px solid var(--rm-mauve);outline-offset:3px;border-radius:12px}
+.bcard{border-radius:20px;padding:14px;background:linear-gradient(160deg,var(--rm-cream),var(--rm-lilac-2));border:1px dashed rgba(122,92,150,.35)}
+.bhead{display:flex;align-items:center;gap:12px}
+.bhead img{width:64px;height:auto}
+.bhead b{display:block;font:600 20px var(--serif);color:var(--rm-plum)}
+.bhead small{display:block;font:700 12px var(--sans);color:var(--rm-ink-2);margin-top:2px}
+.bline{margin:0;font:600 14px/1.45 var(--sans);color:var(--rm-ink);padding-left:12px;border-left:3px solid var(--rm-blush)}
+.bcard .lbl{display:block;margin-top:14px;font:800 10px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--rm-mauve)}
+.bwish{margin-top:12px}
+.bnote{margin:8px 0 0;font:600 12px/1.4 var(--sans);color:var(--rm-ink-3)}
+.bwho{margin-top:14px;padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.72)}
+.bcard .bwho .lbl{margin-top:0}
+.bwho b{display:block;margin-top:4px;font:600 18px var(--serif);color:var(--rm-plum)}
+.bwho p{margin:6px 0 0;font:600 14px/1.45 var(--sans);color:var(--rm-ink)}
+.bwho .bquote{font-style:italic;color:var(--rm-ink-2)}
+.bdir{margin-top:14px;padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.72)}
+.bcard .bdir .lbl{margin-top:0}
+.bdir b{display:block;margin-top:4px;font:600 18px var(--serif);color:var(--rm-plum)}
+.bdir p{margin:6px 0 0;font:600 14px/1.45 var(--sans);color:var(--rm-ink)}
+.bdir .bstep{display:flex;gap:6px;align-items:flex-start;font:700 12.5px/1.4 var(--sans);color:var(--rm-ink-2)}
+.bdir .bstep .ms{font-size:18px;color:var(--rm-mauve)}
+.bfrom{margin:12px 0 0;font:600 12.5px var(--serif);font-style:italic;color:var(--rm-ink-2);text-align:right}
+.byrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.byrow select.input{flex:1 1 7rem;min-width:0}
+.byrow .btn{flex:0 0 auto;min-height:44px}
+
+/* the twirl (room.js twirl): she spins to show a new outfit, Animal Crossing style, and the gown gets the Cinderella
+ * version (.glam). JS turns her picture; these are the sparkles riding around her, the flash at the change and the
+ * starburst as she lands. Inside #avatar (its own stacking context) the picture sits between the back and front sparkles */
+.avatar.twirling img{position:relative;z-index:1}
+.twirl-fx{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}
+.twirl-fx .tw-s{position:absolute;width:9px;height:9px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,#fff 0 32%,rgba(255,238,196,.95) 46%,rgba(255,214,238,0) 72%);opacity:0;filter:drop-shadow(0 0 3px rgba(255,255,255,.9))}
+.twirl-fx .tw-s::before,.twirl-fx .tw-s::after{content:'';position:absolute;left:50%;top:50%;width:15px;height:1.6px;margin:-.8px 0 0 -7.5px;border-radius:2px;background:linear-gradient(90deg,rgba(255,255,255,0),#fff,rgba(255,255,255,0))}
+.twirl-fx .tw-s::after{transform:rotate(90deg)}
+.twirl-fx .tw-s.gold{background:radial-gradient(circle,#fff 0 28%,rgba(255,212,120,.95) 48%,rgba(255,200,120,0) 72%)}
+.twirl-fx .tw-s.lilac{background:radial-gradient(circle,#fff 0 28%,rgba(214,186,255,.95) 48%,rgba(214,186,255,0) 72%)}
+.twirl-fx.glam .tw-s{width:11px;height:11px}
+.twirl-fx .tw-flash{position:absolute;left:50%;top:52%;width:150%;height:90%;transform:translate(-50%,-50%) scale(.6);border-radius:50%;background:radial-gradient(closest-side,rgba(255,255,255,.95),rgba(255,236,250,.6) 45%,rgba(255,236,250,0));opacity:0;z-index:2}
+.twirl-fx.flash .tw-flash{animation:twflash .6s ease-out forwards}
+@keyframes twflash{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}25%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(1.25)}}
+.twirl-fx.glam::before{content:'';position:absolute;left:12%;right:12%;top:-34%;bottom:-2%;border-radius:40%;background:linear-gradient(to top,rgba(255,240,252,0),rgba(255,238,252,.6) 35%,rgba(232,214,255,.35) 70%,rgba(255,255,255,0));filter:blur(5px);opacity:0;animation:twpillar 2.1s ease-in-out forwards}
+@keyframes twpillar{0%{opacity:0;transform:scaleY(.3);transform-origin:50% 100%}30%{opacity:.9}70%{opacity:.85}100%{opacity:0;transform:scaleY(1.05);transform-origin:50% 100%}}
+.twirl-fx .tw-b{position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:#fff;box-shadow:0 0 6px 2px rgba(255,236,196,.9);opacity:0;z-index:3}
+.twirl-fx.glam .tw-b{width:7px;height:7px;box-shadow:0 0 8px 3px rgba(255,214,150,.9)}
+.twirl-fx.burst .tw-b{animation:twburst .8s cubic-bezier(.2,.7,.3,1) forwards}
+@keyframes twburst{0%{opacity:1;transform:rotate(var(--a)) translateX(0) scale(1)}100%{opacity:0;transform:rotate(var(--a)) translateX(46px) scale(.4)}}
+@media (prefers-reduced-motion: reduce){.twirl-fx{display:none}}
+/* ---- 21 Oct: trying on at Petal & Thread (ovu-boutique.js) ---- */
+.trybar{position:absolute;left:10px;right:54px;top:10px;z-index:14;display:none;flex-wrap:wrap;align-items:center;gap:6px 8px;background:rgba(255,255,255,.94);backdrop-filter:blur(8px);border-radius:14px;padding:8px 10px;font:700 11.5px var(--sans);color:var(--rm-plum);box-shadow:var(--rm-shadow)}
+.trybar.on{display:flex}
+.trybar>.ms{font-size:18px;color:var(--rm-mauve)}
+.trybar .tbname{flex:1 1 auto;min-width:0}
+.trybar button{border:none;background:var(--rm-lilac-2);color:var(--rm-plum);border-radius:99px;padding:6px 10px;font:800 11px var(--sans);display:flex;align-items:center;gap:4px;cursor:pointer;flex-shrink:0}
+.trybar button .ms{font-size:16px}
+.trybar button[data-tb=keep]{background:var(--rm-mauve);color:#fff}
+.trybar .tbplus{background:linear-gradient(135deg,#f3d49b,#e8a3bf);color:#5a3a2a}
+.outfit.plusdrop{position:relative}
+.outfit.plusdrop .pluschip{position:absolute;top:6px;right:6px;margin:0}
+.avatar .acc{position:absolute;display:none;left:var(--acc-l);top:var(--acc-t);width:var(--acc-w);height:auto;transform:translate(-50%,-50%) rotate(var(--acc-r));pointer-events:none;z-index:2}
+.avatar.flip .acc{left:var(--acc-lf);transform:translate(-50%,-50%) scaleX(-1) rotate(var(--acc-r))}
+.avatar .acc.on{display:block}
+.avatar:is(.walking,.cycling,.twirling,.moment,.joy,.landing,.hidden,.acting) .acc{display:none}
+/* animal love (22 Oct): hearts pop when she pets, brushes or treats; a love meter in each sheet; hens wander and peck */
+.lovepop{position:absolute;transform:translate(-50%,-50%);z-index:6;pointer-events:none;color:#ff6f9f;font-size:22px;text-shadow:0 2px 6px rgba(255,255,255,.9);animation:lovepop 1.3s ease-out forwards;opacity:0}
+.lovepop .ms{font-size:inherit}
+@keyframes lovepop{0%{opacity:0;transform:translate(-50%,-30%) scale(.5)}18%{opacity:1;transform:translate(-50%,-60%) scale(1.15)}100%{opacity:0;transform:translate(calc(-50% + var(--dx,0px)),-260%) scale(.9)}}
+.barnthing.animal.loved img{animation:animalloved .5s ease}
+.barnthing.animal.flip.loved img{animation:animallovedflip .5s ease}
+@keyframes animalloved{0%,100%{transform:scale(1)}40%{transform:scale(1.07,.94)}70%{transform:scale(.97,1.04)}}
+@keyframes animallovedflip{0%,100%{transform:scaleX(-1)}40%{transform:scale(-1.07,.94)}70%{transform:scale(-.97,1.04)}}
+.barnthing.animal.a-mochi,.barnthing.animal.a-kaya{transition:left 1.9s linear,top 1.9s linear}
+.barnthing.animal.peck img{animation:henpeck .7s ease 2}
+.barnthing.animal.flip.peck img{animation:henpeckflip .7s ease 2}
+@keyframes henpeck{0%,100%{transform:rotate(0)}45%{transform:rotate(14deg) translateY(4%)}}
+@keyframes henpeckflip{0%,100%{transform:scaleX(-1) rotate(0)}45%{transform:scaleX(-1) rotate(14deg) translateY(4%)}}
+.lovemeter{display:flex;align-items:center;gap:8px;margin:0 0 8px}
+.lovemeter b{font:800 12.5px var(--sans);color:var(--rm-plum);min-width:52px}
+.lovemeter .lm{display:flex;gap:1px}
+.lovemeter .ms{font-size:17px;color:#ff6f9f}
+.lovemeter .ms.off{color:rgba(150,120,190,.35)}
+@media (prefers-reduced-motion: reduce){.lovepop{animation-duration:.01s}.barnthing.animal.peck img,.barnthing.animal.loved img{animation:none}}
+/* fishing actions (22 Oct): a power bar while Cast is held, nibbles on the float, a bite line, and a reel bar with tugs */
+.castpower,.reelbar{height:8px;border-radius:99px;background:rgba(150,120,190,.18);overflow:hidden;margin:2px 0 10px}
+.castpower i,.reelbar i{display:block;height:100%;width:0;border-radius:inherit;background:linear-gradient(90deg,#b9a3ef,#7d5cc4)}
+.reelbar{flex:1 1 100%;margin:0 0 8px}
+.reelbar i{background:linear-gradient(90deg,#9fd7f0,#5f8fd8);transition:width .08s linear}
+.hbpic .hbfloat.nibble{animation:floatnibble .5s ease-in-out 1}
+@keyframes floatnibble{0%,100%{transform:translateY(0)}40%{transform:translateY(2px)}70%{transform:translateY(-1px)}}
+.biteline{animation:bitepulse 1s ease-in-out infinite}
+@keyframes bitepulse{0%,100%{opacity:1}50%{opacity:.6}}
+.reelbtn.tug{animation:reeltug .45s ease-in-out}
+@keyframes reeltug{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px) rotate(-2deg)}75%{transform:translateX(4px) rotate(2deg)}}
+@media (prefers-reduced-motion: reduce){.biteline,.reelbtn.tug,.hbpic .hbfloat.nibble{animation:none}}
+.sqhead{display:flex;align-items:center;gap:6px;margin:10px 0 2px;font:800 13px var(--sans);color:var(--rm-plum)}.sqhead .ms{font-size:18px}
+/* crop and dish pictures on the seed, plant and recipe buttons, and the finished dish (22 Oct) */
+.btn img.croppic{width:34px;height:34px;object-fit:contain;flex:none;border-radius:10px;background:#fff;box-shadow:0 2px 6px rgba(120,90,150,.15);margin-right:2px}
+.dishpic{display:flex;justify-content:center;margin:2px 0 6px}.dishpic img{width:150px;height:150px;object-fit:contain;border-radius:22px;background:#fff;box-shadow:0 8px 22px rgba(120,90,150,.18)}
+.invlist img.invpic{width:30px;height:30px;object-fit:contain;border-radius:8px;background:#fff;margin-right:6px;vertical-align:middle}
+/* villagers (22 Oct, Harvest Moon phase 4) */
+.villager{position:absolute;transform:translate(-50%,-100%);z-index:2;border:0;background:none;padding:0;cursor:pointer;pointer-events:none;filter:drop-shadow(0 1px 2px rgba(70,40,100,.2))} /* her drop shadow, as the keepers have; drawn on her canvas at her height, feet on the floor line as hers are (22 Oct); the button lets taps through */
+.villager img{width:100%;display:block;animation:animalidle 5s ease-in-out infinite;transform-origin:50% 100%;pointer-events:auto} /* only the picture, clipped to his outline, takes a tap */
+.villager:focus-visible{outline:2px solid #fff;outline-offset:2px;border-radius:12px}
+@media (prefers-reduced-motion:reduce){.villager img{animation:none}}
+.villager .vname{position:absolute;left:50%;top:-6%;transform:translateX(-50%);font:800 10px var(--sans);color:var(--rm-plum);background:rgba(255,255,255,.75);padding:2px 7px;border-radius:99px;white-space:nowrap}
+.vcard,.vevent{display:flex;gap:12px;align-items:center;margin-bottom:10px}
+.vcard img,.vevent img{width:78px;flex:none;filter:drop-shadow(0 4px 6px rgba(70,50,100,.2))}
+.vevent p{margin:0 0 6px;font:600 13.5px/1.5 var(--sans);color:var(--rm-ink-2)}
+.vline{margin:6px 0 0;font:600 13px/1.45 var(--sans);color:var(--rm-ink-2)}
+/* his talk (22 Oct): his question, her reply, his answer, his thanks for a gift; her replies as buttons */
+.vsay{margin-top:4px}.vsay:focus{outline:none} /* focused after a reply so a screen reader reads his answer; it is text, not a control */
+.vcard>div{flex:1;min-width:0}
+.vask{margin:6px 0 0;font:600 12px/1.4 var(--sans);color:var(--rm-ink-2)} /* 5.2:1 on the sheet (ink-3 was 2.8:1, Codex) */
+.vyou{margin:4px 0 0;font:600 12.5px/1.4 var(--sans);color:var(--rm-ink-2)}.vyou b{font-weight:800;color:var(--rm-plum);margin-right:4px}
+.vthanks{padding-top:6px;border-top:1px dashed rgba(150,120,190,.3)}
+.vreplies{display:flex;flex-direction:column;gap:8px;width:100%}.vreplies .btn{justify-content:flex-start;text-align:left;white-space:normal}
+.vhearts{display:flex;gap:1px}.vhearts .ms{font-size:17px}.vhearts .ms.off{color:rgba(150,120,190,.3)}
+/* scores and graphs in the Cycle tab (22 Oct) */
+.scorecard{background:rgba(255,255,255,.72);border-radius:22px;padding:14px 14px 12px;margin:0 0 14px;box-shadow:0 10px 26px rgba(122,92,150,.12);position:relative;overflow:hidden}.scorecard.dreamy{background:linear-gradient(160deg,rgba(255,255,255,.88),rgba(247,239,252,.9) 60%,rgba(236,246,242,.9))}.scorecard.dreamy:before{content:"";position:absolute;inset:-40% -20% auto auto;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(201,182,230,.35),rgba(201,182,230,0) 70%);pointer-events:none}.scorecard h3{display:flex;gap:6px;align-items:center;margin:0 0 4px;font:600 17px var(--serif);color:var(--rm-plum)}.schero{display:grid;grid-template-columns:112px 1fr 84px;gap:10px;align-items:center;position:relative}.scring{position:relative;width:112px;height:112px}.scring svg{width:112px;height:112px;display:block;background:none;border-radius:0;box-shadow:none}.scnum{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font:800 30px var(--serif);color:var(--rm-plum);line-height:1}.scnum small{font:700 10px var(--sans);color:var(--rm-ink-3);letter-spacing:.04em;margin-top:2px}.scdash{font-size:34px;color:var(--rm-lilac)}.scmood{margin:4px 0 0;font:600 12.5px/1.4 var(--sans);color:var(--rm-ink-2)}.sccloud{width:84px;height:84px;object-fit:contain;justify-self:end;filter:drop-shadow(0 6px 10px rgba(122,92,150,.18));animation:scfloat 4.5s ease-in-out infinite}.sc-sleep .sccloud{animation-delay:-2s}@keyframes scfloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}@media (prefers-reduced-motion:reduce){.sccloud{animation:none}}.scpills{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 4px}.scpill{background:rgba(255,255,255,.7);border-radius:14px;padding:8px 10px;box-shadow:inset 0 0 0 1px rgba(201,182,230,.35)}.scpill-top{display:flex;justify-content:space-between;align-items:baseline;gap:6px;font:700 12px var(--sans);color:var(--rm-ink-2)}.scpill-top b{font:800 15px var(--serif);color:var(--rm-plum)}.scpill.empty .scpill-top b{font:700 11px var(--sans);color:var(--rm-ink-3)}.scbar{height:8px;border-radius:99px;background:#efe7f7;margin:6px 0 4px;overflow:hidden}.scbar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#f6c9d6,#c9b6e6 55%,#bfe3d4);box-shadow:0 0 8px rgba(201,182,230,.6)}.scpill small{display:block;font:600 10.5px/1.35 var(--sans);color:var(--rm-ink-3)}.scneed{display:flex;gap:8px;align-items:flex-start;margin:8px 0 2px;padding:8px 10px;border-radius:14px;background:rgba(243,212,155,.22);font:600 12px/1.4 var(--sans);color:var(--rm-ink-2)}.scneed .ms{color:var(--rm-warn);font-size:18px}.schead{margin:12px 0 4px;font:800 11px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--rm-ink-3)}.scgraph{width:100%;height:auto;display:block;background:rgba(255,255,255,.55);border-radius:14px}.scgraph-empty{display:flex;gap:8px;align-items:center;padding:14px 12px;border-radius:14px;background:rgba(255,255,255,.55);font:600 12px var(--sans);color:var(--rm-ink-3)}.scgraph-empty .ms{color:var(--rm-lilac)}.scfoot{margin:10px 0 0}@media (max-width:360px){.schero{grid-template-columns:96px 1fr 64px}.scring,.scring svg{width:96px;height:96px}.sccloud{width:64px;height:64px}}.scparts{display:none}
+
+/* PULSE movement breaks (22 Oct) */
+.pulsecards{display:flex;flex-direction:column;gap:8px}
+.pulsecard{display:flex;align-items:center;gap:10px;text-align:left;padding:10px 12px;border-radius:14px;border:1px solid var(--rm-line,#e8def5);background:var(--rm-card,#fff);color:inherit;font:inherit;cursor:pointer;position:relative}
+.pulsecard b{display:block;font-size:14px}.pulsecard small{display:block;color:var(--rm-ink-3,#7a6c90);font-size:12px}
+.pulsecard .pdraft{margin-left:auto;font-style:normal;font-size:11px;font-weight:700;color:#8a5a00;background:#fff3d6;border-radius:999px;padding:2px 8px}
+.pulsebefore{background:var(--rm-blush,#fbeef3);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.pulsebefore p{margin:0;font-size:13px;line-height:1.45}.pulsecheck{margin:10px 0 2px}.pulserun .pulseurgent{margin-top:12px;font-size:12px}.pulseurgent{display:flex;gap:6px;align-items:flex-start;font-weight:700}
+.pulsesetup{margin:6px 0;font-size:13px}.pulserun,.pulsedone{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding:8px 0}
+.pulseclock{font:800 56px/1 var(--serif,Georgia,serif);color:var(--rm-plum,#5b3e8a)}.pulsecue{font-size:15px;line-height:1.5;margin:0;max-width:30em}
+.pulsedone .row,.pulserun .row{width:100%;flex-direction:column;align-items:stretch}.pulsedone .btn{width:100%}
+
+/* the ranch counter and baby animals (22 Oct) */
+.ranchsec{border:1px solid var(--rm-line,#e8def5);border-radius:14px;padding:10px 12px;margin:8px 0;display:flex;flex-direction:column;gap:8px}
+.ranchsec h4{margin:0;font-size:14px;display:flex;align-items:center;gap:6px}
+.ranchsec small.help{display:block;margin:-4px 0 0;font-size:12px}
+.barnthing.animal.baby img{animation-duration:2.6s}
+.lovemeter .namebtn{margin-left:6px;padding:2px 6px;vertical-align:middle}
+
+html[data-mindful=quick] .mindline:not(.keep){display:none}
+
+
+/* the rails (ovu-boutique.js openRail/openItem, 22 Oct): every outfit on its hanger, three across; one opens beside her in it */
+.railgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px}
+.railtile{position:relative;background:linear-gradient(180deg,#fff,#f8f1fd);border:2px solid transparent;border-radius:18px;padding:8px 6px 10px;text-align:center;cursor:pointer;box-shadow:0 4px 12px rgba(120,90,160,.10);min-width:0}
+.railtile img{width:100%;aspect-ratio:1;object-fit:contain;display:block}
+.railtile b{display:block;font:700 12px/1.25 var(--sans);color:var(--rm-ink);margin-top:2px}
+.railtile small{display:flex;align-items:center;justify-content:center;gap:3px;font:700 10.5px/1.3 var(--sans);color:var(--rm-ink-2);margin-top:2px}
+.railtile small .ms{font-size:13px}
+.railtile.on{border-color:#b89be6}
+.railtile.plus{background:linear-gradient(180deg,#fff8ee,#fbeef4)}.railtile.plus small{color:#8a5a3c}
+.railtile.hearts small{color:#b24f78}.railtile.hearts small .ms{color:#e0628f}
+.railview{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:2px 0 8px}
+.railview figure{margin:0;background:linear-gradient(180deg,#fff,#f6eefb);border-radius:18px;padding:10px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-height:190px}
+.railview figure img{max-width:100%;max-height:170px;object-fit:contain;display:block}
+.railview figcaption{font:700 11px var(--sans);color:var(--rm-ink-2);margin-top:6px}
+.railher.soon{display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--rm-ink-2);text-align:center;padding:30px 6px}
+.railher.soon .ms{font-size:30px;color:#b89be6}
+.railnote{margin:0 0 8px;font:600 13.5px/1.5 var(--sans);color:var(--rm-ink)}
+
+/* the inventory as pictures (22 Oct): category tabs that scroll sideways, then a grid of tiles with a count badge */
+.invtabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:10px -2px 0;padding:2px 2px 6px}
+.invtabs::-webkit-scrollbar{display:none}
+.invtab{flex:0 0 auto;display:flex;align-items:center;gap:4px;border:1.5px solid rgba(150,120,190,.22);background:#fff;border-radius:999px;padding:7px 11px;font:800 12px var(--sans);color:var(--rm-ink-2);cursor:pointer}
+.invtab .ms{font-size:17px;color:var(--rm-mauve)}
+.invtab i{font:800 10px/16px var(--sans);font-style:normal;min-width:16px;padding:0 5px;border-radius:8px;background:var(--rm-lilac-2);color:var(--rm-plum);text-align:center}
+.invtab.on{background:linear-gradient(135deg,#efe3fb,#fbe4ee);border-color:#b89be6;color:var(--rm-plum)}
+.invgrid{list-style:none;margin:8px 0 0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.invtile{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 4px 7px;border-radius:16px;background:linear-gradient(180deg,#fff,#f8f1fd);box-shadow:0 3px 10px rgba(120,90,160,.08);min-width:0}
+.invtile.on{box-shadow:0 0 0 2px #b89be6,0 3px 10px rgba(120,90,160,.12)}
+.invface{position:relative;width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center}
+.invface img{width:100%;height:100%;object-fit:contain;display:block}
+.invface .invicon{font-size:30px;color:var(--rm-mauve)}
+.invface .invbadge{position:absolute;right:-2px;bottom:-2px;width:46%;height:46%;object-fit:contain;filter:drop-shadow(0 1px 2px rgba(70,40,100,.25))}
+.invface .invtint{position:absolute;left:50%;top:6%;width:30%;aspect-ratio:1;transform:translateX(-50%);border-radius:50%;background:var(--tint);mix-blend-mode:multiply;opacity:.85}
+.invcount{position:absolute;top:4px;right:5px;font:800 11px/18px var(--sans);font-style:normal;min-width:18px;padding:0 5px;border-radius:9px;background:var(--rm-plum);color:#fff;text-align:center}
+.invtile b{font:700 10.5px/1.2 var(--sans);color:var(--rm-ink);text-align:center;max-width:100%;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+/* no emoji (Jamie, 22 Oct): the sleep-quality moons are drawn, the thought bubble and consent purposes carry icons */
+.moons button::before{content:"";display:block;width:20px;height:20px;margin:0 auto;border-radius:50%;border:2px solid #cfc2e2;box-sizing:border-box}
+.moons button.on::before{background:radial-gradient(circle at 35% 35%,#fff8df,#f3d49b 72%);border-color:#e9c27a;box-shadow:0 0 8px rgba(243,212,155,.6)}
+.thought .ms{display:block;font-size:20px;line-height:1;color:var(--rm-mauve)}
+.c-emo.ms{font-size:20px;color:var(--rm-mauve);vertical-align:-4px}
+/* shopkeepers (ovu-keepers.js, 22 Oct): at her height, a gentle idle, a bubble with one line on a tap */
+.keeper{position:absolute;transform:translate(-50%,-100%);background:none;border:0;padding:0;cursor:pointer;pointer-events:none;z-index:2;filter:drop-shadow(0 1px 2px rgba(70,40,100,.2))} /* her own drop shadow, not one offset downward: an offset shadow lifts a figure off the floor */
+.keeper img{width:100%;display:block;transform-origin:50% 100%;animation:keeperidle 4.2s ease-in-out infinite;pointer-events:auto} /* the button lets taps through; only the picture, clipped to her outline, takes them */
+.keeper.flip img{transform:scaleX(-1);animation-name:keeperidleflip}
+@keyframes keeperidle{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.018)}}
+@keyframes keeperidleflip{0%,100%{transform:scaleX(-1) scaleY(1)}50%{transform:scaleX(-1) scaleY(1.018)}}
+@media (prefers-reduced-motion:reduce){.keeper img{animation:none}}
+.keeper .keepsay{position:absolute;left:50%;bottom:100%;transform:translate(-50%,6px) scale(.6);opacity:0;pointer-events:none;width:max-content;max-width:180px;background:#fff;color:var(--rm-plum);font:800 12px/1.3 var(--sans);padding:7px 11px;border-radius:14px 14px 14px 4px;box-shadow:0 6px 16px rgba(90,60,130,.18);transition:opacity .2s,transform .2s;white-space:normal;text-align:center}
+.keeper.saying .keepsay{opacity:1;transform:translate(-50%,-4px) scale(1)}
+.keeper:focus-visible{outline:2px solid #fff;outline-offset:2px;border-radius:12px}
+/* the soak (ovu-soak.js): head and shoulders above the water, a towel on her head, a little steam */
+.nb.soaker{position:absolute;transform:translate(-50%,-100%);pointer-events:none;z-index:3} /* the picture's bottom edge is the water line */
+.nb.soaker img{width:100%;display:block}
+.soaker .ripple{position:absolute;left:-14%;right:-14%;bottom:-7%;height:16%;border-radius:50%;background:radial-gradient(ellipse at center,rgba(214,252,240,.75) 0 38%,rgba(150,226,206,.45) 56%,rgba(150,226,206,0) 72%);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35)}
+.scene.soaking #avatar{opacity:0;pointer-events:none}
+.scene.soaking .hotspot[data-id="springsoak"],.scene.soaking .hotspot[data-id="warmstone"]{opacity:0;pointer-events:none}
+.soaker .steam{position:absolute;bottom:6%;width:26%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.55),rgba(255,255,255,0) 70%);opacity:0;animation:soaksteam 4.5s ease-out infinite}
+.soaker .steam.s1{left:-6%}.soaker .steam.s2{left:78%;animation-delay:1.5s}.soaker .steam.s3{left:36%;animation-delay:3s}
+@keyframes soaksteam{0%{opacity:0;transform:translateY(0) scale(.6)}30%{opacity:.8}100%{opacity:0;transform:translateY(-260%) scale(1.5)}}
+@media (prefers-reduced-motion:reduce){.soaker .steam{animation:none;opacity:.35}}
+
+/* Settings sheet (You tab, 22 Oct): a small status word beside each health connection */
+.stat b .spill{display:inline-block;margin-left:4px;padding:2px 7px;border-radius:99px;background:var(--rm-lilac-2);color:var(--rm-plum);font:800 9.5px var(--sans);letter-spacing:.05em;text-transform:uppercase;vertical-align:1px}
+.ygroup .stat{margin-top:0}
+.ygroup .stat span:not(.ms):not(.spill){display:block;line-height:1.45;margin-top:2px}
+
+/* Tideline Gym workouts (ovu-gym.js, 22 Oct): her strip on the machine, feet on the cell's bottom edge, clipped where the
+   plate stands in front of her; a flipped station mirrors the cell, not the strip, so the frame step still works */
+.nb.gymworker{transform:translate(-50%,-100%);pointer-events:none;--cs:.55}
+.nb.gymworker .gwcell{position:relative;width:100%;overflow:hidden}
+.nb.gymworker .gwcell img{position:absolute;left:0;top:0;height:100%;max-width:none;display:block;will-change:transform,opacity}
+.nb.gymworker .gwcell img.gwb{opacity:0}
+.nb.gymworker.flip .gwcell{transform:scaleX(-1)}
+.nb.gymworker.flip img{transform:none}
+.nb.gym-treadmill::before,.nb.gym-bike::before{display:none}
+.mvfrom{font-weight:700;color:var(--rm-plum)}
+@media (prefers-reduced-motion:reduce){.nb.gymworker .gwcell img{transition:none!important}}
+#scene.gymming .hotspot .pulse{opacity:0} /* no tap rings over her while she works out */
+
+/* ---------- tidy up (ovu-tidy.js, 23 Oct): a few things on the floor and the magical broom that sweeps them.
+   #tidyLayer sits beside #ownedProps with no stacking context of its own, so the one depth sort ranks its children with
+   her and the pets; every piece gets the same ground contact shadow as her (nothing floats) and no drop-shadow offset ---------- */
+#tidyLayer{position:absolute;inset:0;pointer-events:none}
+.tidy{position:absolute;transform:translate(-50%,-100%);pointer-events:none;isolation:isolate}
+.tidy::before{content:'';position:absolute;left:50%;bottom:0;width:calc(var(--cs,.7) * 100%);aspect-ratio:4/1;transform:translate(-50%,48%);border-radius:50%;
+  background:radial-gradient(closest-side,rgba(52,26,72,.46),rgba(52,26,72,.2) 58%,rgba(52,26,72,0));z-index:-1;pointer-events:none}
+.tidy img{width:100%;display:block;filter:drop-shadow(0 0 1.5px rgba(60,30,80,.22))} /* a tight edge shadow with no offset: the contact shadow below is the only grounding */
+.tidyitem{border:0;background:none;padding:0;cursor:pointer;pointer-events:auto;animation:tidyin .6s ease-out both}
+.tidyitem::after{content:'';position:absolute;inset:-10px} /* a finger-sized hit area round a small thing */
+.tidyitem:focus-visible{outline:2px solid #fff;outline-offset:3px;border-radius:12px}
+.tidyitem.swept{opacity:0;pointer-events:none;animation:tidyout .5s ease-in both} /* its own fade: the entrance animation's fill would keep it opaque, and a transition does not start from an animated value (Codex round two) */
+@keyframes tidyin{from{opacity:0}to{opacity:1}}
+@keyframes tidyout{from{opacity:1}to{opacity:0}}
+.broom{opacity:0;transition:opacity .6s}
+.broom.on{opacity:1}
+.broom img{filter:drop-shadow(0 0 7px rgba(255,236,170,.95)) drop-shadow(0 0 1.5px rgba(60,30,80,.22));transform-origin:50% 96%}
+.broom.sweeping img{animation:broomsway .95s ease-in-out infinite}
+.broom.dwell img{animation-duration:.42s}
+@keyframes broomsway{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg)}}
+#tidyLayer .spark{position:absolute;width:9px;height:9px;transform:translate(-50%,-50%);pointer-events:none;z-index:9;animation:sparkfade .7s ease-out forwards}
+#tidyLayer .spark::before,#tidyLayer .spark::after{content:'';position:absolute;left:50%;top:50%;background:radial-gradient(circle,#fff 0%,#ffe9a8 45%,rgba(255,233,168,0) 72%);width:9px;height:3px;transform:translate(-50%,-50%);border-radius:50%}
+#tidyLayer .spark::after{width:3px;height:9px}
+@keyframes sparkfade{0%{opacity:0;transform:translate(-50%,-50%) scale(.4)}25%{opacity:1}100%{opacity:0;transform:translate(-50%,-110%) scale(1.1) rotate(40deg)}}
+#tidyLayer .puff{position:absolute;transform:translate(-50%,-70%);pointer-events:none;z-index:9;animation:puffup .6s ease-out forwards}
+#tidyLayer .puff img{width:100%;display:block}
+@keyframes puffup{0%{opacity:0;transform:translate(-50%,-60%) scale(.5)}30%{opacity:1}100%{opacity:0;transform:translate(-50%,-120%) scale(1.3)}}
+@media (prefers-reduced-motion:reduce){.tidyitem,.tidyitem.swept{animation:none}.broom{transition:none}.broom.sweeping img,.broom.dwell img{animation:none}#tidyLayer .spark,#tidyLayer .puff{display:none}}

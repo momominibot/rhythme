@@ -133,7 +133,7 @@
   function soundOn() { return root.OvuSound ? root.OvuSound.enabled() : !!(S().state() || {}).sound; } /* the app's own rule: never chosen is on */
   function quietDefault() { return !soundOn() || voiceMuted(); }
   /* she chose to hear the voice here: lift the shared mute, so Voice on is never a silent clip */
-  function hearVoice() { if (voiceMuted()) root.OvuVoice.set(false); }
+  function hearVoice() { if (run && run.audio && root.OvuVoice && root.OvuVoice.allow) root.OvuVoice.allow(run.audio, true); } /* this run only; the app-wide switch stays (Jamie, 22 Oct) */
   /* putting her outfit back writes her profile; if storage fails, the routine and its save prompt still go on */
   function settle(room) { try { if (room.restorePose) room.restorePose(); } catch (e) { } }
   function markToday(patch, day) { day = day || S().today(); var st = S().state(); if (st.morningStart && st.morningStart.date > day) return; /* today's Not today or done stands */ var m = st.morningStart && st.morningStart.date === day ? st.morningStart : { date: day }; for (var k in patch) m[k] = patch[k]; S().setState({ morningStart: m }); }
@@ -155,6 +155,7 @@
     var room = R(); if (!room) return;
     if (room.asleep()) { room.toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; }
     if (run) { showPanel(); return; }
+    if (room.refuseBusy && room.refuseBusy()) return; /* one activity at a time (room.js activityNow): no choice sheet over a running one */
     var quiet = quietDefault(), esc = room.esc;
     room.openSheet('morning', 'Morning start', 'A gentle way into the day', 'wb_twilight',
       '<p class="mintro">Three short practices in Erin’s own words (waking up with breath and body, brushing teeth, a mindful sip), or a short pause and brushing your way. Take one part or all three; any position is fine, and you can stop at any time.</p>' +
@@ -172,13 +173,15 @@
 
   function begin(version, quiet) {
     var room = R(); if (room.asleep() || run) return;
-    var other = otherOwner(room); if (other) { room.toast(other[0], other[1]); return; } /* nothing, not even a waiting prompt, goes over another activity */
+    var other = otherOwner(room); if (other) { if (!(other[2] && room.refuseBusy && room.refuseBusy())) room.toast(other[0], other[1]); return; } /* nothing, not even a waiting prompt, goes over another activity */
     if (pendingAsk) { room.hideSheet(); pendingAsk(); return; } /* the last one is still waiting to be saved or let go: ask that first */
+    if (room.endTryOn) { try { room.endTryOn(true); } catch (e) { } } /* a try-on in the boutique ends: the routine (and its save) is in her own clothes (Codex design review, 21 Oct) */
     if (root.OvuGarden && root.OvuGarden.sitting && root.OvuGarden.sitting()) { try { root.OvuGarden.standUp(); } catch (e) { } } /* off the bench, where she is, so the brushing pose shows */
     if (root.OvuPodcast) { try { root.OvuPodcast.pause(); } catch (e) { } }
     heard.forEach(function (el) { try { if (!el.paused) el.pause(); } catch (e) { } }); heard = []; /* a greeting still playing (the wake sheet's) stops: one voice at a time */
     if (root.OvuWalk && root.OvuWalk.walking && root.OvuWalk.walking()) { try { root.OvuWalk.stop(); } catch (e) { } } /* a walk in progress stops where she is */
     if (room.freezeWalk) { try { room.freezeWalk(); } catch (e) { } } /* and so does the room's own fallback walk */
+    if (room.emit) room.emit('activity', 'morning', version); /* as a practice does: a sit by the water, a pending care step or a greenhouse minute steps aside first */
     room.hideSheet(); hideInvite();
     run = { version: version, steps: plan(version), i: -1, quiet: !!quiet, spent: {}, done: {}, brushMs: 0, stepMs: 0, waits: 0, paused: false, timer: null, left: 0, t0: 0, clock: makeClock(), skipped: [], brushed: 'no', audio: typeof Audio !== 'undefined' ? new Audio() : null }; /* made inside the Begin tap, so later clips may play on phones */
     if (room.endMoment) room.endMoment();
@@ -198,6 +201,7 @@
   }
   /* anything else that owns her, the HUD or the sound right now (Codex sweeps, 20 Oct): Morning start waits for it */
   function otherOwner(room) {
+    var a = room.activityNow && room.activityNow(); if (a && a.kind !== 'morning') return [room.busyLine(a), a.icon, true]; /* a practice, a session or a bench practice (room.js); true: refuseBusy brings its controls back */
     if ((room.sessionOn && room.sessionOn()) || (room.practiceOn && room.practiceOn())) return ['Finish or stop the practice that is running first.', 'self_improvement'];
     if (root.OvuGreenhouse && root.OvuGreenhouse.brewing && root.OvuGreenhouse.brewing()) return ['Finish the cup first.', 'local_cafe'];
     if (root.OvuGreenhouse && root.OvuGreenhouse.caring && root.OvuGreenhouse.caring()) return ['Finish the minute with the plant first.', 'potted_plant'];
@@ -390,7 +394,7 @@
   root.OvuMorning = {
     START_HOUR: START_HOUR, END_HOUR: END_HOUR, MIN_SAVE_S: MIN_SAVE_S, STEPS: STEPS, VERSIONS: VERSIONS,
     inWindow: inWindow, GREETINGS: GREETINGS, arriveFor: arriveFor, plan: plan, erinSteps: erinSteps, wakeSteps: wakeSteps, sipSteps: sipSteps, GATES: GATES, PARTS: PARTS, CARE_WAKE: CARE_WAKE, partsOf: partsOf, partEntry: partEntry, offered: offered, makeClock: makeClock, entryData: entryData,
-    open: open, begin: begin, active: active, cancel: cancel, renderInvite: renderInvite,
+    open: open, begin: begin, active: active, cancel: cancel, renderInvite: renderInvite, reveal: function () { if (run) showPanel(); },
     repose: function () { var s = step(); if (s && s.pose) { try { R().setPose(s.pose); } catch (e) { } } }, /* after she picks another outfit mid-step */ _due: function () { if (run) { clearTimeout(run.timer); due(); } }, /* tests only: a step's time is up now */
     state: function () { return run ? { version: run.version, i: run.i, key: step() && step().key, paused: run.paused, left: run.left, audioKey: run.audioKey || null, pending: run.pending || null, quiet: run.quiet, seconds: run.clock.seconds(), skipped: run.skipped.slice(), brushed: run.brushed } : null; }
   };

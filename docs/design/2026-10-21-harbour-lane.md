@@ -116,6 +116,43 @@ One job at a time, stop on the first failure, no retries (the rules of every ear
 Then: the lane becomes a scene (`Z.register`, a door from the signpost), each storefront a door to its interior,
 and the sheets stay as the fallback, as they did on Dream Street.
 
+## 8b. The lane as a place (21 Oct, night)
+
+Jamie: "All five stores' logic works (grocer, fashion store, gym, fish store, post box), can draw these ?"
+
+**Drawn** in one guarded run (`tools/art/jobs/2026-10-21-harbour-lane-run.json`; lock, no retries, stop on the first
+failure): the lane plate `lane-v1.webp` and three interiors, `shop-grocer-2f-v1.webp`, `shop-boutique-2f-v1.webp` and
+`shop-gym-2f-v1.webp`, all 1024x1280. The interiors are 1024x1280, not the planned 1248x1560, because the service cuts a
+render near 62 s and the 1024 renders took 51 to 62 s. **Not drawn**: the fish store's interior stopped at 61.9 s
+(RemoteDisconnected), so the run stopped there as the rules require, and the map icon and the aquarium were never sent.
+A new run needs Jamie's go-ahead.
+
+**Wiring** (`ovu-lanescene.js`, loaded right after `ovu-lane.js`; nothing in it saves, sells or counts):
+
+- The harbour's signpost is now a doorstep (`{tap: 'hblane', to: 'lane'}` at its stand point): tapping it, or walking
+  there and stopping, walks her up the lane. She arrives at the lane's foot; going back down puts her at the signpost.
+- On the lane each shopfront is a doorstep that opens only where a walk ends (as on Dream Street). In its hours she goes
+  into its room and arrives at its mat; asleep, or outside the hours, the place's own sheet answers (the asleep toast or
+  the closed card) and she stays outside. Leaving a room puts her back at that shop's door.
+- Bait & Fin has no room yet, so its front opens its sheet; the post box opens the post. The path at the foot of the lane
+  takes her back to the harbour the moment she steps on it.
+- Inside: the grocer's counter and seed rack open the grocer's sheet; in the boutique the fitting room opens her
+  wardrobe and the rail and counter open the boutique's sheet; in the gym each of the four stations opens the movement
+  log with its activity chosen, exactly as the sheet's buttons do. Every one checks the asleep state and the hours first.
+  The gym's drawn door is shut, so she arrives on its floor and leaves by tapping the door.
+- The rooms never set a Dream Street `store`, so the walk engine's street hours never apply; the lane keeps its own.
+- The rooms are hidden from the world map and belong to the lane (`mapHide`, `mapParent`), as the barn's rooms do. The
+  map finds the lane through the signpost door and says "You are on Harbour Lane". Until the lane's map icon is drawn,
+  its node shows the storefront glyph.
+- Her size is `avatarW: 9` on all four plates: about the height of the shop doors and a little taller than the post box.
+  In the boutique and the gym she walks the floor behind the front wall, kept above its top edge.
+- The lane's own sheet stays, as Dream Street's does: every place sheet's Back row still goes to it, and it now says the
+  grocer, the boutique and the gym are rooms to walk into.
+
+**Checked**: core (every stand point, door and resting spot on the floor and reachable from every way in; arrival spots;
+the map; the handlers with stand-ins for shut, asleep and napping) and the smoke (the walk up the signpost, into and out
+of each room, every counter, the fitting room and the treadmill, nothing written).
+
 ## 9. Questions for Jamie
 
 1. The five names.

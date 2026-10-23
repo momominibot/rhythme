@@ -23,12 +23,12 @@ SESS = {"access_token": "smoke-token", "refresh_token": "smoke-refresh", "expire
 SESSION_SEED = "if(!localStorage.getItem('smoke_signed_out')) localStorage.setItem('ovumind_auth_v1', %s);" % json.dumps(json.dumps(SESS))  # a context that signed out stays signed out across its own navigations
 DB = {"version": 1, "createdAt": NOW, "updatedAt": NOW,
       "profile": {"name": "Smoke", "outfit": "base", "lifeStage": "", "cycleLength": None, "periodLength": None, "onboarded": True,
-                  "consent": {"v": 4, "at": NOW, "luna": False, "improve": False}, "ageAttest": {"confirmed": True, "version": 1, "at": NOW},
-                  "consentEvents": [{"id": "ce1", "purpose": "age_18", "action": "grant", "at": NOW, "notice": 4, "method": "sheet", "uid": None, "sent": False}, {"id": "ce2", "purpose": "health_tracking", "action": "grant", "at": NOW, "notice": 4, "method": "sheet", "uid": None, "sent": False}], "consentImportedAt": NOW},
+                  "consent": {"v": 5, "at": NOW, "luna": False, "improve": False}, "ageAttest": {"confirmed": True, "version": 1, "at": NOW},
+                  "consentEvents": [{"id": "ce1", "purpose": "age_18", "action": "grant", "at": NOW, "notice": 5, "method": "sheet", "uid": None, "sent": False}, {"id": "ce2", "purpose": "health_tracking", "action": "grant", "at": NOW, "notice": 5, "method": "sheet", "uid": None, "sent": False}], "consentImportedAt": NOW},
       "events": [{"id": "s1", "type": "period", "date": Y1, "createdAt": NOW, "updatedAt": NOW, "source": "room", "data": {"flow": "medium"}},
                  {"id": "s2", "type": "sleep", "date": Y2, "createdAt": NOW, "updatedAt": NOW, "source": "room", "data": {"bedTime": "23:00", "wakeTime": "07:00", "quality": 4}},
                  {"id": "s3", "type": "food", "date": Y2, "createdAt": NOW, "updatedAt": NOW, "source": "room", "data": {"meal": "lunch", "foods": "chicken rice", "items": [], "tags": ["home-cooked"]}}],
-      "summaries": [], "state": {"sleeping": None, "visited": {}, "tourDone": True, "tester": {"hearts": True}, "rewards": {"hearts": 200, "earned": 200, "log": [], "owned": ["dog"], "placed": {"dog": True}, "lastDay": None, "streak": 0}}}  # Peach the corgi lives on the room's rim, so her walks start from the nearest floor cell  # tester mode: Dream Street may be visited after hours, so the run does not depend on the clock
+      "summaries": [], "state": {"sleeping": None, "visited": {}, "tourDone": True, "musicInvited": True, "tester": {"hearts": True}, "rewards": {"hearts": 200, "earned": 200, "log": [], "owned": ["dog"], "placed": {"dog": True}, "lastDay": None, "streak": 0}}}  # Peach the corgi lives on the room's rim, so her walks start from the nearest floor cell  # tester mode: Dream Street may be visited after hours, so the run does not depend on the clock
 
 def png_rows(data):
     """RGB(A) rows of an 8-bit non-interlaced PNG (Playwright screenshots), with only the standard library."""
@@ -75,6 +75,438 @@ def serve():
         if s.connect_ex(("127.0.0.1", PORT)) == 0: s.close(); return p
         s.close(); time.sleep(0.1)
     raise SystemExit("static server did not start")
+
+async def check_legacy_pages(browser):
+    """The older pages wear the room's look and lead back to it; settings.html is a sheet on the You tab (22 Oct)."""
+    ctx = await browser.new_context(viewport={"width": 390, "height": 844})
+    await ctx.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB))); await ctx.add_init_script(SESSION_SEED)
+    await ctx.add_init_script("localStorage.setItem('ovuluna_theme','dark');")  # a dark choice left by the old theme button
+    await ctx.route("**/functions/v1/**", lambda r: r.abort())
+    pg = await ctx.new_page(); errs = []
+    pg.on("pageerror", lambda e: errs.append(str(e)[:200]))
+    async def room_ready(p):
+        try: await p.wait_for_function("()=>window.OvuRoom && !OvuRoom.busy()", timeout=15000)
+        except Exception: pass
+    await pg.goto(BASE + "room.html", wait_until="domcontentloaded"); await room_ready(pg)
+    await pg.click("nav a[data-tab=you]")
+    try: await pg.wait_for_selector('[data-yact="settings"]', timeout=8000)
+    except Exception: check("settings: the You tab has a Settings row", False, "no [data-yact=settings]"); await ctx.close(); return
+    await pg.click('[data-yact="settings"]'); await pg.wait_for_timeout(400)
+    s1 = await pg.evaluate("()=>({id: OvuRoom.sheetId(), chips: [...document.querySelectorAll('#sheetBody [data-persona], .sheet [data-persona]')].map(b=>b.dataset.persona), on: (document.querySelector('[data-persona].on')||{}).dataset, csv: !!document.querySelector('#setSleepCsv'), links: [...document.querySelectorAll('.sheet a.yrow')].map(a=>a.getAttribute('href'))})")
+    check("settings: You opens a Settings sheet in the room with the four life-stage looks, the sleep file and the records links", s1["id"] == "settings" and s1["chips"] == ["grow", "nurture", "peri", "wisdom"] and s1["csv"] and "health-profile.html" in s1["links"] and "labs.html" in s1["links"] and "privacy.html#privacy-local-title" in s1["links"], s1)
+    await pg.click('[data-persona="nurture"]'); await pg.wait_for_timeout(200)
+    s2 = await pg.evaluate("()=>({saved: localStorage.getItem('ovuluna_persona'), pressed: document.querySelector('[data-persona=nurture]').getAttribute('aria-pressed'), others: document.querySelectorAll('[data-persona].on').length})")
+    check("settings: a life-stage look is saved where it always was (localStorage ovuluna_persona) and shows as chosen", s2["saved"] == "nurture" and s2["pressed"] == "true" and s2["others"] == 1, s2)
+    await pg.set_input_files("#setSleepCsv", files=[{"name": "sleep.csv", "mimeType": "text/csv", "buffer": b"date,bedTime,wakeTime,quality\n2026-10-17,23:10,06:45,4\nnot a night\n"}]); await pg.wait_for_timeout(600)
+    s3 = await pg.evaluate("()=>({msg: (document.querySelector('#setSleepMsg')||{}).textContent||'', id: OvuRoom.sheetId(), night: OvuStore.list('sleep').filter(e=>e.date==='2026-10-17').map(e=>({src:e.source, bed:e.data.bedTime, wake:e.data.wakeTime, q:e.data.quality, mode:e.data.mode}))})")
+    check("settings: a sleep file comes in as sleep entries from 'import', the same as the old page, and says what it skipped", s3["id"] == "settings" and s3["night"] == [{"src": "import", "bed": "23:10", "wake": "06:45", "q": 4, "mode": "import"}] and "Brought in 1 night, skipped 1 unreadable line" in s3["msg"], s3)
+    await pg.evaluate("()=>OvuStore.add('sleep','2026-10-16',{bedTime:'22:00',wakeTime:'06:00',quality:3},'room')")  # a night she wrote herself
+    await pg.set_input_files("#setSleepCsv", files=[{"name": "sleep.csv", "mimeType": "text/csv", "buffer": b"2026-10-17,23:30,07:00,5\n2026-10-16,23:00,07:15,4\n"}]); await pg.wait_for_timeout(600)
+    s3b = await pg.evaluate("()=>({n17: OvuStore.list('sleep').filter(e=>e.date==='2026-10-17').map(e=>e.data.bedTime), n16: OvuStore.list('sleep').filter(e=>e.date==='2026-10-16').map(e=>e.source+':'+e.data.bedTime).sort()})")
+    check("settings: the same night brought in again is updated, not doubled, and a night she wrote herself is kept beside it", s3b["n17"] == ["23:30"] and s3b["n16"] == ["import:23:00", "room:22:00"], s3b)
+    # the retired settings page, opened in the viewer, hands over to the sheet; opened on its own, it lands on the sheet
+    await pg.evaluate("()=>{ OvuRoom.closeSheet && OvuRoom.closeSheet(); }"); await pg.keyboard.press("Escape"); await pg.wait_for_timeout(300)
+    await pg.evaluate("()=>OvuPage.open('settings.html')"); await pg.wait_for_timeout(1500)
+    s4 = await pg.evaluate("()=>({viewer: OvuPage.isOpen(), id: OvuRoom.sheetId()})")
+    check("settings: settings.html opened from a link in the room closes the viewer and opens the Settings sheet", not s4["viewer"] and s4["id"] == "settings", s4)
+    await pg.goto(BASE + "settings.html", wait_until="domcontentloaded"); await pg.wait_for_url("**/room.html*", timeout=8000); await room_ready(pg)
+    try: await pg.wait_for_function("()=>OvuRoom.sheetId()==='settings'", timeout=6000)
+    except Exception: pass
+    s5 = await pg.evaluate("()=>({id: OvuRoom.sheetId(), tab: (document.querySelector('nav a.on')||{}).dataset})")
+    check("settings: the old settings.html address lands on the Settings sheet with the You tab chosen", s5["id"] == "settings" and (s5["tab"] or {}).get("tab") == "you", s5)
+    # representative older pages: one header with a way back, the room's five tabs, the light palette, no second Luna
+    looks = {}
+    OLDER = ["fertility.html", "journey-peri.html", "labs.html", "privacy.html", "ppg.html", "terms.html", "ovarian-health.html"]
+    # the rendered width of the page's first lines of content text (not the header), to see the room's Text size reach it
+    TEXT_W = "()=>{const el=[...document.querySelectorAll('main p, .scroll p, .scroll h1, .scroll h2, main h1, main h2, #step1 p, .terms-page p')].find(e=>!e.closest('.top,nav') && e.offsetParent && (e.textContent||'').trim().length>20); if(!el) return 0; const w=document.createTreeWalker(el,NodeFilter.SHOW_TEXT); let t; while((t=w.nextNode()) && t.textContent.trim().length<12){} if(!t) return 0; const r=document.createRange(), i=t.textContent.search(/\\S/); r.setStart(t,i); r.setEnd(t,i+10); return r.getBoundingClientRect().width;}"
+    base_w = {}
+    for name in OLDER:
+        await pg.goto(BASE + name, wait_until="load"); await pg.wait_for_timeout(400)
+        base_w[name] = await pg.evaluate(TEXT_W)
+    await pg.evaluate("()=>{var d=JSON.parse(localStorage.getItem('ovumind_db_v1')); d.profile.textSize='large'; localStorage.setItem('ovumind_db_v1', JSON.stringify(d));}")
+    for name in OLDER:
+        await pg.goto(BASE + name, wait_until="load"); await pg.wait_for_timeout(500)
+        looks[name] = await pg.evaluate("""()=>{const b=document.querySelector('.top.rh-top .rh-back'), t=document.querySelector('.top.rh-top .rh-title'), n=document.querySelector('nav.rh-nav'), l=document.querySelector('#lunaBtn');
+          return {back: b && b.getAttribute('href'), title: t && t.textContent, tabs: n ? [...n.querySelectorAll('a')].map(a=>[...a.childNodes].filter(x=>x.nodeType===3).map(x=>x.textContent).join('').trim()) : null,
+            on: n && n.querySelector('a.on') ? [...n.querySelector('a.on').childNodes].filter(x=>x.nodeType===3).map(x=>x.textContent).join('').trim() : null, icon: n && n.querySelectorAll('a .ms')[1] ? n.querySelectorAll('a .ms')[1].textContent : null, pad: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--shell-bottom-size'))||0,
+            theme: document.documentElement.getAttribute('data-theme'), bg: getComputedStyle(document.body).backgroundColor, luna: !!(l && l.offsetParent),
+            sheet: !!document.querySelector('link[href="rhythme-legacy.css"]')}}""")
+        looks[name]["grow"] = round((await pg.evaluate(TEXT_W)) / (base_w[name] or 1), 3)
+    await pg.goto(BASE + "life-journey.html", wait_until="load"); await pg.wait_for_timeout(400)
+    s2b = await pg.evaluate("()=>({mine: [...document.querySelectorAll('.journey-link.mine')].map(a=>a.getAttribute('href')), tag: (document.querySelector('.journey-link.mine .mine-tag')||{}).textContent})")
+    check("settings: the life chapter chosen in Settings is marked on Your life journey, and only that one", s2b["mine"] == ["journey-nurture.html"] and s2b["tag"] == "Your chapter", s2b)
+    bad = {k: v for k, v in looks.items() if not (v["back"] and v["back"].startswith("room.html") and v["title"] and v["theme"] == "light" and v["bg"] == "rgb(248, 243, 251)" and not v["luna"] and v["sheet"] and abs(v["grow"] - 1.12) < 0.04)}
+    check("older pages: each has the room's back button and title, the light palette even after an old dark choice, no second Luna, and the room's text size", not bad, bad)
+    navs = {k: [v["tabs"], v["on"], v["icon"], v["pad"]] for k, v in looks.items()}
+    want_on = {"fertility.html": "Home", "journey-peri.html": "Home", "labs.html": "You", "privacy.html": "You", "ppg.html": "Mind", "terms.html": "You", "ovarian-health.html": "Home"}
+    check("older pages: every one has the room's five tabs with the room's calendar icon, its own tab chosen, and room left under the content for them", all(v[0] == ["Home", "Cycle", "Food", "Mind", "You"] and v[1] == want_on[k] and v[2] == "calendar_month" and v[3] >= 50 for k, v in navs.items()), navs)
+    # retired duplicates land where their content lives: the right sheet with You chosen, the lab log, the health notes,
+    # the journal's Sleep filter; opened on their own (an old address) and from a link inside the room (the viewer)
+    ROOMS = {"notifications.html": "clock", "premium.html": "rhythme-plus", "community.html": "friends", "circle.html": "friends"}
+    PAGES = {"reports.html": "labs.html", "meds.html": "health-profile.html", "sleep.html": "journal.html"}
+    SHEET_JS = "()=>({id: OvuRoom.sheetId(), fr: !!document.querySelector('#frSheet'), tab: (document.querySelector('nav a.on')||{dataset:{}}).dataset.tab, viewer: OvuPage.isOpen()})"
+    def sheet_ok(r, want): return bool(r) and r["tab"] == "you" and not r["viewer"] and (r["fr"] if want == "friends" else r["id"] == want)
+    landed = {}
+    for name, want in ROOMS.items():
+        await pg.goto(BASE + name, wait_until="domcontentloaded")
+        try: await pg.wait_for_url("**/room.html*", timeout=8000)
+        except Exception: pass
+        await room_ready(pg)
+        try: await pg.wait_for_function("(w)=>w==='friends' ? !!document.querySelector('#frSheet') : OvuRoom.sheetId()===w", arg=want, timeout=8000)
+        except Exception: pass
+        landed["direct " + name] = await pg.evaluate(SHEET_JS)
+    for name, want in ROOMS.items():
+        await pg.evaluate("()=>{ if (OvuPage.isOpen()) OvuPage.close(); }"); await pg.keyboard.press("Escape"); await pg.wait_for_timeout(400)
+        await pg.evaluate("(n)=>OvuPage.open(n)", name)
+        try: await pg.wait_for_function("(w)=>!OvuPage.isOpen() && (w==='friends' ? !!document.querySelector('#frSheet') : OvuRoom.sheetId()===w)", arg=want, timeout=8000)
+        except Exception: pass
+        landed["viewer " + name] = await pg.evaluate(SHEET_JS)
+    bad_rooms = {k: v for k, v in landed.items() if not sheet_ok(v, ROOMS[k.split(" ")[1]])}
+    check("retired pages: reminders, the premium preview and the sample groups (community, circle) open their sheet with You chosen, from an old address and from a link in the room", not bad_rooms, bad_rooms)
+    pages = {}
+    for name, want in PAGES.items():
+        await pg.goto(BASE + name, wait_until="domcontentloaded")
+        try: await pg.wait_for_url("**/" + want + "*", timeout=8000)
+        except Exception: pass
+        await pg.wait_for_timeout(500)
+        pages["direct " + name] = await pg.evaluate("()=>({path: location.pathname.split('/').pop(), sleep: !!document.querySelector('#filters [data-f=sleep].on')})")
+    await pg.goto(BASE + "room.html", wait_until="domcontentloaded"); await room_ready(pg)
+    for name, want in PAGES.items():
+        await pg.evaluate("()=>{ if (OvuPage.isOpen()) OvuPage.close(); }"); await pg.wait_for_timeout(400)
+        await pg.evaluate("(n)=>OvuPage.open(n)", name)
+        try: await pg.wait_for_function("(w)=>{try{return document.querySelector('#pvFrame').contentWindow.location.pathname.endsWith('/'+w) && document.querySelector('#pvTitle').textContent}catch(e){return false}}", arg=want, timeout=8000)
+        except Exception: pass
+        await pg.wait_for_timeout(600)
+        pages["viewer " + name] = await pg.evaluate("()=>{const f=document.querySelector('#pvFrame'); let p='', s=false; try { p=f.contentWindow.location.pathname.split('/').pop(); s=!!f.contentDocument.querySelector('#filters [data-f=sleep].on'); } catch(e){} return {path: p, sleep: s, open: OvuPage.isOpen()}}")
+    bad_pages = {k: v for k, v in pages.items() if not (v["path"] == PAGES[k.split(" ")[1]] and (v["sleep"] if k.endswith("sleep.html") else True) and v.get("open", True))}
+    check("retired pages: sample reports open the lab log, sample medicines the health notes, sleep notes the journal on its Sleep filter, from an old address and inside the viewer", not bad_pages, bad_pages)
+    await pg.evaluate("()=>{ if (OvuPage.isOpen()) OvuPage.close(); }"); await pg.wait_for_timeout(400)
+    # a Learn page in the viewer: its own header and tabs step aside for the viewer's bar
+    await pg.goto(BASE + "room.html", wait_until="domcontentloaded"); await room_ready(pg)
+    await pg.evaluate("()=>OvuPage.open('fertility.html')")
+    try: await pg.wait_for_function("()=>document.querySelector('#pvTitle').textContent==='Fertility' && document.querySelector('#pvFrame').contentDocument.getElementById('pvEmbedStyle')", timeout=15000)
+    except Exception: pass
+    await pg.wait_for_timeout(300)
+    v1 = await pg.evaluate("()=>{const f=document.querySelector('#pvFrame'), d=f.contentDocument, top=d.querySelector('.top'), nav=d.querySelector('nav.nav');return {open: OvuPage.isOpen(), title: document.querySelector('#pvTitle').textContent, top: top ? getComputedStyle(top).display : 'none', nav: nav ? getComputedStyle(nav).display : 'none'}}")
+    check("viewer: a Learn page opens over the room with the viewer's title, its own header and tabs hidden", v1["open"] and v1["title"] == "Fertility" and v1["top"] == "none" and v1["nav"] == "none", v1)
+    check("older pages and settings: no page errors", not errs, errs[:3])
+    await ctx.close()
+
+async def gym_checks(browser, gate):
+    """Tideline Gym workouts (22 Oct): a context of its own with a fake clock, so a minute on the machine passes at once
+    while every timer still fires in order (run_for)"""
+    ctxg = await browser.new_context(viewport={"width": 390, "height": 844}, service_workers="block")  # so a blocked picture really fails (the worker would serve it past the route)
+    await ctxg.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB))); await ctxg.add_init_script(SESSION_SEED)
+    await ctxg.clock.install()
+    pg = await ctxg.new_page(); await pg.route("**/*", gate)
+    gerr = []; pg.on("pageerror", lambda e: gerr.append("pageerror: " + str(e)))
+    await pg.goto(BASE + "room.html", wait_until="domcontentloaded")
+    try: await pg.wait_for_function("()=>window.OvuGym && window.OvuRoom && document.querySelector('#loading').classList.contains('hidden') && document.querySelector('#scene').dataset.layout", timeout=20000)
+    except Exception: pass
+    await pg.evaluate("()=>{ if (OvuRoom.sheetOpen()) OvuRoom.hideSheet(); OvuWalk.travel('lane-gym'); }")
+    try: await pg.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='lane-gym' && !document.querySelector('#scene').classList.contains('fading') && !OvuWalk.travelling()", timeout=15000)
+    except Exception: pass
+    await pg.wait_for_timeout(500)
+    G = "()=>({st: OvuGym.state(), active: OvuGym.active(), costume: OvuRoom.costume(), saved: OvuStore.profile().outfit, src: (document.querySelector('#avatarImg').getAttribute('src')||'').split('/').pop(), hidden: document.querySelector('#avatar').classList.contains('hidden'), strip: !!document.querySelector('#ownedProps .gymworker'), stripSrc: ((document.querySelector('#ownedProps .gymworker img')||{}).getAttribute ? document.querySelector('#ownedProps .gymworker img').getAttribute('src') : '').split('/').pop(), sheet: OvuRoom.sheetOpen() ? OvuRoom.sheetId() : null, pos: OvuRoom.pos(), ex: OvuStore.list('exercise').length, act: (OvuRoom.activityNow()||{}).kind || null, busy: OvuRoom.busy(), panel: !!document.querySelector('#gpanel') && !document.querySelector('#gpanel').hidden})"
+    async def station(hid):
+        for _ in range(2):  # a tap that lands while she is still settling (a moment after an overlay, a heavy machine) is tried once more
+            await pg.evaluate("(h)=>{ if (OvuRoom.sheetOpen()) OvuRoom.hideSheet(); OvuRoom.tap(OvuRoom.hotspot(h)); }", hid)
+            try:
+                await pg.wait_for_function("(h)=>OvuRoom.sheetOpen() && OvuRoom.sheetId()==='gym-'+h.slice(3)", arg=hid, timeout=12000); break
+            except Exception: await pg.clock.run_for(2000)
+        await pg.wait_for_timeout(200)
+    async def begin(hid, mins):
+        await station(hid)
+        await pg.click('#gymLen [data-len="%d"]' % mins); await pg.click('#gymBegin')
+        await pg.clock.run_for(2600)
+        try: await pg.wait_for_function("()=>OvuGym.state() && OvuGym.state().phase==='move'", timeout=6000)
+        except Exception: pass
+    ex0 = await pg.evaluate("()=>OvuStore.list().length")
+    await station('gymtreadmill')
+    sh = await pg.evaluate("()=>({id: OvuRoom.sheetId(), lens: [...document.querySelectorAll('#gymLen [data-len]')].map(b=>b.dataset.len).join(), on: (document.querySelector('#gymLen .on')||{}).dataset.len, begin: !!document.querySelector('#gymBegin'), log: !!document.querySelector('#gymJustLog'), urgent: (document.querySelector('.gymurgent')||{}).textContent||''})")
+    await pg.click('#gymJustLog'); await pg.wait_for_timeout(300)
+    jl = await pg.evaluate("()=>({id: OvuRoom.sheetId(), walk: !!document.querySelector('#sheet [data-mact=walk][aria-pressed=true]')})")
+    check("gym: a station opens its own sheet: a length (5 to 30 minutes, 10 chosen), Begin, Just log movement and the world-wide emergency line; Just log movement is the movement log with walking chosen, as before", sh["id"] == "gym-treadmill" and sh["lens"] == "5,10,15,20,30" and sh["on"] == "10" and sh["begin"] and sh["log"] and "local emergency number" in sh["urgent"] and jl["id"] == "move" and jl["walk"], [sh, jl])
+    await begin('gymtreadmill', 5)
+    a = await pg.evaluate(G)
+    await pg.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('gymbike'))"); await pg.wait_for_timeout(200)
+    b2 = await pg.evaluate(G)
+    bc = {"active": a["active"], "mounted": a["st"]["mounted"], "costume": a["costume"] == "yoga", "saved": a["saved"] == "base", "src": a["src"] == "avatar-yoga.webp", "hidden": a["hidden"], "strip": a["strip"], "stripSrc": a["stripSrc"] == "avatar-walk-yoga-side.webp", "panel": a["panel"], "act": a["act"] == "gym", "busy": a["busy"], "stays": b2["st"]["id"] == "treadmill", "nosheet": b2["sheet"] is None}
+    check("gym: Begin turns her into the yoga set (shown, never saved) and puts her on the belt: the strip plays, her standing picture hides, the panel shows; it is the activity, the room is busy, and another machine waits", all(bc.values()), {"failed": [k for k, v in bc.items() if not v], "src": a["src"], "costume": a["costume"], "sheet": b2["sheet"], "stripSrc": a["stripSrc"]})
+    await pg.click('#gpPause'); p1 = await pg.evaluate("()=>OvuGym.state().ms"); await pg.clock.run_for(8000); p2 = await pg.evaluate("()=>OvuGym.state().ms"); await pg.click('#gpPause'); await pg.clock.run_for(3000); p3 = await pg.evaluate("()=>OvuGym.state()")
+    check("gym: Pause holds the clock; Resume carries on", abs(p2 - p1) < 1 and not p3["paused"] and p3["ms"] > p2 + 2500, [p1, p2, p3])
+    await pg.click('#gpStop'); await pg.clock.run_for(2500); await pg.wait_for_timeout(200)
+    s = await pg.evaluate(G)
+    check("gym: Stop under a minute brings her off, back in her own clothes and seen at the treadmill's stand point; nothing is offered or written", not s["active"] and s["costume"] is None and s["src"] == "avatar-base.webp" and not s["hidden"] and not s["strip"] and s["sheet"] is None and abs(s["pos"]["x"] - 33) < 1 and abs(s["pos"]["y"] - 58) < 1 and await pg.evaluate("()=>OvuStore.list().length") == ex0, s)
+    # Jamie's rule: nobody floats and everyone keeps her size. Every frame of every machine's strip, in both kits, as drawn on
+    # screen, against her standing figure in the same kit: standing frames keep her height, the rider keeps her head size, and
+    # the strip's bottom (her feet, the mat, the bike's base) sits on the machine's spot with no gap
+    SIZE_JS = """async (on) => { const e=document.querySelector('#ownedProps .gymworker'), r=e.getBoundingClientRect(), st=OvuGym.state(), m=OvuGym.strip(st.kit, st.id), inner=document.querySelector('#sceneInner').getBoundingClientRect();
+      const load=(src)=>new Promise((res,rej)=>{ const I=new Image(); I.onload=()=>res(I); I.onerror=rej; I.src=src; });
+      function box(img, sx, w, h, band){ const c=document.createElement('canvas'); c.width=w; c.height=h; const g=c.getContext('2d'); g.drawImage(img, sx, 0, w, h, 0, 0, w, h); const d=g.getImageData(0,0,w,h).data; let top=h, bot=0;
+        for (let y=0;y<h;y++) for (let x=0;x<w;x++) if (d[(y*w+x)*4+3]>24){ if(y<top) top=y; if(y>bot) bot=y; }
+        let hw=0; const k=band==null?0.2*(bot-top+1):band; for (let y=top;y<Math.min(h,top+k);y++){ let L=-1,R=-1; for (let x=0;x<w;x++) if (d[(y*w+x)*4+3]>24){ if(L<0) L=x; R=x; } if (L>=0 && R-L+1>hw) hw=R-L+1; }
+        return {top:top, bot:bot, hw:hw}; }
+      const S=await load('assets/room/dream/avatar-'+st.kit+'.webp'), aw=parseFloat(document.querySelector('#avatar').style.width)/100*inner.width, ss=aw/S.naturalWidth, sb=box(S, 0, S.naturalWidth, S.naturalHeight);
+      const stand={fig:(sb.bot-sb.top+1)*ss, hw:sb.hw*ss};
+      const I=await load(e.querySelector('.gwa').getAttribute('src')), n=m.frames, cw=Math.round(I.naturalWidth/n), H=I.naturalHeight, s=r.width/cw, out=[];
+      for (let f=0; f<n; f++){ const b=box(I, f*cw, cw, H, 0.2*stand.fig/s); out.push({fig:(b.bot-b.top+1)*s, gap:(H-1-b.bot)*s, hw:b.hw*s}); }
+      return {kit:st.kit, id:st.id, frames:out, stand:stand, bottomOff:r.bottom-(inner.top+on.y/100*inner.height)}; }"""
+    sizes = []
+    for kit_outfit in ["base", "tudung"]:
+        await pg.evaluate("(o)=>OvuRoom.setOutfit(o, true)", kit_outfit); await pg.wait_for_timeout(300)
+        for sid in ["treadmill", "bike", "mat", "weights"]:
+            await begin('gym' + sid, 5)
+            on = await pg.evaluate("(id)=>OvuGym.STATIONS[id].on", sid)
+            sizes.append(await pg.evaluate(SIZE_JS, on))
+            await pg.click('#gpStop'); await pg.clock.run_for(2500); await pg.wait_for_timeout(300)
+    await pg.evaluate("()=>OvuRoom.setOutfit('base', true)"); await pg.wait_for_timeout(300)
+    def fits(z):
+        st = z["stand"]; fr = z["frames"]
+        if abs(z["bottomOff"]) >= 1 or any(f["gap"] >= 0.5 for f in fr): return False
+        if z["id"] in ("treadmill", "weights"): return all(abs(f["fig"] - st["fig"]) / st["fig"] < 0.02 for f in fr)
+        if z["id"] == "mat": return abs(fr[0]["fig"] - st["fig"]) / st["fig"] < 0.02  # the flow begins standing; later poses kneel and lie on the mat
+        return all(abs(f["hw"] - st["hw"]) / st["hw"] < 0.03 for f in fr)  # the rider: her head as wide as when she stands
+    check("gym: on every machine in both kits she keeps her size (standing frames within 2% of her standing figure, the rider's head within 3% of her standing head, the flow's first pose her full height) and nothing floats (the strip's bottom on the machine's spot, no gap under her feet, the mat or the bike)", len(sizes) == 8 and {z["kit"] for z in sizes} == {"yoga", "gym-tudung"} and all(fits(z) for z in sizes), [{"kit": z["kit"], "id": z["id"], "ok": fits(z), "stand": z["stand"], "off": round(z["bottomOff"], 2), "figs": [round(f["fig"], 1) for f in z["frames"]], "hws": [round(f["hw"], 1) for f in z["frames"]], "gaps": [round(f["gap"], 2) for f in z["frames"]]} for z in sizes])
+    await begin('gymweights', 10)
+    await pg.clock.run_for(65000); await pg.click('#gpStop')
+    for _ in range(20):  # the offer waits until she has turned back into her own clothes
+        await pg.clock.run_for(400)
+        if await pg.evaluate("()=>OvuRoom.sheetId()==='move'"): break
+    await pg.wait_for_timeout(200)
+    m = await pg.evaluate("()=>({id: OvuRoom.sheetId(), str: !!document.querySelector('#sheet [data-mact=strength][aria-pressed=true]'), min: (document.querySelector('#mvMin')||{}).value, tick: (document.querySelector('#mvStr')||{}).checked, from: (document.querySelector('#mvFrom')||{}).textContent||'', costume: OvuRoom.costume(), ex: OvuStore.list().length})")
+    tk = []
+    for step in ["#mvStr", "#sheet [data-mact=strength]", "#mvStr", "#sheet [data-mact=strength]", "#sheet [data-mact=walk]", "#sheet [data-mact=strength]"]:
+        await pg.click(step); tk.append(await pg.evaluate("()=>document.querySelector('#mvStr').checked"))
+    check("gym: in the movement log her own strength-day choice stands: ticked, it stays ticked when she taps Strength again; unticked, it stays unticked, even after choosing walking and Strength again", tk == [True, True, False, False, False, False], tk)
+    await pg.click('#mvVars [data-mvar="reps"]'); await pg.click('#mvSave'); await pg.wait_for_timeout(400)
+    sv = await pg.evaluate("()=>{ var e=OvuStore.list('exercise').slice(-1)[0]; return {n: OvuStore.list().length, a: e&&e.data.activity, mins: e&&e.data.minutes, strength: e&&e.data.strength}; }")
+    check("gym: after a minute at the weights, Stop opens the movement log with strength chosen, 1 minute from the clock and her words; the strength day is left for her to tick; nothing was written until her Save, which writes one entry", m["id"] == "move" and m["str"] and m["min"] == "1" and m["tick"] is False and "About 1 minute on the weights" in m["from"] and m["costume"] is None and m["ex"] == ex0 and sv["n"] == ex0 + 1 and sv["a"] == "strength" and sv["mins"] == 1 and sv["strength"] is False, [m, sv])
+    await pg.evaluate("()=>OvuRoom.hideSheet()")
+    await begin('gymmat', 5)
+    f0 = await pg.evaluate("()=>OvuGym.state().frame"); await pg.clock.run_for(5200); f1 = await pg.evaluate("()=>OvuGym.state().frame")
+    await pg.clock.run_for(5 * 60000)
+    for _ in range(20):  # the offer waits until she has turned back into her own clothes
+        if await pg.evaluate("()=>OvuRoom.sheetId()==='move'"): break
+        await pg.clock.run_for(400)
+    await pg.wait_for_timeout(200)
+    e = await pg.evaluate("()=>({id: OvuRoom.sheetId(), yoga: !!document.querySelector('#sheet [data-mact=yoga][aria-pressed=true]'), min: (document.querySelector('#mvMin')||{}).value, active: OvuGym.active(), n: OvuStore.list().length})")
+    await pg.evaluate("()=>OvuRoom.closeSheet()"); await pg.wait_for_timeout(300)
+    n2 = await pg.evaluate("()=>OvuStore.list().length")
+    check("gym: the mat's flow moves on to its next pose; the length she chose ends it by itself and the log opens with yoga and 5 minutes; closing it writes nothing", f1 != f0 and e["id"] == "move" and e["yoga"] and e["min"] == "5" and not e["active"] and n2 == e["n"] == ex0 + 1, [f0, f1, e, n2])
+    await pg.evaluate("()=>OvuRoom.setOutfit('tudung', true)"); await pg.wait_for_timeout(300)
+    await begin('gymbike', 5)
+    t = await pg.evaluate(G)
+    await pg.evaluate("()=>OvuRoom.applyLayout('lane')"); await pg.wait_for_timeout(400)
+    lv = await pg.evaluate(G)
+    check("gym: a tudung wearer rides in the covered-head kit; leaving the gym mid-ride ends it with nothing asked, her own clothes back, and she is seen in the new scene", t["costume"] == "gym-tudung" and t["src"] == "avatar-gym-tudung.webp" and t["stripSrc"] == "avatar-gym-bike-gym-tudung.webp" and t["saved"] == "tudung" and not lv["active"] and lv["costume"] is None and lv["src"] == "avatar-tudung.webp" and not lv["hidden"] and lv["sheet"] is None and lv["ex"] == t["ex"], [t, lv])
+    await pg.evaluate("()=>OvuRoom.applyLayout('lane-gym')"); await pg.wait_for_timeout(400)
+    # a wardrobe pick mid-workout is saved and waits; she turns into it when the workout ends
+    await begin('gymtreadmill', 5)
+    await pg.evaluate("()=>OvuRoom.setOutfit('sundress')"); await pg.wait_for_timeout(300)
+    wd = await pg.evaluate(G)
+    await pg.click('#gpStop'); await pg.clock.run_for(2500); await pg.wait_for_timeout(300)
+    wd2 = await pg.evaluate(G)
+    check("gym: a wardrobe pick mid-workout is saved but she stays in the gym kit on the belt; at Stop she turns into the new pick", wd["saved"] == "sundress" and wd["costume"] == "gym-tudung" and wd["stripSrc"] == "avatar-walk-gym-tudung-side.webp" and not wd2["active"] and wd2["src"] == "avatar-sundress.webp" and not wd2["hidden"], [wd, wd2])
+    # her own picture will not load at the end: the picture she wore before the workout, never the gym kit
+    await pg.route("**/avatar-party*.webp", lambda r: r.abort())
+    await begin('gymweights', 5)
+    await pg.evaluate("()=>OvuRoom.setOutfit('party')"); await pg.wait_for_timeout(300)
+    await pg.click('#gpStop'); await pg.clock.run_for(3000); await pg.wait_for_timeout(500)
+    fr = await pg.evaluate(G)
+    await pg.unroute("**/avatar-party*.webp")
+    check("gym: if her own outfit's picture will not load when she changes back, she wears the picture she had on before the workout, never the yoga set, and is seen", fr["saved"] == "party" and fr["costume"] is None and fr["src"] == "avatar-sundress.webp" and not fr["hidden"], fr)
+    await pg.evaluate("()=>OvuRoom.setOutfit('base', true)"); await pg.wait_for_timeout(300)
+    # her own clothes still on their way when something else happens: the requests for her new pick are held, then fail
+    held = []
+    async def hold(route): held.append(route)
+    async def fail_held():
+        for _ in range(6):
+            while held: await held.pop().abort()
+            await pg.wait_for_timeout(150)
+    await pg.route("**/avatar-cozy*.webp", hold)
+    await begin('gymtreadmill', 5)
+    await pg.evaluate("()=>OvuRoom.setOutfit('cozy')"); await pg.wait_for_timeout(200)
+    await pg.click('#gpStop'); await pg.clock.run_for(600); await pg.wait_for_timeout(200)
+    ra = await pg.evaluate("()=>({restoring: OvuRoom.restoring(), src: (document.querySelector('#avatarImg').getAttribute('src')||'').split('/').pop()})")
+    await begin('gymweights', 5)
+    rb = await pg.evaluate(G)
+    await pg.evaluate("()=>OvuGym.cancel()"); await pg.clock.run_for(300)
+    await fail_held(); await pg.clock.run_for(1500); await pg.wait_for_timeout(300)
+    rc = await pg.evaluate(G)
+    check("gym: another workout begun while her own clothes are still loading keeps the picture she wore before the first one as the way back; when her own will not load she wears that, never the workout clothes", ra["restoring"] and ra["src"] == "avatar-yoga.webp" and rb["active"] and rb["costume"] == "yoga" and not rc["active"] and rc["costume"] is None and rc["saved"] == "cozy" and rc["src"] == "avatar-base.webp" and not rc["hidden"], [ra, rb, rc])
+    await begin('gymtreadmill', 5)
+    await pg.click('#gpStop'); await pg.clock.run_for(400)
+    await pg.evaluate("()=>OvuRoom.setPose('no-such-pose')"); await pg.wait_for_timeout(500)
+    await pg.clock.run_for(1500); await pg.wait_for_timeout(300)
+    rd = await pg.evaluate(G)
+    await fail_held(); await pg.clock.run_for(1500); await pg.wait_for_timeout(300)
+    re2 = await pg.evaluate(G)
+    await pg.unroute("**/avatar-cozy*.webp")
+    check("gym: a newer picture taking over while her own clothes load (a pose that will not load either) never leaves the workout clothes on her: she wears what she had on before", rd["src"] == "avatar-base.webp" and re2["src"] == "avatar-base.webp" and re2["costume"] is None and not re2["hidden"], [rd, re2])
+    await pg.evaluate("()=>{ OvuRoom.restorePose(); OvuRoom.setOutfit('base', true); }"); await pg.wait_for_timeout(300)
+    # a floor tap mid-turn cuts her change back short: her own clothes are on, so the log still opens (Codex diff review 3)
+    await begin('gymtreadmill', 5); await pg.clock.run_for(65000)
+    await pg.click('#gpStop')
+    try:
+        await pg.wait_for_function("()=>document.querySelector('#avatar').classList.contains('twirling')", timeout=4000); tw = True
+    except Exception: tw = False
+    await pg.evaluate("""()=>{ const inner=document.querySelector('#sceneInner'), r=inner.getBoundingClientRect(); inner.dispatchEvent(new MouseEvent('click', {bubbles: true, clientX: r.left + r.width*0.40, clientY: r.top + r.height*0.58, detail: 1})); }""")
+    ft = await pg.evaluate("()=>({walking: OvuWalk.walking(), twirling: document.querySelector('#avatar').classList.contains('twirling')})")
+    for _ in range(20):
+        await pg.clock.run_for(400)
+        if await pg.evaluate("()=>OvuRoom.sheetId()==='move'"): break
+    fu = await pg.evaluate("()=>({sheet: OvuRoom.sheetOpen() ? OvuRoom.sheetId() : null, restoring: OvuRoom.restoring(), src: (document.querySelector('#avatarImg').getAttribute('src')||'').split('/').pop(), n: OvuStore.list().length})")
+    await pg.evaluate("()=>OvuRoom.closeSheet()"); await pg.clock.run_for(1500); await pg.wait_for_timeout(200)
+    check("gym: a floor tap while she turns back into her own clothes cuts the turn short and walks her, her own clothes on, and the movement log still opens", tw and ft["walking"] and not ft["twirling"] and fu["sheet"] == "move" and not fu["restoring"] and fu["src"] == "avatar-base.webp", [tw, ft, fu])
+    # Light Flower opened over a waiting log offer: the offer goes, never opening under the flower or after it (Codex diff review 3)
+    await begin('gymtreadmill', 5); await pg.clock.run_for(65000)
+    await pg.evaluate("()=>OvuRoom.openCalendar()"); await pg.wait_for_timeout(300)
+    await pg.evaluate("()=>document.querySelector('#gpStop').click()"); await pg.clock.run_for(3000)
+    ov0 = await pg.evaluate("()=>OvuGym.pendingAsk()")
+    await pg.evaluate("()=>document.querySelector('[data-tab=mind]').click()"); await pg.wait_for_timeout(400); await pg.clock.run_for(1000)
+    mind = await pg.evaluate("()=>({sheet: OvuRoom.sheetOpen() ? OvuRoom.sheetId() : null, med: OvuRoom.meditating(), ask: OvuGym.pendingAsk()})")
+    await pg.evaluate("()=>document.querySelector('#mindFlower').click()"); await pg.clock.run_for(1500); await pg.wait_for_timeout(200)
+    ov1 = await pg.evaluate("()=>({ask: OvuGym.pendingAsk(), sheet: OvuRoom.sheetOpen() ? OvuRoom.sheetId() : null, over: document.body.classList.contains('btap-open')})")
+    await pg.evaluate("()=>OvuLightFlower.close()"); await pg.clock.run_for(3000); await pg.wait_for_timeout(200)
+    ov2 = await pg.evaluate("()=>({ask: OvuGym.pendingAsk(), sheet: OvuRoom.sheetOpen() ? OvuRoom.sheetId() : null})")
+    check("gym: a log offer waiting behind a sheet stays waiting while Mind seats her on the mat, and goes when Light Flower opens: it never opens under the flower or after it", ov0 and mind["sheet"] == "mind" and mind["med"] and mind["ask"] and not ov1["ask"] and ov1["over"] and ov1["sheet"] != "move" and not ov2["ask"] and ov2["sheet"] != "move", [ov0, mind, ov1, ov2])
+    await pg.evaluate("()=>{ if (OvuRoom.sheetOpen()) OvuRoom.hideSheet(); if (OvuRoom.meditating()) OvuRoom.exitMeditation(); }"); await pg.clock.run_for(2000); await pg.wait_for_timeout(300)
+    # Mind, then one of its own sheets (Everyday, You), then close: she may still sit, but the waiting offer opens (Codex diff review 4)
+    mc = []
+    for child in ["#mindEveryday", "[data-tab=you]"]:
+        await begin('gymtreadmill', 5); await pg.clock.run_for(65000)
+        await pg.evaluate("()=>OvuRoom.openCalendar()"); await pg.wait_for_timeout(300)
+        await pg.evaluate("()=>document.querySelector('#gpStop').click()"); await pg.clock.run_for(3000)
+        await pg.evaluate("()=>document.querySelector('[data-tab=mind]').click()"); await pg.wait_for_timeout(300); await pg.clock.run_for(800)
+        await pg.evaluate("(c)=>document.querySelector(c).click()", child); await pg.wait_for_timeout(300); await pg.clock.run_for(800)
+        via = await pg.evaluate("()=>OvuRoom.sheetOpen() ? OvuRoom.sheetId() : null")
+        await pg.evaluate("()=>OvuRoom.closeSheet()")
+        for _ in range(20):
+            await pg.clock.run_for(400)
+            if await pg.evaluate("()=>OvuRoom.sheetId()==='move'"): break
+        mc.append({"child": child, "via": via, "sheet": await pg.evaluate("()=>OvuRoom.sheetOpen() ? OvuRoom.sheetId() : null"), "ask": await pg.evaluate("()=>OvuGym.pendingAsk()")})
+        await pg.evaluate("()=>{ OvuRoom.closeSheet(); if (OvuRoom.meditating()) OvuRoom.exitMeditation(); }"); await pg.clock.run_for(1500); await pg.wait_for_timeout(200)
+    check("gym: a log offer waiting behind a sheet still opens after Mind, then Everyday practice or You, then closing it", len(mc) == 2 and all(m["via"] not in (None, "mind", "move") and m["sheet"] == "move" and not m["ask"] for m in mc), mc)
+    # her own clothes' picture never answers: after a few seconds she wears the picture from before and the log opens (Codex diff review 4)
+    stalled = []
+    async def stall(route): stalled.append(route)
+    await pg.route("**/avatar-kebaya-red*.webp", stall)
+    await begin('gymtreadmill', 5)
+    await pg.evaluate("()=>OvuRoom.setOutfit('kebaya-red')"); await pg.wait_for_timeout(200)
+    await pg.clock.run_for(65000); await pg.click('#gpStop')
+    sw0 = None
+    for i in range(30):
+        await pg.clock.run_for(400)
+        if i == 3: sw0 = await pg.evaluate("()=>({restoring: OvuRoom.restoring(), src: (document.querySelector('#avatarImg').getAttribute('src')||'').split('/').pop()})")
+        if await pg.evaluate("()=>OvuRoom.sheetId()==='move'"): break
+    sw1 = await pg.evaluate("()=>({sheet: OvuRoom.sheetOpen() ? OvuRoom.sheetId() : null, restoring: OvuRoom.restoring(), saved: OvuStore.profile().outfit, src: (document.querySelector('#avatarImg').getAttribute('src')||'').split('/').pop(), hidden: document.querySelector('#avatar').classList.contains('hidden')})")
+    await pg.evaluate("()=>OvuRoom.closeSheet()")
+    while stalled: await stalled.pop().abort()
+    await pg.unroute("**/avatar-kebaya-red*.webp")
+    await pg.evaluate("()=>OvuRoom.setOutfit('base', true)"); await pg.clock.run_for(1500); await pg.wait_for_timeout(300)
+    check("gym: when her own clothes' picture never answers, she is still in the workout clothes at first, then within about six seconds wears the picture from before the workout and the movement log opens", sw0 and sw0["restoring"] and sw0["src"] == "avatar-yoga.webp" and sw1["sheet"] == "move" and not sw1["restoring"] and sw1["saved"] == "kebaya-red" and sw1["src"] == "avatar-base.webp" and not sw1["hidden"], [sw0, sw1])
+    # a phone lock mid-workout: paused, time away not counted, Resume carries on
+    await begin('gymtreadmill', 10)
+    await pg.clock.run_for(5000)
+    await pg.evaluate("()=>{ Object.defineProperty(document, 'hidden', {configurable: true, get: function () { return true; }}); document.dispatchEvent(new Event('visibilitychange')); }")
+    h1 = await pg.evaluate("()=>OvuGym.state()"); await pg.clock.run_for(60000); h2 = await pg.evaluate("()=>({st: OvuGym.state(), text: document.querySelector('#gpText').textContent})")
+    await pg.evaluate("()=>{ delete document.hidden; document.dispatchEvent(new Event('visibilitychange')); }")
+    await pg.click('#gpPause'); await pg.clock.run_for(3000); h3 = await pg.evaluate("()=>OvuGym.state()")
+    check("gym: a locked phone pauses the workout, a minute away is not counted and the panel says so; Resume carries on", h1["paused"] and abs(h2["st"]["ms"] - h1["ms"]) < 1 and "not counted" in h2["text"] and not h3["paused"] and h3["ms"] > h1["ms"] + 2500, [h1, h2, h3])
+    # a props rebuild (a game-save pull, the sky) keeps her on the machine with her clock
+    pr0 = await pg.evaluate("()=>OvuGym.state().ms"); await pg.evaluate("()=>OvuRoom.renderProps()"); await pg.clock.run_for(2000)
+    pr = await pg.evaluate(G)
+    check("gym: a props rebuild keeps her on the belt with the clock running", pr["strip"] and pr["active"] and pr["st"]["ms"] > pr0 + 1500, [pr0, pr])
+    # the real path: an ordinary save in another tab reaches this one as 'external', and the room rebuilds its props
+    tb2 = await ctxg.new_page(); await tb2.route("**/*", gate)
+    await tb2.goto(BASE + "room.html", wait_until="domcontentloaded")
+    try: await tb2.wait_for_function("()=>window.OvuStore && window.OvuRoom", timeout=20000)
+    except Exception: pass
+    await tb2.evaluate("()=>OvuStore.setState({ smokeTouch: 1 })"); await tb2.close()
+    await pg.bring_to_front(); await pg.clock.run_for(1000)
+    if await pg.evaluate("()=>OvuGym.state() && OvuGym.state().paused"): await pg.click('#gpPause')  # a background tab may have paused it
+    ex1 = await pg.evaluate("()=>OvuGym.state().ms"); await pg.clock.run_for(2000)
+    xt = await pg.evaluate(G)
+    check("gym: an ordinary save in another tab keeps her on the belt: the room rebuilds its props and her strip and clock carry on", xt["strip"] and xt["active"] and xt["st"]["id"] == "treadmill" and xt["st"]["ms"] > ex1 + 1500, [ex1, xt])
+    # one activity at a time: a breathing session asked for mid-workout is refused and the workout carries on
+    await pg.evaluate("()=>OvuRoom.runSession('just', 1)"); await pg.wait_for_timeout(200)
+    rf = await pg.evaluate("()=>({active: OvuGym.active(), session: OvuRoom.sessionOn(), panel: !!document.querySelector('#gpanel') && !document.querySelector('#gpanel').hidden, toast: document.querySelector('#toast').textContent})")
+    check("gym: a breathing session started mid-workout is refused with a line, and the workout carries on with its panel showing", rf["active"] and not rf["session"] and rf["panel"] and "is running" in rf["toast"], rf)
+    await pg.evaluate("()=>document.querySelector('[data-tab=mind]').click()"); await pg.wait_for_timeout(300)
+    mr = await pg.evaluate("()=>({active: OvuGym.active(), med: OvuRoom.meditating(), sheet: OvuRoom.sheetOpen() ? OvuRoom.sheetId() : null, panel: !!document.querySelector('#gpanel') && !document.querySelector('#gpanel').hidden, toast: document.querySelector('#toast').textContent})")
+    check("gym: the Mind tab mid-workout is refused with a line: she stays on the machine, is not seated on the mat, and the workout panel shows", mr["active"] and not mr["med"] and mr["sheet"] != "mind" and mr["panel"] and "is running" in mr["toast"], mr)
+    # a waiting log offer is dropped when a real session starts
+    await pg.clock.run_for(60000); await pg.evaluate("()=>OvuRoom.openCalendar()"); await pg.wait_for_timeout(300)
+    await pg.evaluate("()=>document.querySelector('#gpStop').click()"); await pg.clock.run_for(1500)  # the calendar sheet sits over the panel
+    pw = await pg.evaluate("()=>!!OvuGym.pendingAsk()")
+    await pg.evaluate("()=>OvuRoom.runSession('just', 1)"); await pg.clock.run_for(3000); await pg.wait_for_timeout(200)
+    ps2 = await pg.evaluate("()=>({session: OvuRoom.sessionOn(), sheet: OvuRoom.sheetOpen() ? OvuRoom.sheetId() : null, ask: !!OvuGym.pendingAsk()})")
+    await pg.evaluate("()=>document.querySelector('#hudStop').click()"); await pg.clock.run_for(3000); await pg.wait_for_timeout(200)
+    po = await pg.evaluate(G)
+    check("gym: a log offer waiting behind another sheet is dropped when a breathing session starts, so it never opens over the session or after it", pw and ps2["session"] and ps2["sheet"] != "move" and not ps2["ask"] and not po["active"] and po["sheet"] != "move" and not await pg.evaluate("()=>OvuGym.pendingAsk()"), [pw, ps2, po])
+    await pg.evaluate("()=>{ if (OvuRoom.sheetOpen()) OvuRoom.hideSheet(); }")
+    await begin('gymtreadmill', 10)
+    await pg.clock.run_for(70000)
+    await pg.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('bed'))")
+    for _ in range(40):
+        await pg.clock.run_for(500)
+        if await pg.evaluate("()=>OvuRoom.sheetId()==='bedtime'"): break
+    bd = await pg.evaluate(G)
+    bd["layout"] = await pg.evaluate("()=>OvuRoom.layout().id")
+    check("gym: the bed mid-workout ends it first, so the walk home is not refused: she arrives home, the bedtime sheet opens, her own clothes are back and nothing was written", not bd["active"] and bd["costume"] is None and bd["sheet"] == "bedtime" and bd["layout"] == "room" and bd["src"] == "avatar-base.webp" and bd["ex"] == t["ex"] + 0, bd)
+    check("gym: no page errors in the gym run", not gerr, gerr[:3])
+    await ctxg.close()
+    # reduced motion, another tab's reset, and sign-out, in a context of their own
+    ctxr = await browser.new_context(viewport={"width": 390, "height": 844}, reduced_motion="reduce")
+    await ctxr.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB))); await ctxr.add_init_script(SESSION_SEED)
+    await ctxr.clock.install()
+    pr2 = await ctxr.new_page(); await pr2.route("**/*", gate); rerr = []; pr2.on("pageerror", lambda e: rerr.append("pageerror: " + str(e)))
+    await pr2.goto(BASE + "room.html", wait_until="domcontentloaded")
+    try: await pr2.wait_for_function("()=>window.OvuGym && window.OvuRoom && document.querySelector('#loading').classList.contains('hidden') && document.querySelector('#scene').dataset.layout", timeout=20000)
+    except Exception: pass
+    await pr2.evaluate("()=>{ if (OvuRoom.sheetOpen()) OvuRoom.hideSheet(); OvuWalk.travel('lane-gym'); }")
+    try: await pr2.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='lane-gym' && !document.querySelector('#scene').classList.contains('fading') && !OvuWalk.travelling()", timeout=15000)
+    except Exception: pass
+    await pr2.wait_for_timeout(500)
+    await pr2.evaluate("()=>{ OvuRoom.tap(OvuRoom.hotspot('gymweights')); }")
+    try: await pr2.wait_for_function("()=>OvuRoom.sheetId()==='gym-weights'", timeout=12000)
+    except Exception: pass
+    await pr2.click('#gymBegin'); await pr2.clock.run_for(1500)
+    rm = [await pr2.evaluate("()=>({st: OvuGym.state(), twirl: !!document.querySelector('#avatar.twirling')})")]
+    await pr2.clock.run_for(9000); rm.append(await pr2.evaluate("()=>OvuGym.state()"))
+    check("gym, reduced motion: no turn, she is on the rack at once, and one still frame however long she lifts", rm[0]["st"]["mounted"] and not rm[0]["twirl"] and rm[0]["st"]["frame"] == 0 and rm[1]["frame"] == 0 and rm[1]["ms"] > 8000, rm)
+    tb = await ctxr.new_page(); await tb.route("**/*", gate)
+    await tb.goto(BASE + "room.html", wait_until="domcontentloaded")
+    try: await tb.wait_for_function("()=>window.OvuStore && window.OvuRoom", timeout=20000)
+    except Exception: pass
+    await tb.evaluate("()=>OvuStore.clearAll()"); await tb.close()
+    await pr2.bring_to_front(); await pr2.clock.run_for(2000); await pr2.wait_for_timeout(300)
+    rs = await pr2.evaluate("()=>({active: OvuGym.active(), costume: OvuRoom.costume(), hidden: document.querySelector('#avatar').classList.contains('hidden'), sheet: OvuRoom.sheetOpen() ? OvuRoom.sheetId() : null})")
+    check("gym: Delete everything in another tab ends the workout here with nothing asked, her own clothes back and seen", not rs["active"] and rs["costume"] is None and not rs["hidden"] and rs["sheet"] != "move", rs)
+    check("gym: no page errors in the reduced-motion and second-tab run", not rerr, rerr[:3])
+    await ctxr.close()
+    # sign-out mid-workout
+    ctxs = await browser.new_context(viewport={"width": 390, "height": 844})
+    await ctxs.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB))); await ctxs.add_init_script(SESSION_SEED)
+    ps = await ctxs.new_page(); await ps.route("**/*", gate)
+    await ps.goto(BASE + "room.html", wait_until="domcontentloaded")
+    try: await ps.wait_for_function("()=>window.OvuGym && window.OvuRoom && document.querySelector('#loading').classList.contains('hidden') && document.querySelector('#scene').dataset.layout", timeout=20000)
+    except Exception: pass
+    await ps.evaluate("()=>{ if (OvuRoom.sheetOpen()) OvuRoom.hideSheet(); OvuWalk.travel('lane-gym'); }")
+    try: await ps.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='lane-gym' && !document.querySelector('#scene').classList.contains('fading') && !OvuWalk.travelling()", timeout=15000)
+    except Exception: pass
+    await ps.wait_for_timeout(500)
+    await ps.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('gymmat'))")
+    try: await ps.wait_for_function("()=>OvuRoom.sheetId()==='gym-mat'", timeout=12000)
+    except Exception: pass
+    await ps.click('#gymBegin')
+    try: await ps.wait_for_function("()=>OvuGym.state() && OvuGym.state().mounted", timeout=8000)
+    except Exception: pass
+    await ps.evaluate("()=>{ localStorage.setItem('smoke_signed_out', '1'); return OvuAuth.signOut(false); }"); await ps.wait_for_timeout(1500)
+    so = await ps.evaluate("()=>({active: OvuGym.active(), costume: OvuRoom.costume(), panel: !!document.querySelector('#gpanel') && !document.querySelector('#gpanel').hidden})")
+    check("gym: signing out mid-workout ends it, her own clothes back, and its panel goes", not so["active"] and so["costume"] is None and not so["panel"], so)
+    await ctxs.close()
 
 async def main():
     server = serve()
@@ -241,13 +673,30 @@ async def main():
             await page.click('.mapnode[data-node=plaza]'); await page.wait_for_timeout(200)
             pr = await page.evaluate("()=>({steps: [...document.querySelectorAll('#mapRoute li')].map(l=>l.textContent), layout: document.querySelector('#scene').dataset.layout})")
             check("tapping the plaza on the map shows the way (the arch, then the street arch) and does not move her", pr["layout"] == "garden" and len(pr["steps"]) == 2 and "on to Dream Street" in pr["steps"][0] and "on to the plaza" in pr["steps"][1], pr)
-            # the wider world (21 Oct): the known map in the middle, ??? fog around it, zoom by buttons; names appear once zoomed in
-            ww = await page.evaluate("()=>({fog: document.querySelectorAll('.fog').length, far: document.querySelector('#worldZoom').classList.contains('far'), z: OvuMap.zoomState(), known: !!document.querySelector('.worldmap.known'), nameShown: getComputedStyle(document.querySelector('.mapnode[data-node=plaza] b')).display})")
-            await page.evaluate("()=>document.querySelector('.fog[data-fog=north]').click()"); await page.wait_for_timeout(150)  # the patches drift, so a synthetic tap; zoomed in they sit off screen
-            wf = await page.evaluate("()=>({route: document.querySelector('#mapRoute').textContent, layout: document.querySelector('#scene').dataset.layout})")
+            # the wider world (21 Oct, Jamie: "whatever we built will be at a corner of it, the rest ... just the field, the land unbuilt"):
+            # land edge to edge, the places in the top-left corner, the view opening on them; no ??? and no mist (the box measured inside its border)
+            GEO = "()=>{var e=document.querySelector('#worldZoom'), o=e.getBoundingClientRect(), v={left:o.left+e.clientLeft, top:o.top+e.clientTop, width:e.clientWidth, height:e.clientHeight}; v.right=v.left+v.width; v.bottom=v.top+v.height; var p=document.querySelector('#worldWide').getBoundingClientRect(), ns=[...document.querySelectorAll('.mapnode')].map(n=>{var r=n.getBoundingClientRect(); return {id:n.dataset.node, x:(r.left+r.width/2-p.left)/p.width, y:(r.top+r.height/2-p.top)/p.height, sx:r.left+r.width/2-v.left, sy:r.top+r.height/2-v.top}}); return {fog: document.querySelectorAll('.fog,[data-fog]').length, q: /\\?\\?\\?/.test(document.querySelector('#sheet').textContent), far: document.querySelector('#worldZoom').classList.contains('far'), z: OvuMap.zoomState(), vw: v.width, vh: v.height, cover: p.left<=v.left+0.5 && p.top<=v.top+0.5 && p.right>=v.right-0.5 && p.bottom>=v.bottom-0.5, ns: ns, nameShown: getComputedStyle(document.querySelector('.mapnode[data-node=plaza] b')).display}}"
+            w0 = await page.evaluate(GEO)
+            check("the wider world opens on the built corner: land under the whole box, every place on screen, names hidden until zoomed in, no ??? anywhere", w0["fog"] == 0 and not w0["q"] and w0["cover"] and w0["far"] and w0["nameShown"] == "none" and all(4 <= n["sx"] <= w0["vw"] - 4 and 4 <= n["sy"] <= w0["vh"] - 4 for n in w0["ns"]) and all(n["x"] < 0.45 and n["y"] < 0.45 for n in w0["ns"]) and 0.5 < w0["z"]["s"] < 1, {k: w0[k] for k in ("fog", "q", "cover", "far", "z")})
             await page.click('#mapZoomIn'); await page.click('#mapZoomIn'); await page.wait_for_timeout(150)
-            wz = await page.evaluate("()=>({far: document.querySelector('#worldZoom').classList.contains('far'), z: OvuMap.zoomState(), nameShown: getComputedStyle(document.querySelector('.mapnode[data-node=plaza] b')).display})")
-            check("the wider world: eight ??? patches around the known map, names hidden while zoomed out and shown after two zoom-ins; a ??? patch says it is not built yet and moves nobody", ww["fog"] == 8 and ww["far"] and ww["known"] and ww["nameShown"] == "none" and abs(ww["z"]["s"] - 0.5) < 0.01 and not wz["far"] and wz["z"]["s"] > 0.9 and wz["nameShown"] != "none" and "???" in wf["route"] and wf["layout"] == "garden", {"out": ww, "in": wz, "fog": wf})
+            wz = await page.evaluate(GEO)
+            box = await page.query_selector('#worldZoom'); bb = await box.bounding_box()
+            for _ in range(3):  # drag towards the far corner of the world, further than the land goes
+                await page.mouse.move(bb["x"] + bb["width"] * 0.9, bb["y"] + bb["height"] * 0.9); await page.mouse.down(); await page.mouse.move(bb["x"] + bb["width"] * 0.05, bb["y"] + bb["height"] * 0.05, steps=6); await page.mouse.up(); await page.wait_for_timeout(80)
+            wd = await page.evaluate(GEO)
+            await page.evaluate("()=>{for(var i=0;i<8;i++) document.querySelector('#mapZoomOut').click()}"); await page.wait_for_timeout(200)
+            wo = await page.evaluate(GEO)
+            shot = await box.screenshot()
+            bw, bh, bpp, rows = png_rows(shot); white = 0; tot = 0
+            for yy in range(4, bh - 4, 3):
+                r = rows[yy]
+                for xx in range(4, bw - 4, 3):
+                    c = r[xx * bpp:xx * bpp + 3]; tot += 1
+                    if min(c) > 242 and max(c) - min(c) < 10: white += 1
+            check("zoomed in twice the names show; zoomed all the way out the whole world fills the box with land (the places in its top-left corner, open country everywhere else, nothing near white); a drag never shows past the land", not wz["far"] and wz["nameShown"] != "none" and wz["z"]["s"] > 1 and wo["cover"] and abs(wo["z"]["s"] - 1 / 3) < 0.01 and all(n["sx"] < wo["vw"] * 0.45 and n["sy"] < wo["vh"] * 0.45 for n in wo["ns"]) and white / max(1, tot) < 0.01 and wd["cover"] and wd["z"]["tx"] < -wd["vw"] and wd["z"]["ty"] < -wd["vh"], {"in": wz["z"], "out": wo["z"], "white": round(white / max(1, tot), 4), "drag": wd["z"], "dragCover": wd["cover"]})
+            await page.click('.mapnode[data-node=home]', force=True); await page.wait_for_timeout(150)
+            wr = await page.evaluate("()=>({route: document.querySelector('#mapRoute').textContent, layout: document.querySelector('#scene').dataset.layout})")
+            check("zoomed out, a tap on a place still shows the way and moves nobody", "The way home" in wr["route"] and wr["layout"] == "garden", wr)
             await page.click("#sheetClose"); await page.wait_for_timeout(300)
             hidden = await page.evaluate("()=>{var p=document.querySelector('#walkpad'); return !p || getComputedStyle(p).display==='none'}")
             check("the joystick stays hidden (tap-to-walk replaces it)", hidden, hidden)
@@ -283,7 +732,7 @@ async def main():
             mu = await page.evaluate("()=>({on: document.querySelector('#hud').classList.contains('on'), pressed: document.querySelector('#hudMute').getAttribute('aria-pressed'), flag: OvuVoice.muted(), saved: localStorage.getItem('rhythme_voice_muted'), probe: (function(){ var a=new Audio('assets/audio/guide-interim/garden-water-0.mp3'); a.play().catch(function(){}); var m=a.muted; a.pause(); return m; })()})")
             await page.click("#hudMute"); await page.wait_for_timeout(150)
             unmu = await page.evaluate("()=>({pressed: document.querySelector('#hudMute').getAttribute('aria-pressed'), flag: OvuVoice.muted()})")
-            check("the mute button silences Erin's voice without stopping the watering minute, is remembered, and turns her back on", mu["on"] and mu["pressed"] == "true" and mu["flag"] and mu["saved"] == "1" and mu["probe"] and unmu["pressed"] == "false" and not unmu["flag"], {"mu": mu, "unmu": unmu})
+            check("Erin's voice is off until chosen (Jamie, 22 Oct): the HUD button's first tap turns her on without stopping the watering minute, is remembered, and the next tap mutes her again", mu["on"] and mu["pressed"] == "false" and not mu["flag"] and mu["saved"] == "0" and not mu["probe"] and unmu["pressed"] == "true" and unmu["flag"], {"mu": mu, "unmu": unmu})
             await page.click("#hudStop"); await page.wait_for_timeout(500)
             stopped = await page.evaluate("()=>({on: document.querySelector('#hud').classList.contains('on'), toast: document.querySelector('#toast').textContent, clock: document.querySelector('#hudTime').textContent})")
             check("Stop clears the session clock", stopped["clock"] == "", stopped)
@@ -295,7 +744,7 @@ async def main():
             # at night the calendar keeps period days pink (the night card colour once flattened every day)
             calnight = await page.evaluate("""()=>{ var g=document.createElement('div'); g.className='cal-grid'; var d=document.createElement('button'); d.className='cal-day p-heavy'; g.appendChild(d); document.querySelector('#sheet').appendChild(g);
               var root=document.documentElement, was=root.getAttribute('data-sky'); root.setAttribute('data-sky','night'); var night=getComputedStyle(d).backgroundColor; root.setAttribute('data-sky', was || ''); g.remove(); return night; }""")
-            check("at night a heavy period day on the calendar is still deep pink, not the dark card colour", calnight == "rgb(176, 67, 110)", calnight)
+            check("the night palette is retired (Jamie, 22 Oct): a heavy period day on the calendar is the same deep pink at night", calnight == "rgb(193, 81, 122)", calnight)
             # walking together: a tap on the corgi offers a walk; she says so, the corgi hops with hearts, then follows her
             await page.evaluate("()=>document.querySelector('.prop.owned.pet[data-id=dog]').click()"); await page.wait_for_timeout(250)
             offer = await page.evaluate("()=>{var b=document.querySelector('#bubble [data-petwalk]'); return b ? {kind: b.dataset.petwalk, text: b.textContent} : null}")
@@ -440,11 +889,11 @@ async def main():
             check("No bleeding today ticks the bleeding tile without making a period entry, and can be taken back", ci2["bleed"] == "None" and ci2["done"] and ci2["undo"] and ci2["events"] == 0, ci2)
             await page.click("#ciQuick .undo[data-qa=bleeding]"); await page.wait_for_timeout(200)
             check("taking the answer back reopens the tile", await page.evaluate("()=>document.querySelector('#tiles [data-ci=bleeding] b').textContent") == "Add")
-            await page.click("#ciChoose"); await page.click("#tiles [data-ci-key=food]"); await page.click("#ciChoose"); await page.wait_for_timeout(150)
-            ch = await page.evaluate("()=>({status: document.querySelector('#ciStatus').innerText, food: document.querySelector('#tiles [data-ci=food]').classList.contains('key'), saved: OvuStore.state().checkinChoice})")
+            await page.click("#ciChoose"); await page.click("#tiles [data-ci-key=water]"); await page.click("#ciChoose"); await page.wait_for_timeout(150)
+            ch = await page.evaluate("()=>({status: document.querySelector('#ciStatus').innerText, water: document.querySelector('#tiles [data-ci=water]').classList.contains('key'), saved: OvuStore.state().checkinChoice})")
             await page.reload(wait_until="networkidle"); await page.wait_for_timeout(700)
-            ch2 = await page.evaluate("()=>({status: document.querySelector('#ciStatus').innerText, food: document.querySelector('#tiles [data-ci=food]').classList.contains('key')})")
-            check("choosing what counts takes food out of the tick, saves only that change, and is still so after a reload", "of 3 check-ins" in ch["status"] and not ch["food"] and ch["saved"] == {"food": False} and "of 3 check-ins" in ch2["status"] and not ch2["food"], {"before": ch, "after": ch2})
+            ch2 = await page.evaluate("()=>({status: document.querySelector('#ciStatus').innerText, water: document.querySelector('#tiles [data-ci=water]').classList.contains('key')})")
+            check("choosing what counts takes water out of the tick (water took food's place, 21 Oct), saves only that change, and is still so after a reload", "of 3 check-ins" in ch["status"] and not ch["water"] and ch["saved"] == {"water": False} and "of 3 check-ins" in ch2["status"] and not ch2["water"], {"before": ch, "after": ch2})
             # a new day: yesterday's tick and answers do not stay on screen
             await page.click("#ciQuick [data-qa=bleeding][data-qv=none]"); await page.wait_for_timeout(200)
             nd = await page.evaluate("()=>{var real=OvuStore.today, t=OvuStore.addDays(real(),1); OvuStore.today=function(){return t}; document.dispatchEvent(new Event('visibilitychange')); var r={bleed: document.querySelector('#tiles [data-ci=bleeding] b').textContent, chip: !!document.querySelector('#ciQuick [data-qa=bleeding][data-qv=none]')}; OvuStore.today=real; document.dispatchEvent(new Event('visibilitychange')); r.back=document.querySelector('#tiles [data-ci=bleeding] b').textContent; return r}")
@@ -455,13 +904,303 @@ async def main():
             check("the Sleep tile opens the night record straight away", await page.evaluate("()=>document.querySelector('#sheetTitle').textContent.indexOf('Bedside clock')===0"))
             await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(300)
 
+            # 1e. the Today card's three tabs (21 Oct): Today keeps the check-in, Channel waits for a plaza group, Inventory lists what she owns
+            tb = await page.evaluate("()=>({tabs: [...document.querySelectorAll('#deckTabs [role=tab] .tl')].map(b=>b.textContent.trim()), on: document.querySelector('#deckTabs .on').dataset.deck, today: !document.querySelector('#deckToday').hidden, tiles: document.querySelectorAll('#deckToday #tiles .citile').length, chHidden: document.querySelector('#deckChannel').hidden, invHidden: document.querySelector('#deckInventory').hidden})")
+            check("the Today card has three tabs with Today open and the check-in tiles inside it", tb["tabs"] == ["Today", "Channel", "Inventory"] and tb["on"] == "today" and tb["today"] and tb["tiles"] == 6 and tb["chHidden"] and tb["invHidden"], tb)
+            await page.click("#deckTabs [data-deck=channel]"); await page.wait_for_timeout(200)
+            chn = await page.evaluate("()=>({on: document.querySelector('#deckTabs .on').dataset.deck, sel: document.querySelector('#deckTabs [data-deck=channel]').getAttribute('aria-selected'), todayHidden: document.querySelector('#deckToday').hidden, text: document.querySelector('#deckChannel').innerText, walk: !!document.querySelector('#deckChannel [data-today=plaza]'), signin: !!document.querySelector('#deckChannel [data-today=signin]'), choose: document.querySelector('#ciChoose').getClientRects().length})")
+            check("signed in with no group, the Channel tab says to join a group in the plaza and offers the walk; the check-in with its Choose button is out of view", chn["on"] == "channel" and chn["sel"] == "true" and chn["todayHidden"] and "Join a group in the plaza" in chn["text"] and chn["walk"] and not chn["signin"] and chn["choose"] == 0, chn)
+            rem = await page.evaluate("()=>{OvuStore.setState({plaza: {server: 'pcos', uid: OvuAuth.session().user.id}}); OvuToday.render(); var t = document.querySelector('#deckChannel').innerText, r = {text: t, board: !!document.querySelector('#deckChannel [data-today=board]'), friends: !!document.querySelector('#deckChannel [data-today=friends]'), walk: !!document.querySelector('#deckChannel [data-today=plaza]')}; OvuStore.setState({plaza: null}); OvuToday.render(); return r;}")
+            check("a group remembered on this device opens its channel at home: its name, the counted-while-there line, the noticeboard prompt, Plaza friends and a walk to the plaza", "PCOS" in rem["text"] and "while you stand in the plaza" in rem["text"] and "prompt" in rem["text"].lower() and rem["board"] and rem["friends"] and rem["walk"], rem)
+            await page.click("#deckTabs [data-deck=inventory]"); await page.wait_for_timeout(200)
+            inv = await page.evaluate("()=>({on: document.querySelector('#deckTabs .on').dataset.deck, text: document.querySelector('#deckInventory').innerText, tabs: [...document.querySelectorAll('#deckInventory .invtab')].map(b=>b.dataset.invtab), hearts: OvuRewards.ledger().hearts, tiles: document.querySelectorAll('#deckInventory .invtile').length})")
+            await page.click("#deckInventory [data-invtab=wardrobe]"); await page.wait_for_timeout(150)
+            invw = await page.evaluate("async ()=>{ var imgs=[...document.querySelectorAll('#deckInventory .invtile img')].map(i=>i.getAttribute('src')); var ok=await Promise.all(imgs.map(function(u){return fetch(u).then(function(r){return r.ok})})); return {pressed: document.querySelector('#deckInventory [data-invtab=wardrobe]').getAttribute('aria-pressed'), tiles: document.querySelectorAll('#deckInventory .invtile').length, outfits: OvuRoom.OUTFITS.filter(function(o){return !OvuRoom.outfitLocked(o.id)}).length, rail: imgs.every(function(u){return u.indexOf('assets/room/boutique/rail-')===0}), allOk: ok.every(Boolean), on: [...document.querySelectorAll('#deckInventory .invtile.on')].length, go: !!document.querySelector('#deckInventory [data-today=wardrobe]')}; }")
+            check("the Inventory tab shows her hearts and eight category tabs (dishes too); the wardrobe tab shows each outfit she can wear as its hanger picture, the one worn marked, with a way to the wardrobe (Jamie, 22 Oct: pictures, not lists)", inv["on"] == "inventory" and (str(inv["hearts"]) + " hearts") in inv["text"] and inv["tabs"] == ["things", "pets", "wardrobe", "farm", "greenhouse", "dishes", "kitchen", "harbour"] and invw["pressed"] == "true" and invw["tiles"] == invw["outfits"] and invw["rail"] and invw["allOk"] and invw["on"] == 1 and invw["go"], [inv, invw])
+            await page.click("#deckInventory [data-invtab=harbour]"); await page.wait_for_timeout(150)
+            ihb = await page.evaluate("()=>{var bar=document.querySelector('#deckInventory .invtabs'), b=bar.querySelector('[data-invtab=harbour]'), br=bar.getBoundingClientRect(), r=b.getBoundingClientRect(); return {pressed: b.getAttribute('aria-pressed'), inView: r.left >= br.left - 1 && r.right <= br.right + 1, focused: document.activeElement === b}}")
+            check("Codex (22 Oct): choosing the last category keeps its tab in view and focused after the redraw", ihb["pressed"] == "true" and ihb["inView"] and ihb["focused"], ihb)
+            await page.click("#deckInventory [data-invtab=wardrobe]"); await page.wait_for_timeout(150)
+            await page.click("#deckInventory [data-today=wardrobe]"); await page.wait_for_selector('#sheet[aria-hidden="false"] .outfit', timeout=8000)
+            check("Wardrobe from the inventory opens the wardrobe sheet", await page.evaluate("()=>document.querySelector('#sheetTitle').textContent.indexOf('Wardrobe')===0"))
+            await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(300)
+            await page.focus("#deckTabs [data-deck=inventory]"); await page.keyboard.press("ArrowRight"); await page.wait_for_timeout(150)
+            check("the arrow keys move between the tabs and wrap around", await page.evaluate("()=>document.querySelector('#deckTabs .on').dataset.deck==='today' && document.activeElement===document.querySelector('#deckTabs [data-deck=today]')"))
+            check("back on Today the tiles and the Choose button are there again", await page.evaluate("()=>!document.querySelector('#deckToday').hidden && document.querySelectorAll('#tiles .citile').length===6 && document.querySelector('#ciChoose').getClientRects().length>0"))
+            # 1f. the drops (21 Oct): her birthday week and the Starlight gown as a Rhythme Plus drop (this page runs in tester mode, so the gown is open here)
+            await page.evaluate("()=>{OvuStore.setProfile({birthday: OvuStore.today().slice(5), birthYear: 1988}); OvuStore.setState({birthday: null});}")
+            await page.reload(wait_until="networkidle"); await page.wait_for_timeout(2600)
+            bday = await page.evaluate("()=>({greet: document.querySelector('#greetTitle').textContent, cake: !!document.querySelector('#ownedProps .prop.cake'), sheet: OvuRoom.sheetId(), title: document.querySelector('#sheetTitle').textContent, lines: document.querySelectorAll('#sheet .bline').length, note: ((document.querySelector('#sheet .bnote')||{}).textContent||''), who: ((document.querySelector('#sheet .bwho b')||{}).textContent||''), whoWant: (OvuBirthday.dayMaster(1988, OvuStore.today().slice(5))||{}).name, dir: ((document.querySelector('#sheet .bdir b')||{}).textContent||''), how: ((document.querySelector('#sheet .help')||{}).textContent||''), btn: (document.querySelector('#sheet [data-b=party]')||{}).textContent, shown: (OvuStore.state().birthday||{}).shown})")
+            check("on her birthday the room says happy birthday, a cake stands on her table, and the postcard opens by itself with one warm wish, who she is from the day she was born, a direction for the year ahead with how both are read, and the gown to wear (tester mode)", bday["greet"].startswith("Happy birthday") and bday["cake"] and bday["sheet"] == "birthday" and "Happy birthday" in bday["title"] and bday["lines"] == 1 and bday["who"] and bday["who"] == bday["whoWant"] and "BaZi day count" in bday["how"] and bday["dir"].startswith("A year for") and "add up to" in bday["how"] and "not a prediction" in bday["note"] and "Starlight gown" in (bday["btn"] or "") and bool(bday["shown"]), bday)
+            await page.click("#sheet [data-b=party]")
+            try: await page.wait_for_function("()=>/gown\\.webp/.test(document.querySelector('#avatarImg').src) && !document.querySelector('#avatar').classList.contains('twirling')", timeout=7000)
+            except Exception: pass
+            check("the button closes the card and she twirls into the gown, ending idle", await page.evaluate("()=>{var av=document.querySelector('#avatar'); return OvuStore.profile().outfit==='gown' && !OvuRoom.sheetOpen() && /gown\\.webp/.test(document.querySelector('#avatarImg').src) && !av.classList.contains('twirling') && av.classList.contains('idle') && !document.querySelector('#avatarImg').style.transform}"))  # the outfit moment may still be playing, in the gown
+            await page.reload(wait_until="networkidle"); await page.wait_for_timeout(1800)
+            again = await page.evaluate("()=>({sheet: OvuRoom.sheetId(), cake: !!document.querySelector('#ownedProps .prop.cake')})")
+            check("the postcard does not open again on the same birthday, but the cake stays for the week", not again["sheet"] and again["cake"], again)
+            await page.click("#ownedProps .prop.cake"); await page.wait_for_timeout(500)
+            check("tapping the cake reopens the postcard", await page.evaluate("()=>OvuRoom.sheetId()==='birthday'"))
+            await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(200)
+            await page.evaluate("()=>OvuStore.setProfile({birthYear: 2009})")  # a stored year the list no longer offers (it would make her under 18)
+            await page.evaluate("()=>document.querySelector('nav a[data-tab=you]').click()"); await page.wait_for_selector('#bSave', timeout=8000)
+            yf = await page.evaluate("()=>({sel: (document.querySelector('#bYear')||{}).value, label: ((document.querySelector('#bYear option:checked')||{}).textContent)||'', help: (document.querySelector('#bHelp')||{}).textContent||'', clear: !!document.querySelector('#bClear'), who: (OvuBirthday.model()||{}).who || null})")
+            check("You shows a stored birth year the list no longer offers as it is, marked not used, with the reason and Remove; the card does not use it", yf["sel"] == "2009" and "not used" in yf["label"] and "is not used" in yf["help"] and "18 and over" in yf["help"] and yf["clear"] and yf["who"] is None, yf)
+            await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(200)
+            await page.evaluate("()=>{OvuStore.setProfile({birthday: null, birthYear: null}); OvuStore.setState({birthday: null});}")
+            await page.goto(BASE + "room.html?tester=off", wait_until="networkidle"); await page.wait_for_timeout(1200)
+            off = await page.evaluate("()=>({outfit: OvuStore.profile().outfit, src: document.querySelector('#avatarImg').src.split('/').pop(), cake: !!document.querySelector('#ownedProps .prop.cake')})")
+            check("without tester mode the gown is locked again: she wears the knit and her profile falls back to it (so poses never show the locked gown); the cake is gone with the birthday", off["outfit"] == "base" and off["src"] == "avatar-base.webp" and not off["cake"], off)
+            await page.evaluate("()=>OvuRoom.openWardrobe()"); await page.wait_for_selector('#sheet[aria-hidden="false"] .outfit', timeout=8000)
+            gw = await page.evaluate("()=>{var g=document.querySelector('.outfit[data-id=gown]'); return {there: !!g, locked: !!g && g.classList.contains('locked'), label: g && g.querySelector('small').textContent, lock: !!g && !!g.querySelector('.olock')};}")
+            check("the wardrobe shows the Starlight gown as a locked Rhythme Plus drop", gw["there"] and gw["locked"] and gw["label"] == "With Rhythme Plus" and gw["lock"], gw)
+            await page.click(".outfit[data-id=gown]"); await page.wait_for_timeout(600)
+            check("tapping the locked gown keeps her clothes and opens Rhythme Plus", await page.evaluate("()=>/avatar-base\\.webp/.test(document.querySelector('#avatarImg').src) && OvuRoom.sheetId()==='rhythme-plus'"))
+            await page.evaluate("()=>{OvuRoom.closeSheet(); OvuStore.setProfile({outfit: 'base'});}")
+            await page.goto(BASE + "room.html?tester=hearts", wait_until="networkidle"); await page.wait_for_timeout(1200)  # back to the seeded tester mode the rest of this page's checks run in
+            await page.evaluate("()=>OvuRoom.openWardrobe()"); await page.wait_for_selector('#sheet[aria-hidden="false"] .outfit[data-id=gown]:not(.locked)', timeout=8000)
+            check("in tester mode the gown is open in the wardrobe", True)
+            await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(300)
+
+            # 1h. she is not a stiff picture (Jamie, 21 Oct: "Turn around like a Cinderella changing into the glamorous gown", "I want it like
+            # animal crossing", "Not stiff avatar"): a picked outfit twirls in, the new one swapping while she is edge-on; the gown gets the
+            # Cinderella version; she blinks while she stands; reduced motion keeps her still
+            TW = """()=>{ window.__tw = []; var img = document.querySelector('#avatarImg'), av = document.querySelector('#avatar'), t0 = performance.now();
+              (function f(){ var mm = /matrix\\(([^)]+)\\)/.exec(getComputedStyle(img).transform || ''), a = mm ? parseFloat(mm[1].split(',')[0]) : 1;
+                __tw.push({t: Math.round(performance.now() - t0), sx: a, src: (img.getAttribute('src') || '').split('/').pop(), tw: av.classList.contains('twirling'), glam: av.classList.contains('glam'), fx: !!av.querySelector('.twirl-fx'), idle: av.classList.contains('idle'), tf: img.style.transform || ''});
+                if (performance.now() - t0 < 3800) requestAnimationFrame(f); })(); }"""
+            async def twirl_pick(pg, oid):
+                await pg.evaluate("()=>OvuRoom.openWardrobe()")
+                await pg.wait_for_function("()=>OvuRoom.sheetOpen() && OvuRoom.sheetId()==='wardrobe'", timeout=8000); await pg.wait_for_timeout(400)
+                await pg.evaluate(TW); await pg.click('#sheet[aria-hidden="false"] .outfit[data-id=%s]' % oid); await pg.wait_for_timeout(3900)
+                tw = await pg.evaluate("()=>window.__tw")
+                for x in tw: x["src"] = x["src"].replace("-blink.webp", ".webp")  # a blink after the turn is her in the same outfit (Codex verification, 21 Oct)
+                sw = next((x for x in tw if x["src"] == "avatar-%s.webp" % oid and x["tw"]), None)
+                spin = [x for x in tw if x["tw"]]
+                return {"turned": bool(spin), "glam": any(x["glam"] for x in tw), "fx": any(x["fx"] for x in tw), "swap": sw, "end": tw[-1] if tw else None, "open": await pg.evaluate("()=>OvuRoom.sheetOpen()"),
+                        "span": (spin[-1]["t"] - spin[0]["t"]) if spin else 0, "facing": (tw[0]["sx"] > 0) == (tw[-1]["sx"] > 0) if tw else False}
+            await page.evaluate("()=>OvuRoom.blinking(true)")  # she blinks through these checks, as she does for a person
+            tp = await twirl_pick(page, "party")
+            check("picking the lilac tulle closes the wardrobe and she twirls into it: the outfit swaps edge-on, she ends idle, facing the way she started, with no leftover transform", tp["turned"] and not tp["glam"] and tp["swap"] and abs(tp["swap"]["sx"]) < 0.2 and tp["end"]["src"] == "avatar-party.webp" and not tp["end"]["tw"] and tp["end"]["idle"] and not tp["end"]["tf"] and tp["facing"] and not tp["open"], tp)
+            seen = await page.evaluate("()=>new Promise(function(res){ var img=document.querySelector('#avatarImg'), seen=[]; var ob=new MutationObserver(function(){ seen.push([Math.round(performance.now()), (img.getAttribute('src')||'').split('/').pop()]); }); ob.observe(img,{attributes:true,attributeFilter:['src']}); setTimeout(function(){ ob.disconnect(); res(seen); }, 8000); })")
+            bl = [x for x in seen if x[1] == "avatar-party-blink.webp"]
+            reopen = [x for x in seen if bl and x[1] == "avatar-party.webp" and x[0] > bl[0][0]]
+            check("she blinks while she stands: her own outfit's closed-eye copy for a moment, then her eyes open again", bool(bl) and bool(reopen) and reopen[0][0] - bl[0][0] < 400, seen[:6])
+            tg = await twirl_pick(page, "gown")
+            check("the Starlight gown gets the Cinderella version: about two seconds, with sparkles, the swap edge-on, ending idle in the gown facing the way she started", tg["turned"] and tg["glam"] and tg["fx"] and tg["swap"] and abs(tg["swap"]["sx"]) < 0.2 and 1800 <= tg["span"] <= 3200 and tg["end"]["src"] == "avatar-gown.webp" and not tg["end"]["tw"] and tg["end"]["idle"] and tg["facing"], tg)
+            # interruptions (Codex review): a floor tap mid-turn finishes it at once and she walks; a pose asked for mid-turn is kept
+            async def mid_turn(pg, oid):
+                await pg.evaluate("()=>OvuRoom.openWardrobe()"); await pg.wait_for_function("()=>OvuRoom.sheetOpen() && OvuRoom.sheetId()==='wardrobe'", timeout=8000); await pg.wait_for_timeout(400)
+                await pg.click('#sheet[aria-hidden="false"] .outfit[data-id=%s]' % oid)
+                await pg.wait_for_function("()=>document.querySelector('#avatar').classList.contains('twirling')", timeout=4000); await pg.wait_for_timeout(200)
+            await mid_turn(page, "sundress")
+            await floor_tap(56, 66); await page.wait_for_timeout(250)
+            ti = await page.evaluate("()=>{var av=document.querySelector('#avatar'); return {tw: av.classList.contains('twirling'), src: (document.querySelector('#avatarImg').getAttribute('src')||'').split('/').pop(), moving: av.classList.contains('walking') || !!(window.OvuWalk && OvuWalk.walking && OvuWalk.walking()), tf: document.querySelector('#avatarImg').style.transform || ''}}")
+            check("a floor tap mid-turn finishes the twirl at once, dressed in what she chose, and she walks", not ti["tw"] and ti["src"] == "avatar-sundress.webp" and ti["moving"] and not ti["tf"], ti)
+            await page.wait_for_timeout(2500)
+            await mid_turn(page, "cozy")
+            await page.evaluate("()=>OvuRoom.moment('food')"); await page.wait_for_timeout(900)  # a moment with a pose, as a logged meal brings
+            tq = await page.evaluate("()=>({tw: document.querySelector('#avatar').classList.contains('twirling'), src: (document.querySelector('#avatarImg').getAttribute('src')||'').split('/').pop(), outfit: OvuStore.profile().outfit, line: (document.querySelector('#thought')||{}).textContent||''})")
+            check("a pose asked for mid-turn is kept: the twirl ends at once, never paints over it, and says no closing line of its own", not tq["tw"] and "act-eat" in tq["src"] and tq["outfit"] == "cozy" and "Comfort is reason enough" not in tq["line"], tq)
+            await page.evaluate("()=>OvuRoom.endMoment()"); await page.wait_for_timeout(300)
+            await page.evaluate("()=>OvuRoom.blinking(false)")
+            await page.evaluate("()=>{ OvuStore.setProfile({outfit: 'base'}); OvuRoom.restorePose(); }"); await page.wait_for_timeout(300)  # the rest of this page's checks expect the knit
+            ctxR = await browser.new_context(viewport={"width": 390, "height": 844}, reduced_motion="reduce"); await ctxR.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB))); await ctxR.add_init_script(SESSION_SEED)
+            pr_ = await ctxR.new_page(); await pr_.route("**/*", gate); await pr_.goto(BASE + "room.html", wait_until="networkidle"); await pr_.wait_for_timeout(900)
+            await pr_.evaluate("()=>{ if (OvuRoom.sheetOpen()) OvuRoom.closeSheet(); }")
+            tr = await twirl_pick(pr_, "sundress")
+            await pr_.evaluate("()=>OvuRoom.blinking(true)")
+            rb = await pr_.evaluate("()=>new Promise(function(res){ var img=document.querySelector('#avatarImg'), n=0; var ob=new MutationObserver(function(){ if ((img.getAttribute('src')||'').indexOf('-blink')>-1) n++; }); ob.observe(img,{attributes:true,attributeFilter:['src']}); setTimeout(function(){ ob.disconnect(); res(n); }, 6500); })")
+            check("with reduced motion she does not twirl or blink: the outfit simply changes and her eyes stay open", not tr["turned"] and tr["end"]["src"] == "avatar-sundress.webp" and rb == 0, {"tr": tr, "blinks": rb})
+            await ctxR.close()
+
+            # 1i. one activity at a time, and a new outfit lands in the picture she is in (Codex sweep, 21 Oct: Everyday brushing and Just
+            # breathe ran together and Stop then hid the breathing's bar; brushing went on with a standing avatar; benches, seated practices
+            # and the sleeper kept the old clothes; a pick while asleep was undone on waking)
+            ctxA1 = await browser.new_context(viewport={"width": 390, "height": 844}); await ctxA1.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB))); await ctxA1.add_init_script(SESSION_SEED)
+            pa = await ctxA1.new_page(); aerr = []; pa.on("pageerror", lambda e: aerr.append(str(e))); await pa.route("**/*", gate)
+            await pa.goto(BASE + "room.html", wait_until="networkidle"); await pa.wait_for_timeout(900)
+            await pa.evaluate("()=>{ if (OvuRoom.sheetOpen()) OvuRoom.closeSheet(); if (window.OvuPetWalk && OvuPetWalk.auto) OvuPetWalk.auto(false); OvuRoom.isNight=function(){return false}; OvuCare.slowMs = null; }")
+            AST = "()=>({practice: OvuRoom.practiceOn(), session: OvuRoom.sessionOn(), morning: OvuMorning.active(), seat: OvuSeats.active(), med: OvuRoom.meditating(), hud: document.querySelector('#hud').classList.contains('on'), title: document.querySelector('#hudTitle').textContent, sheet: OvuRoom.sheetId(), toast: document.querySelector('#toast').textContent, src: (document.querySelector('#avatarImg').getAttribute('src')||'').split('/').pop(), hidden: document.querySelector('#avatar').classList.contains('hidden'), tw: document.querySelector('#avatar').classList.contains('twirling')})"
+            async def a_brush(pg):
+                await pg.evaluate("()=>OvuRoom.openEveryday('teeth')"); await pg.wait_for_selector('#sheet[aria-hidden="false"] #actStart', timeout=10000)
+                await pg.click('#actStart'); await pg.wait_for_timeout(800)
+            async def a_pick(pg, oid, via_you=False):
+                if via_you:
+                    await pg.evaluate("()=>document.querySelector('nav a[data-tab=you]').click()"); await pg.wait_for_selector('#sheet[aria-hidden="false"] [data-yact=wardrobe]', timeout=8000)
+                    await pg.click('#sheet [data-yact=wardrobe]')
+                else: await pg.evaluate("()=>OvuRoom.openWardrobe()")
+                await pg.wait_for_selector('#sheet[aria-hidden="false"] .outfit[data-id=%s]' % oid, timeout=8000); await pg.wait_for_timeout(250)
+                await pg.evaluate("()=>{ window.__twSeen = false; var av = document.querySelector('#avatar'); window.__twOb && __twOb.disconnect(); window.__twOb = new MutationObserver(function(){ if (av.classList.contains('twirling')) window.__twSeen = true; }); __twOb.observe(av, {attributes: true, attributeFilter: ['class']}); }")
+                await pg.click('#sheet .outfit[data-id=%s]' % oid); await pg.wait_for_timeout(1300)
+            async def a_reset(pg):  # each part starts from a free room, so one part's failure never hides the next
+                await pg.evaluate("()=>{ try { if (OvuSeats.active()) OvuSeats.cancel(); if (OvuMorning.active()) OvuMorning.cancel(); if (OvuRoom.practiceOn() || OvuRoom.sessionOn()) OvuRoom.stopEverything(); if (OvuRoom.meditating()) OvuRoom.exitMeditation(); if (OvuGarden.sitting()) OvuGarden.standUp(); if (OvuRoom.sheetOpen()) OvuRoom.hideSheet(); document.querySelector('#hud').classList.remove('on'); } catch (e) { } }")
+                await pg.wait_for_timeout(700)
+            async def a_stop(pg):
+                await pg.evaluate("()=>document.querySelector('#hudStop').click()"); await pg.wait_for_timeout(700)
+                await pg.evaluate("()=>{ if (OvuRoom.sheetId()==='practiceDone') document.querySelector('#pdNo').click(); }"); await pg.wait_for_timeout(300)
+            # practice first: Mind, Just breathe, Morning start and a care step all wait for it
+            await a_brush(pa); a0 = await pa.evaluate(AST)
+            await pa.evaluate("()=>document.querySelector('nav a[data-tab=mind]').click()"); await pa.wait_for_timeout(700); a1 = await pa.evaluate(AST)
+            check("during Everyday brushing, Mind does not open the mat over it: one line names what is running, brushing goes on with its bar and she keeps her brushing pose", a0["practice"] and a1["practice"] and not a1["session"] and not a1["med"] and a1["sheet"] != "mind" and a1["hud"] and "Brushing teeth is running" in a1["toast"] and "act-teeth" in a1["src"] and not a1["hidden"], [a0, a1])
+            await pa.evaluate("()=>{ document.querySelector('#toast').textContent=''; OvuRoom.runSession('breathe', 2); }"); a2 = await pa.evaluate(AST)
+            check("Just breathe asked for during the practice is refused the same way: no session starts and the bar still says Brushing teeth", a2["practice"] and not a2["session"] and a2["title"] == "Brushing teeth" and "Brushing teeth is running" in a2["toast"], a2)
+            mo = await pa.evaluate("()=>{ OvuMorning.open(); var s = OvuRoom.sheetId(); OvuMorning.begin('yourway', true); return {sheet: s, morning: OvuMorning.active(), practice: OvuRoom.practiceOn()}; }")
+            check("Morning start neither opens its choice nor begins over the practice", mo["sheet"] != "morning" and not mo["morning"] and mo["practice"], mo)
+            cs = await pa.evaluate("()=>{ OvuRoom.openSheet('caretest', 'Test', '', 'spa', '<div id=cbox></div>'); var ok = OvuCare.step(document.querySelector('#cbox'), {scene: OvuRoom.layout().id, ms: 5000, verb: 'Watering'}, function(){}); var r = {ok: ok, live: !!OvuCare.live(), toast: document.querySelector('#toast').textContent}; OvuRoom.hideSheet(); return r; }")
+            check("a care step will not begin while a practice runs, and says why", cs["ok"] is False and not cs["live"] and "Brushing teeth is running" in cs["toast"], cs)
+            # the outfit sequence Codex found: Begin brushing, then You, Wardrobe, a new outfit
+            await a_pick(pa, "sundress", via_you=True); c1 = await pa.evaluate(AST); c1["twSeen"] = await pa.evaluate("()=>window.__twSeen")
+            check("Begin brushing, then You, Wardrobe, the sundress: she goes on brushing in the sundress, with no twirl, and the practice and its bar carry on", c1["practice"] and c1["hud"] and c1["src"] == "avatar-act-teeth-sundress.webp" and not c1["twSeen"] and not c1["tw"], c1)
+            await a_stop(pa); a3 = await pa.evaluate(AST)
+            check("Stop ends the brushing and its bar; she stands in the outfit she picked", not a3["practice"] and not a3["session"] and not a3["hud"] and a3["src"] == "avatar-sundress.webp", a3)
+            # session first: brushing, Morning start and the bench practice wait for it; a new outfit is drawn on the mat
+            await a_reset(pa)
+            await pa.evaluate("()=>document.querySelector('nav a[data-tab=mind]').click()"); await pa.wait_for_selector('#sheet[aria-hidden="false"] #mindTap', timeout=8000)
+            await pa.evaluate("()=>OvuRoom.runSession('breathe', 2)"); await pa.wait_for_timeout(700); b0 = await pa.evaluate(AST)
+            await pa.evaluate("()=>OvuRoom.openEveryday('teeth')"); await pa.wait_for_selector('#sheet[aria-hidden="false"] #actStart', timeout=10000); await pa.click('#actStart'); await pa.wait_for_timeout(600); b1 = await pa.evaluate(AST)
+            check("during Just breathe, Begin on brushing is refused with one line: the breathing goes on, its bar is back and she stays on the mat", b0["session"] and b1["session"] and not b1["practice"] and b1["hud"] and b1["title"] == "Just breathe" and "Just breathe is running" in b1["toast"] and b1["med"], [b0, b1])
+            await pa.evaluate("()=>OvuRoom.closeSheet()"); await pa.wait_for_timeout(300)
+            await a_pick(pa, "cozy")
+            b2 = await pa.evaluate("()=>({med: (document.querySelector('#meditator img').getAttribute('src')||'').split('/').pop(), session: OvuRoom.sessionOn(), hud: document.querySelector('#hud').classList.contains('on')})")
+            check("a new outfit during the breathing is drawn on the mat: she meditates in it and the session goes on", b2["med"] == "avatar-meditate-cozy.webp" and b2["session"] and b2["hud"], b2)
+            await a_stop(pa); await pa.wait_for_timeout(600)
+            await a_reset(pa)
+            # the garden: watering keeps its pose in the new clothes; on the bench she is redrawn seated, with no twirl behind the sitter
+            await pa.evaluate("()=>OvuWalk.travel('garden')")
+            try: await pa.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='garden' && !document.querySelector('#scene').classList.contains('fading')", timeout=12000)
+            except Exception: pass
+            await pa.wait_for_timeout(700)
+            await pa.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('plot'))")
+            try: await pa.wait_for_selector('#sheet[aria-hidden="false"] #plotWater', timeout=10000); await pa.click('#plotWater'); await pa.wait_for_timeout(700)
+            except Exception: pass
+            await a_pick(pa, "party", via_you=True)
+            gw = await pa.evaluate("()=>({src: (document.querySelector('#avatarImg').getAttribute('src')||'').split('/').pop(), acting: document.querySelector('#avatar').classList.contains('acting'), hud: document.querySelector('#hud').classList.contains('on'), title: document.querySelector('#hudTitle').textContent})"); gw["twSeen"] = await pa.evaluate("()=>window.__twSeen")
+            check("watering the garden, a new outfit keeps her watering, now in it, with no twirl", gw["src"] == "avatar-act-plants-party.webp" and gw["acting"] and gw["hud"] and gw["title"] == "Watering" and not gw["twSeen"], gw)
+            await a_stop(pa); await a_reset(pa)
+            await pa.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('bench'))")
+            try: await pa.wait_for_selector('#sheet[aria-hidden="false"] #benchSit', timeout=9000); await pa.click('#benchSit'); await pa.wait_for_timeout(900)
+            except Exception: pass
+            await a_pick(pa, "kebaya-blue")
+            gs = await pa.evaluate("()=>{var el=document.querySelector('.nb.sitter'), img=el&&el.querySelector('img'); return {there: !!el, src: img && (img.getAttribute('src')||'').split('/').pop(), seated: !!(img && img.classList.contains('seated')), sitting: OvuGarden.sitting(), w: el && el.style.width, standing: (document.querySelector('#avatarImg').getAttribute('src')||'').split('/').pop()}}"); gs["twSeen"] = await pa.evaluate("()=>window.__twSeen")
+            check("sitting on the garden bench, a new outfit is drawn on the bench, seated in it, and no twirl plays on the standing avatar hidden behind her", gs["there"] and gs["seated"] and gs["src"] == "avatar-sit-kebaya-blue.webp" and not gs["twSeen"] and gs["standing"] == "avatar-kebaya-blue.webp", gs)
+            # a seated bench practice on the street: Mind, brushing and Morning start wait for it; a new outfit is drawn on the bench
+            # Codex (22 Oct): Just sit a while, then the Mind tab: she gets up before the mat appears, and closing Mind without a session lets her up again
+            await pa.evaluate("()=>document.querySelector('nav a[data-tab=mind]').click()"); await pa.wait_for_timeout(700)
+            js = await pa.evaluate("()=>({sitting: OvuGarden.sitting(), med: OvuRoom.meditating(), sitter: !!document.querySelector('.nb.sitter'), cls: document.querySelector('#scene').classList.contains('sitting')})")
+            await pa.evaluate("()=>OvuRoom.closeSheet()"); await pa.wait_for_timeout(500)
+            js2 = await pa.evaluate("()=>({med: OvuRoom.meditating(), hidden: document.querySelector('#avatar').classList.contains('hidden'), sheet: OvuRoom.sheetOpen()})")
+            check("Just sit a while, then Mind: she stands up before the mat appears (no sitter left behind the meditator), and closing Mind lets her up", js["sitting"] is False and js["med"] and not js["sitter"] and not js["cls"] and not js2["med"] and not js2["hidden"] and not js2["sheet"], [js, js2])
+            await pa.evaluate("()=>{ if (OvuGarden.sitting()) OvuGarden.standUp(); OvuWalk.travel('street'); }")
+            try: await pa.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='street' && !document.querySelector('#scene').classList.contains('fading')", timeout=15000)
+            except Exception: pass
+            await pa.wait_for_timeout(700)
+            await pa.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('bench'))")
+            try: await pa.wait_for_selector('#sheet[aria-hidden="false"] #seatBegin', timeout=12000); await pa.click('#seatBegin'); await pa.wait_for_timeout(600)
+            except Exception: pass
+            s0 = await pa.evaluate(AST)
+            await pa.evaluate("()=>document.querySelector('nav a[data-tab=mind]').click()"); await pa.wait_for_timeout(500); s1 = await pa.evaluate(AST)
+            s2 = await pa.evaluate("()=>{ document.querySelector('#toast').textContent=''; OvuRoom.openEveryday('teeth'); return null; }"); await pa.wait_for_selector('#sheet[aria-hidden="false"] #actStart', timeout=10000); await pa.click('#actStart'); await pa.wait_for_timeout(500); s2 = await pa.evaluate(AST)
+            await pa.evaluate("()=>OvuRoom.closeSheet()"); await pa.wait_for_timeout(200)
+            s3 = await pa.evaluate("()=>{ document.querySelector('#toast').textContent=''; OvuMorning.begin('yourway', true); return {morning: OvuMorning.active(), seat: OvuSeats.active(), toast: document.querySelector('#toast').textContent, panel: !document.querySelector('#spanel').hidden}; }")
+            check("during the street bench practice, Mind, Begin on brushing and Morning start are each refused with one line naming it, and the practice goes on with its panel", s0["seat"] and s1["seat"] and s1["sheet"] != "mind" and not s1["med"] and "Sounds of the street is running" in s1["toast"] and s2["seat"] and not s2["practice"] and "Sounds of the street is running" in s2["toast"] and s3["seat"] and not s3["morning"] and "Sounds of the street is running" in s3["toast"] and s3["panel"], [s0, s1, s2, s3])
+            await a_pick(pa, "gown")
+            ss = await pa.evaluate("()=>{var el=document.querySelector('.seatsitter'), img=el&&el.querySelector('img'); return {src: img && (img.getAttribute('src')||'').split('/').pop(), seated: !!(img && img.classList.contains('seated')), seat: OvuSeats.active(), w: el && el.style.width}}"); ss["twSeen"] = await pa.evaluate("()=>window.__twSeen")
+            check("a new outfit during the bench practice is drawn on the bench, seated in it, and the practice goes on", ss["seat"] and ss["seated"] and ss["src"] == "avatar-sit-gown.webp" and not ss["twSeen"], ss)
+            await pa.evaluate("()=>document.querySelector('#spStop').click()"); await pa.wait_for_timeout(400)
+            # Morning start first: the bench practice and Just breathe wait for it
+            await a_reset(pa)
+            m0 = await pa.evaluate("()=>{ OvuMorning.begin('yourway', true); var a = OvuMorning.active(); document.querySelector('#toast').textContent=''; OvuSeats.begin('street'); var r = {morning: a, seat: OvuSeats.active(), toast: document.querySelector('#toast').textContent}; document.querySelector('#toast').textContent=''; OvuRoom.runSession('breathe', 2); r.session = OvuRoom.sessionOn(); r.toast2 = document.querySelector('#toast').textContent; OvuMorning.cancel(); return r; }")
+            check("during Morning start, the bench practice and Just breathe are refused with its name", m0["morning"] and not m0["seat"] and "Morning start is running" in m0["toast"] and not m0["session"] and "Morning start is running" in m0["toast2"], m0)
+            # sleep: a new outfit is drawn on the sleeper, and waking keeps what she picked
+            await a_reset(pa); await pa.evaluate("()=>OvuWalk.travel('home')")
+            try: await pa.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='room' && !document.querySelector('#scene').classList.contains('fading')", timeout=15000)
+            except Exception: pass
+            await pa.wait_for_timeout(700)
+            async def a_sleep(pg, pj):
+                await pg.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('bed'))"); await pg.wait_for_selector('#sheet[aria-hidden="false"] #goodnight', timeout=10000)
+                if not pj: await pg.click('#pjToggle')
+                await pg.click('#goodnight'); await pg.wait_for_timeout(900)
+            async def a_wake(pg):
+                await pg.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('bed'))"); await pg.wait_for_selector('#sheet[aria-hidden="false"] #cancelSleep', timeout=10000)
+                await pg.click('#cancelSleep'); await pg.wait_for_timeout(900)
+            await pa.evaluate("()=>{ OvuStore.setProfile({outfit: 'sundress'}); OvuRoom.restorePose(); }"); await pa.wait_for_timeout(300)
+            await a_sleep(pa, True)
+            z0 = await pa.evaluate("()=>({asleep: OvuRoom.asleep(), outfit: OvuStore.profile().outfit, sl: (document.querySelector('#sleeper img').getAttribute('src')||'').split('/').pop()})")
+            await a_pick(pa, "cozy", via_you=True)
+            z1 = await pa.evaluate("()=>({asleep: OvuRoom.asleep(), outfit: OvuStore.profile().outfit, sl: (document.querySelector('#sleeper img').getAttribute('src')||'').split('/').pop(), prev: (OvuStore.state().sleeping||{}).prevOutfit})")
+            await a_wake(pa)
+            z2 = await pa.evaluate("()=>({asleep: OvuRoom.asleep(), outfit: OvuStore.profile().outfit, src: (document.querySelector('#avatarImg').getAttribute('src')||'').split('/').pop()})")
+            check("asleep in pyjamas, You, Wardrobe, the cosy set: she sleeps on in it, and waking keeps it instead of putting back the clothes she went to bed in", z0["asleep"] and z0["outfit"] == "pajamas" and z0["sl"] == "avatar-sleeping.webp" and z1["sl"] == "avatar-sleeping-cozy.webp" and z1["outfit"] == "cozy" and z1["prev"] is None and not z2["asleep"] and z2["outfit"] == "cozy" and z2["src"] == "avatar-cozy.webp", [z0, z1, z2])
+            await a_sleep(pa, False)
+            await a_pick(pa, "pajamas", via_you=True)
+            z3 = await pa.evaluate("()=>({sl: (document.querySelector('#sleeper img').getAttribute('src')||'').split('/').pop()})")
+            await a_wake(pa)
+            z4 = await pa.evaluate("()=>({outfit: OvuStore.profile().outfit, src: (document.querySelector('#avatarImg').getAttribute('src')||'').split('/').pop()})")
+            check("asleep without the pyjamas, picking the pyjamas draws her sleeping in them, and waking keeps them", z3["sl"] == "avatar-sleeping.webp" and z4["outfit"] == "pajamas" and z4["src"] == "avatar-pajamas.webp", [z3, z4])
+            # the closed-eye copies (remade 21 Oct with tools/art/make_blink.py): the same size and alpha as her open-eyed sprite, and
+            # nothing outside her face changes, so a blink never moves or recolours anything else
+            BL = ["base", "cozy", "gown", "kebaya-blue", "kebaya-green", "kebaya-red", "pajamas", "party", "sundress", "tudung", "yoga"]
+            bl = await pa.evaluate("""async (ids) => { const out = {};
+              const load = async (u) => { const r = await fetch(u); const bm = await createImageBitmap(await r.blob()); const c = new OffscreenCanvas(bm.width, bm.height); const x = c.getContext('2d'); x.drawImage(bm, 0, 0); return {w: bm.width, h: bm.height, d: x.getImageData(0, 0, bm.width, bm.height).data}; };
+              for (const id of ids) {
+                const a = await load('assets/room/dream/avatar-' + id + '.webp'), b = await load('assets/room/dream/avatar-' + id + '-blink.webp');
+                if (a.w !== b.w || a.h !== b.h) { out[id] = {size: false}; continue; }
+                let alpha = 0, outside = 0, inside = 0;
+                for (let i = 0; i < a.d.length; i += 4) {
+                  if (a.d[i + 3] !== b.d[i + 3]) alpha++;
+                  if (!a.d[i + 3] || (a.d[i] === b.d[i] && a.d[i + 1] === b.d[i + 1] && a.d[i + 2] === b.d[i + 2])) continue;
+                  const y = Math.floor(i / 4 / a.w); if (y < a.h * 0.15 || y > a.h * 0.36) outside++; else inside++;
+                }
+                out[id] = {size: true, alpha: alpha, outside: outside, inside: inside};
+              } return out; }""", BL)
+            check("every closed-eye copy keeps her sprite's size and alpha exactly, changes only her face (her eyes), and does change it", all(bl[k].get("size") and bl[k]["alpha"] == 0 and bl[k]["outside"] == 0 and bl[k]["inside"] > 500 for k in BL), bl)
+            check("no page errors in the one-activity and outfit run", not aerr, aerr[:3])
+            await ctxA1.close()
+
+            # 1g. the intro asks her birthday (a month, a day and an optional adult year) just before her name; it stays on the phone, never in the cloud copy
+            DBO = json.loads(json.dumps(DB)); DBO["profile"]["urgent"] = ["severepain"]  # an answer about 'today' given on an earlier day
+            ctxO = await browser.new_context(viewport={"width": 390, "height": 844}); await ctxO.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DBO))); await ctxO.add_init_script(SESSION_SEED)
+            po = await ctxO.new_page(); await po.route("**/*", gate)
+            await po.goto(BASE + "room.html", wait_until="networkidle"); await po.wait_for_timeout(900)
+            await po.evaluate("()=>document.querySelector('nav a[data-tab=you]').click()"); await po.wait_for_selector('#sheet[aria-hidden="false"] [data-yact=intro]', timeout=8000)
+            await po.click('[data-yact=intro]'); await po.wait_for_selector('#onbNext', timeout=8000)
+            urg = {"step": False, "ticked": None, "card": False}
+            for _ in range(30):
+                if await po.evaluate("()=>!!document.querySelector('#onbBMonth')"): break
+                if await po.evaluate("()=>!!document.querySelector('#urgentNext')"): urg["card"] = True; await po.click('#urgentNext'); await po.wait_for_timeout(150); continue
+                u = await po.evaluate("()=>({step: !!document.querySelector('#sheet .chips[data-key=urgent]'), ticked: document.querySelectorAll('#sheet .chips[data-key=urgent] .chipbtn.on').length})")
+                if u["step"] and not urg["step"]:
+                    urg["step"] = True; urg["ticked"] = u["ticked"]
+                    await po.click('#sheet .chips[data-key=urgent] .chipbtn[data-v=severepain]')  # a fresh answer, about today
+                await po.click('#onbNext')
+                await po.wait_for_timeout(150)
+            check("updating the intro asks 'anything happening right now?' afresh: an earlier day's answer is not ticked, and a fresh answer still brings the urgent card", urg["step"] and urg["ticked"] == 0 and urg["card"], urg)
+            ob = await po.evaluate("()=>({step: (document.querySelector('.onb-head h3')||{}).textContent, sub: (document.querySelector('.onb-head p')||{}).textContent, skip: !!document.querySelector('#onbSkip'), selects: document.querySelectorAll('#sheet select').length})")
+            check("the intro asks her birthday just before her name: optional, a month, a day and an optional year, kept on the phone", ob["step"] == "Your birthday (optional)" and "The year is optional" in (ob["sub"] or "") and "stays on this phone" in (ob["sub"] or "") and ob["skip"] and ob["selects"] == 3, ob)
+            tm = await po.evaluate("()=>{var t=OvuStore.addDays(OvuStore.today(),1); return {m: String(+t.slice(5,7)), d: String(+t.slice(8,10)), mmdd: t.slice(5), young: String(+OvuStore.today().slice(0,4)-18), sameYear: t.slice(0,4)===OvuStore.today().slice(0,4)};}")
+            await po.select_option('#onbBMonth', tm["m"]); await po.select_option('#onbBDay', tm["d"])
+            if tm["sameYear"]:
+                await po.select_option('#onbBYear', tm["young"]); await po.click('#onbNext'); await po.wait_for_timeout(300)
+                yo = await po.evaluate("()=>({still: !!document.querySelector('#onbBMonth'), msg: (document.querySelector('#onbBMsg')||{}).textContent||'', shown: !!document.querySelector('#onbBMsg:not([hidden])')})")
+                check("a birth year that makes her 17 (18 tomorrow) is refused kindly and the step waits", yo["still"] and yo["shown"] and "18 and over" in yo["msg"], yo)
+            await po.select_option('#onbBYear', '1988')
+            await po.click('#onbNext'); await po.wait_for_selector('#onbName', timeout=8000)
+            await po.click('#onbNext'); await po.wait_for_timeout(700)
+            ob2 = await po.evaluate("()=>({urg: OvuStore.profile().urgent || [], b: OvuStore.profile().birthday, y: OvuStore.profile().birthYear, cloud: Object.keys(OvuSync.profileForCloud(OvuStore.profile())).filter(function(k){return k==='birthday'||k==='birthYear'}), open: OvuRoom.sheetOpen()})")
+            check("finishing the intro keeps her birthday and birth year on the phone and leaves both out of the cloud copy, and keeps only today's 'right now' answer", ob2["urg"] == ["severepain"] and ob2["b"] == tm["mmdd"] and ob2["y"] == 1988 and ob2["cloud"] == [] and not ob2["open"], ob2)
+            await ctxO.close()
+
             # 2. the Cycle tab opens a sheet with the calendar
-            await page.goto(BASE + "room.html#cycle", wait_until="load"); await page.reload(wait_until="networkidle"); await page.wait_for_selector('#sheet[aria-hidden="false"] [data-date], #sheet[aria-hidden="false"] .rday', timeout=10000)
+            await page.goto(BASE + "room.html#cycle", wait_until="load"); await page.reload(wait_until="networkidle"); await page.wait_for_selector('#sheet[aria-hidden="false"] .scorecard', timeout=10000)
+            sc0 = await page.evaluate("()=>({sheet: OvuRoom.sheetId(), tabs: !!document.querySelector('#calTabs'), rings: document.querySelectorAll('.scorecard .scring').length, clouds: document.querySelectorAll('.scorecard .sccloud').length, past: !!document.querySelector('#scPast')})")
+            check("the Cycle tab opens the dreamy scores sheet: no tabs, a ring and a cloud per score, and a way to log a past day (Jamie, 22 Oct)", sc0["sheet"] == "scores" and not sc0["tabs"] and sc0["rings"] == 2 and sc0["clouds"] == 2 and sc0["past"], sc0)
+            await page.click('#scPast'); await page.wait_for_selector('#sheet[aria-hidden="false"] [data-date]', timeout=10000)
             cyc = await page.evaluate("()=>{var cells=document.querySelectorAll('#sheet [data-date], #sheet .rday'); return {sheet: document.querySelector('#sheet')?.getAttribute('aria-hidden') === 'false', title: document.querySelector('#sheetTitle')?.textContent.slice(0,13), days: cells.length, visible: (cells[0]?.getBoundingClientRect().height || 0) > 0};}")
-            check("room.html#cycle (old links and the Cycle hash) still opens the calendar sheet with visible days", cyc["sheet"] and cyc["title"] == "Your calendar" and cyc["days"] >= 28 and cyc["visible"], cyc)
+            check("Log or fix a past day opens the Past days sheet with visible days", cyc["sheet"] and cyc["title"].startswith("Past days") and cyc["days"] >= 28 and cyc["visible"], cyc)
             ib = await page.evaluate("()=>{var b=document.querySelector('#sheet .ibtn'); if(!b) return null; b.click(); var p=document.querySelector('#sheet .guide[data-guide-panel='+b.dataset.guide+']'); return {topic: b.dataset.guide, on: !!(p && p.classList.contains('on'))}}")
             check("an (i) button in the calendar sheet opens its guide panel, made on the spot if the sheet forgot it", ib is None or ib["on"], ib)
-            await page.evaluate("()=>{var b=document.querySelector('#calTabs [data-tab=symptom]'); if(b) b.click();}"); await page.wait_for_timeout(400)
+            await page.evaluate("()=>OvuRoom.openCalendar('symptom')"); await page.wait_for_selector('#moodFaces', timeout=8000)
             mc0 = await page.evaluate("()=>{var m=document.querySelector('#moodCare'); return m?getComputedStyle(m).display:'missing'}")
             await page.evaluate("()=>{var b=document.querySelector('#moodFaces [data-mood=good]'); if(b) b.click();}"); await page.wait_for_timeout(150)
             mc1 = await page.evaluate("()=>getComputedStyle(document.querySelector('#moodCare')).display")
@@ -485,7 +1224,7 @@ async def main():
             await page.goto(BASE + "room.html#luna", wait_until="load"); await page.reload(wait_until="networkidle"); await page.wait_for_selector("#lunaIn", timeout=10000)
             await page.fill("#lunaIn", "I want to hurt myself"); await page.click("#lunaSend"); await page.wait_for_timeout(400)
             sh = await page.evaluate("()=>{var c=[...document.querySelectorAll('.bub.urgent.emergency')].pop(); return c ? {text: c.textContent, hrefs: [...c.querySelectorAll('a')].map(a=>a.getAttribute('href'))} : null}")
-            check("a self-harm note shows the 995 and SOS card with its own call links", bool(sh) and "If you have thoughts of harming yourself, you need help now." in sh["text"] and "your baby" not in sh["text"] and "SOS is available 24 hours on 1767, or WhatsApp 9151 1767." in sh["text"] and sh["hrefs"] == ["tel:995", "tel:1767", "https://wa.me/6591511767"], sh)
+            check("a self-harm note shows the help card with world-wide wording and one helpline-directory link", bool(sh) and "If you have thoughts of harming yourself, you need help now." in sh["text"] and "your baby" not in sh["text"] and "call your local emergency number" in sh["text"].lower() and "995" not in sh["text"] and sh["hrefs"] == ["https://findahelpline.com"], sh)
             await page.fill("#lunaIn", "My period has not returned."); await page.click("#lunaSend"); await page.wait_for_timeout(400)
             np = await page.evaluate("()=>{var b=[...document.querySelectorAll('.bub.from-luna')].pop(); var db=JSON.parse(localStorage.getItem('ovumind_db_v1')); return {text: b ? b.textContent : '', periodsToday: db.events.filter(e=>e.type==='period'&&e.date==='%s').length, confirm: document.querySelectorAll('.bub.confirm').length}}" % TODAY)
             check("'My period has not returned.' is acknowledged as no bleeding and adds no period day", "no bleeding" in np["text"] and np["periodsToday"] == 0 and np["confirm"] == 0, np)
@@ -503,8 +1242,8 @@ async def main():
             check("no sign-in request leaves the page for a signed-in person with a live session, and no diary row is sent with backup off", not [u for u in relay_calls if ("/auth/v1" in u or "/rest/v1/entries" in u)], relay_calls[:3])
             # Your choices: every use of the data as a switch, the required one locked on, a receipt; a change is recorded with where it was made
             await page.evaluate("()=>document.querySelector('[data-yact=choices]').click()"); await page.wait_for_selector("#y_health_tracking", timeout=8000); await page.wait_for_timeout(300)
-            ch = await page.evaluate("()=>({title: document.querySelector('#sheetTitle').textContent, n: document.querySelectorAll('.c-choice input').length, req: document.querySelector('#y_health_tracking').checked && document.querySelector('#y_health_tracking').disabled, anyOn: Array.from(document.querySelectorAll('.c-choice input:not(#y_health_tracking)')).some(i=>i.checked), receipt: (document.body.textContent||'').indexOf('Your consent receipt')>-1 && (document.body.textContent||'').indexOf('Notice version 4')>-1})")
-            check("Your choices lists six switches with health tracking locked on, the rest off, and the receipt at notice 4", ch["title"].startswith("Your choices") and ch["n"] == 6 and ch["req"] and not ch["anyOn"] and ch["receipt"], ch)
+            ch = await page.evaluate("()=>({title: document.querySelector('#sheetTitle').textContent, n: document.querySelectorAll('.c-choice input').length, req: document.querySelector('#y_health_tracking').checked && document.querySelector('#y_health_tracking').disabled, anyOn: Array.from(document.querySelectorAll('.c-choice input:not(#y_health_tracking)')).some(i=>i.checked), receipt: (document.body.textContent||'').indexOf('Your consent receipt')>-1 && (document.body.textContent||'').indexOf('Notice version 5')>-1})")
+            check("Your choices lists six switches with health tracking locked on, the rest off, and the receipt at notice 5", ch["title"].startswith("Your choices") and ch["n"] == 6 and ch["req"] and not ch["anyOn"] and ch["receipt"], ch)
             await page.check("#y_ai_reading"); await page.wait_for_timeout(400)
             c1 = await page.evaluate("()=>{var ev=JSON.parse(localStorage.getItem('ovumind_db_v1')).profile.consentEvents; var e=ev[ev.length-1]; var ai=JSON.parse(localStorage.getItem('ovumind_ai_v1')||'{}'); return {p:e.purpose, a:e.action, m:e.method, aiOn:!!ai.on, on: document.querySelector('#y_ai_reading').checked};}")
             await page.uncheck("#y_ai_reading"); await page.wait_for_timeout(400)
@@ -554,8 +1293,8 @@ async def main():
             ev = await page.evaluate("()=>document.body.innerText.includes('E49')")
             check("evidence page lists E49", r.status == 200 and ev)
             await page.goto(BASE + "hormones.html", wait_until="networkidle"); await page.wait_for_timeout(400)
-            hd = await page.evaluate("()=>({brand: document.querySelector('.rh-brand')?.textContent, tabs: document.querySelectorAll('nav.nav a').length, fab: !!document.querySelector('.mapfab')})")
-            check("Learn page carries the Rhythme header and tabs, no old launcher", hd["brand"] == "RHYTHME" and hd["tabs"] == 4 and not hd["fab"], hd)
+            hd = await page.evaluate("()=>({title: document.querySelector('.top .rh-title')?.textContent, back: document.querySelector('.top .rh-back')?.getAttribute('href'), tabs: document.querySelectorAll('nav.nav a').length, fab: !!document.querySelector('.mapfab')})")
+            check("Learn page carries the room's header (back to the room, the page's name) and the room's five tabs, no old launcher", hd["title"] == "Hormones" and (hd["back"] or "").startswith("room.html") and hd["tabs"] == 5 and not hd["fab"], hd)
             dests = {}
             for old_page, want_tab in [("home.html", "home"), ("cycle-log.html", "cycle"), ("diet.html", "food"), ("breathwork.html", "mind")]:
                 await page.goto(BASE + old_page, wait_until="load")
@@ -564,8 +1303,8 @@ async def main():
                 if want_tab != "home":
                     try: await page.wait_for_selector('#sheet[aria-hidden="false"]', timeout=10000)
                     except Exception: pass
-                dests[old_page] = await page.evaluate("()=>(location.pathname.endsWith('room.html') ? (document.querySelector('#sheet[aria-hidden=false]') && /calendar/i.test(document.querySelector('#sheetTitle').textContent) ? 'calendar' : (document.querySelector('nav a.on')?.dataset.tab || 'home')) : location.pathname)")
-            check("old screens redirect into the room and open the right place (the old cycle pages open the calendar now that there is no Cycle tab)", all(dests[k] == v for k, v in [("home.html", "home"), ("cycle-log.html", "calendar"), ("diet.html", "food"), ("breathwork.html", "mind")]), dests)
+                dests[old_page] = await page.evaluate("()=>(location.pathname.endsWith('room.html') ? (document.querySelector('#sheet[aria-hidden=false]') && OvuRoom.sheetId && OvuRoom.sheetId() === 'calendar' ? 'calendar' : (document.querySelector('nav a.on')?.dataset.tab || 'home')) : location.pathname)")
+            check("old screens redirect into the room and open the right place (the old cycle-log page opens the Past days sheet)", all(dests[k] == v for k, v in [("home.html", "home"), ("cycle-log.html", "calendar"), ("diet.html", "food"), ("breathwork.html", "mind")]), dests)
 
             # 6b. health data: a tiny Apple Health export.xml and a Takeout Fit zip are read on the phone, every kind found is listed
             # with nothing ticked, only the ticked kinds come in, the journal marks them, and one kind (then all) can be removed
@@ -645,17 +1384,17 @@ async def main():
             # a check whose answers raise care notes, one a day, no hearts; the patterns in the journal and the doctor view
             await page.goto(BASE + "room.html", wait_until="networkidle"); await page.wait_for_timeout(900)
             await page.click("[data-ci=sleep]"); await page.wait_for_timeout(400)
-            sq0 = await page.evaluate("()=>({sheet: document.querySelector('#sheetTitle').textContent, toggle: !!document.querySelector('#sqToggle'), hidden: document.querySelector('#sqBody').hidden, expanded: document.querySelector('#sqToggle').getAttribute('aria-expanded')})")
-            await page.click("#sqToggle"); await page.wait_for_timeout(200)
+            sq0 = await page.evaluate("()=>({sheet: document.querySelector('#sheetTitle').textContent, toggle: !!document.querySelector('#sqToggle'), hidden: document.querySelector('#sqBody').hidden})")
+            await page.evaluate("()=>{document.querySelector('#slBed').value='23:30'; document.querySelector('#slWake').value='06:40';}")
+            await page.click("#saveSleep"); await page.wait_for_timeout(300)
+            need = await page.evaluate("()=>({msg: document.querySelector('#sleepMsg').textContent, n: OvuStore.list('sleep').length})")
             await page.evaluate("()=>{document.querySelector('#slBed').value='23:30'; document.querySelector('#slWake').value='06:40';}")
             for k, v in (("latency", "gt60"), ("wakeups", "2"), ("awake", "31-60"), ("woke", "flush"), ("woke", "toilet"), ("rested", "2")):
                 await page.click(".sqf[data-sq=%s] .chipbtn[data-v='%s']" % (k, v)); await page.wait_for_timeout(80)
             sq1 = await page.evaluate("()=>({open: !document.querySelector('#sqBody').hidden, awakeShown: !document.querySelector('.sqf[data-sq=awake]').hidden, woke: [...document.querySelectorAll('.sqf[data-sq=woke] .chipbtn.on')].map(b=>b.dataset.v), pressed: document.querySelector('.sqf[data-sq=latency] .chipbtn[data-v=gt60]').getAttribute('aria-pressed')})")
-            await page.click("#sqToggle"); await page.wait_for_timeout(150)  # folded away: the answers must survive (Codex, 21 Oct)
-            fold = await page.evaluate("()=>({hidden: document.querySelector('#sqBody').hidden, label: document.querySelector('#sqToggle').textContent})")
             await page.click("#saveSleep"); await page.wait_for_timeout(500)
             sv = await page.evaluate("()=>{var e=OvuStore.list('sleep').filter(x=>x.data&&x.data.details).slice(-1)[0]; var lab=OvuAgents.SLEEP_LABELS.latency.opts.filter(o=>o[0]==='gt60')[0][1].toLowerCase(); return {msg: document.querySelector('#sleepMsg').textContent, det: e && e.data.details, listHasDetail: document.querySelector('#sleepList').textContent.toLowerCase().indexOf(lab)>-1}}")
-            check("Record a night: the details box starts closed and opens on its toggle, the awake question appears once wakings are chosen, two wakers can be ticked, folding the box keeps the answers and says so, and the saved night carries them and shows them in the list", sq0["toggle"] and sq0["hidden"] and sq0["expanded"] == "false" and sq1["open"] and sq1["awakeShown"] and sq1["woke"] == ["flush", "toilet"] and sq1["pressed"] == "true" and fold["hidden"] and "answered, kept" in fold["label"] and "Saved" in sv["msg"] and bool(sv["det"]) and sv["det"]["latency"] == "gt60" and sv["det"]["wakeups"] == "2" and sv["det"]["awake"] == "31-60" and sorted(sv["det"]["woke"]) == ["flush", "toilet"] and sv["listHasDetail"], {"sq0": sq0, "sq1": sq1, "fold": fold, "sv": sv})
+            check("Record a night: the details are always open (no toggle), saving without the three core answers asks for them, the awake question appears once wakings are chosen, two wakers can be ticked, and the saved night carries them and shows them in the list", not sq0["toggle"] and not sq0["hidden"] and "One more step" in need["msg"] and "Not sure is fine" in need["msg"] and sq1["open"] and sq1["awakeShown"] and sq1["woke"] == ["flush", "toilet"] and sq1["pressed"] == "true" and "Saved" in sv["msg"] and bool(sv["det"]) and sv["det"]["latency"] == "gt60" and sv["det"]["wakeups"] == "2" and sv["det"]["awake"] == "31-60" and sorted(sv["det"]["woke"]) == ["flush", "toilet"] and sv["listHasDetail"], {"sq0": sq0, "sq1": sq1, "need": need, "sv": sv})
             await page.click("#openSleepCheck"); await page.wait_for_timeout(400)
             ck0 = await page.evaluate("()=>({title: document.querySelector('#sheetTitle').textContent, groups: [...document.querySelectorAll('.sqf')].map(f=>f.dataset.sq).join(','), save: !!document.querySelector('#saveSleepCheck')})")
             for k, v in (("w1", "4"), ("w2", "3"), ("chance", "usually"), ("impact", "lot"), ("since", "3m+"), ("breathing", "yes"), ("legs", "no"), ("driving", "yes")):
@@ -695,8 +1434,8 @@ async def main():
             check("a fresh visitor meets the sign-in wall: the logo where the moon was, Apple, Google and email, no Let's begin, the notice not yet shown, nothing saved", fresh["welcome"] and not fresh["moon"] and fresh["logo"] == 512 and fresh["buttons"] == ["Sign in with Apple", "Sign in with Google", "Sign in with email"] and not fresh["begin"] and fresh["consent"] and (fresh["db"] is None or '"consent"' not in fresh["db"]) and "Sign in to open it" in fresh["note"], fresh)
             foc = await p2.evaluate("()=>({inert: document.querySelector('#main').inert === true && document.querySelector('nav.nav').inert === true && document.querySelector('#sheet').inert === true, focusIn: !!(document.activeElement && document.activeElement.closest('#welcome')), role: document.querySelector('#welcome').getAttribute('role'), modal: document.querySelector('#welcome').getAttribute('aria-modal'), loading: document.querySelector('#loading').classList.contains('hidden')})")
             check("while the wall is up the room behind it is inert to keys and screen readers, focus sits in the wall, the wall is a modal dialog, and the loading veil has lifted", foc["inert"] and foc["focusIn"] and foc["role"] == "dialog" and foc["modal"] == "true" and foc["loading"], foc)
-            wn = await p2.evaluate("()=>{var h=document.documentElement,was=h.getAttribute('data-sky');h.setAttribute('data-sky','night');var c=getComputedStyle(document.querySelector('#wSignIn')).color, g=getComputedStyle(document.querySelector('#wGoogle')).backgroundColor;if(was===null)h.removeAttribute('data-sky');else h.setAttribute('data-sky',was);return {c:c,g:g}}")
-            check("after sunset the wall's lighter buttons keep dark plum text and the Google button stays white", wn["c"] == "rgb(90, 66, 116)" and wn["g"] == "rgb(255, 255, 255)", wn)
+            wn = await p2.evaluate("()=>{var h=document.documentElement,was=h.getAttribute('data-sky');h.setAttribute('data-sky','day');var dc=getComputedStyle(document.querySelector('#wSignIn')).color;h.setAttribute('data-sky','night');var c=getComputedStyle(document.querySelector('#wSignIn')).color, g=getComputedStyle(document.querySelector('#wGoogle')).backgroundColor;if(was===null)h.removeAttribute('data-sky');else h.setAttribute('data-sky',was);var m=c.match(/\\d+/g).map(Number);return {c:c,dc:dc,g:g,dark:(m[0]+m[1]+m[2])/3<130}}")
+            check("after sunset the wall keeps its daytime colours (the night palette is retired): the lighter buttons' plum text is the same and dark, the Google button stays white", wn["c"] == wn["dc"] and wn["dark"] and wn["g"] == "rgb(255, 255, 255)", wn)
             await p2.goto(BASE + "journal.html", wait_until="load"); await p2.wait_for_timeout(600)
             check("a fresh visitor on another page is sent to the room first", p2.url.endswith("room.html"), p2.url)
             await p2.goto(BASE + "room.html", wait_until="networkidle"); await p2.wait_for_timeout(700)
@@ -716,12 +1455,12 @@ async def main():
             signed = await p2.evaluate("()=>({wall: !!document.querySelector('#welcome:not([hidden])'), consent: !document.querySelector('#consent').hidden, email: JSON.parse(localStorage.getItem('ovumind_auth_v1')||'{}').user?.email, cloudSheet: !!document.querySelector('#ovuCloudSheet'), inert: document.querySelector('#main').inert === true})")
             check("the right code signs her in: the wall closes, the room is no longer inert, the data notice opens next, and the cloud prompt waits because the notice carries that choice", not signed["wall"] and signed["consent"] and signed["email"] == "smoke@example.test" and not signed["cloudSheet"] and not signed["inert"], signed)
             # the real consent controls: nothing optional pre-ticked, the button locked until the age tick
-            before = await p2.evaluate("()=>({shown: !document.querySelector('#consent').hidden, n: document.querySelectorAll('#cChoices input[type=checkbox]').length, anyOn: Array.from(document.querySelectorAll('#cChoices input')).some(i=>i.checked), age: document.querySelector('#cAge').checked, health: document.querySelector('#cHealth').checked, locked: document.querySelector('#cAgree').disabled, under: !!document.querySelector('#cUnder')})")
-            check("the notice opens with five separate choices all off, the required health line ticked, the 18+ tick unticked, the button locked and an under-18 way out", before["shown"] and before["n"] == 5 and not before["anyOn"] and not before["age"] and before["health"] and before["locked"] and before["under"], before)
-            await p2.uncheck("#cHealth"); await p2.check("#cAge"); lockedStill = await p2.evaluate("()=>document.querySelector('#cAgree').disabled"); await p2.check("#cHealth"); await p2.click("#cAgree"); await p2.wait_for_timeout(600)
-            check("the health line is still required: with it unticked, the age tick alone does not unlock the button", lockedStill)
+            before = await p2.evaluate("()=>({shown: !document.querySelector('#consent').hidden, n: document.querySelectorAll('#cChoices input[type=checkbox]').length, anyOn: Array.from(document.querySelectorAll('#cChoices input')).some(i=>i.checked), age: document.querySelector('#cAge').checked, locked: document.querySelector('#cAgree').disabled, under: !!document.querySelector('#cUnder')})")
+            check("the notice opens with five separate choices all off, the 18+ tick unticked, the button locked and an under-18 way out", before["shown"] and before["n"] == 5 and not before["anyOn"] and not before["age"] and before["locked"] and before["under"], before)
+            lockedStill = await p2.evaluate("()=>document.querySelector('#cAgree').disabled"); await p2.check("#cAge"); await p2.click("#cAgree"); await p2.wait_for_timeout(600)
+            check("the 18+ tick is the one tick: the button stays locked until it is ticked", lockedStill)
             after = await p2.evaluate("()=>{var p=JSON.parse(localStorage.getItem('ovumind_db_v1')).profile; var ai=JSON.parse(localStorage.getItem('ovumind_ai_v1')||'{}'); return {v:p.consent&&p.consent.v, age:p.ageAttest&&p.ageAttest.confirmed===true?p.ageAttest.version:null, purposes:(p.consentEvents||[]).map(e=>e.purpose+':'+e.action+':'+e.method).sort(), aiOn:!!ai.on, cloud:p.cloud&&p.cloud.v, hidden: document.querySelector('#consent').hidden};}")
-            check("agreeing records the 18+ attestation and health tracking at notice 4, nothing else, and closes the notice", after["v"] == 4 and after["age"] == 1 and after["purposes"] == ["age_18:grant:sheet", "health_tracking:grant:sheet"] and not after["aiOn"] and not after["cloud"] and after["hidden"], after)
+            check("agreeing records the 18+ attestation and health tracking at notice 5, nothing else, and closes the notice", after["v"] == 5 and after["age"] == 1 and after["purposes"] == ["age_18:grant:sheet", "health_tracking:grant:sheet"] and not after["aiOn"] and not after["cloud"] and after["hidden"], after)
             await ctx2.close()
             # the notice itself: no under-18 note for an ordinary visitor; a withdrawal that does not reach the account keeps the sheet
             ctxw = await browser.new_context(viewport={"width": 390, "height": 844}); await ctxw.add_init_script(SESSION_SEED); pw = await ctxw.new_page(); await pw.route("**/*", gate)
@@ -751,11 +1490,45 @@ async def main():
             p4.on("pageerror", lambda e: errors.append("v2 pageerror: " + str(e)))
             await p4.goto(BASE + "room.html", wait_until="networkidle"); await p4.wait_for_timeout(900)
             rc = await p4.evaluate("()=>({shown: !document.querySelector('#consent').hidden, title: document.querySelector('#cTitle').textContent, photos: document.querySelector('#c_food_photo_ai').checked, reading: document.querySelector('#c_ai_reading').checked, cloud: document.querySelector('#c_cloud_sync').checked, age: document.querySelector('#cAge').checked, locked: document.querySelector('#cAgree').disabled, fine: document.querySelector('#cFine').textContent, welcome: !!document.querySelector('#welcome:not([hidden])')})")
-            check("a v2 consent reads the changed notice: the photo switch mirrors her setting, the rest are off, 18+ is asked afresh", rc["shown"] and rc["title"] == "Our data notice has changed" and rc["photos"] and not rc["reading"] and not rc["cloud"] and not rc["age"] and rc["locked"] and rc["fine"] == "Your diary on this phone is kept as it is." and not rc["welcome"], rc)
-            await p4.check("#c_ai_reading"); await p4.check("#cAge"); await p4.check("#cHealth"); await p4.click("#cAgree"); await p4.wait_for_timeout(700)
+            check("a v2 consent reads the changed notice: the photo switch mirrors her setting, the rest are off, 18+ is asked afresh", rc["shown"] and rc["title"] == "Your data choices" and rc["photos"] and not rc["reading"] and not rc["cloud"] and not rc["age"] and rc["locked"] and rc["fine"] == "Your diary on this phone is kept as it is." and not rc["welcome"], rc)
+            await p4.evaluate("()=>{document.querySelector('#cExtras').open=true}"); await p4.check("#c_ai_reading"); await p4.check("#cAge"); await p4.click("#cAgree"); await p4.wait_for_timeout(700)
             rd = await p4.evaluate("()=>{var db=JSON.parse(localStorage.getItem('ovumind_db_v1')); var p=db.profile; var ai=JSON.parse(localStorage.getItem('ovumind_ai_v1')||'{}'); var ev=p.consentEvents||[]; return {v:p.consent.v, age:p.ageAttest&&p.ageAttest.confirmed, imports: ev.filter(e=>e.method==='import').map(e=>e.purpose).sort(), sheet: ev.filter(e=>e.method==='sheet').map(e=>e.purpose+':'+e.action).sort(), aiOn: ai.on, aiPhotos: ai.photos, events: db.events.length, hidden: document.querySelector('#consent').hidden};}")
-            check("agreeing again keeps the earlier choices as imports, records the sheet's choices at notice 4 and keeps every entry", rd["v"] == 4 and rd["age"] is True and rd["imports"] == ["food_photo_ai", "health_tracking"] and rd["sheet"] == ["age_18:grant", "ai_reading:grant", "food_photo_ai:grant", "health_tracking:grant"] and rd["aiOn"] is True and rd["aiPhotos"] is True and rd["events"] == 3 and rd["hidden"], rd)
+            check("agreeing again keeps the earlier choices as imports, records the sheet's choices at notice 5 and keeps every entry", rd["v"] == 5 and rd["age"] is True and rd["imports"] == ["food_photo_ai", "health_tracking"] and rd["sheet"] == ["age_18:grant", "ai_reading:grant", "food_photo_ai:grant", "health_tracking:grant"] and rd["aiOn"] is True and rd["aiPhotos"] is True and rd["events"] == 3 and rd["hidden"], rd)
             await ctx4.close()
+            # a v4 reader whose account already has Help improve logging on renews the notice. The choice is not sent again (that would
+            # restart the account's consent from now): the account is read instead and the phone follows it, so a choice turned off
+            # elsewhere stays off and she is told; unticking still sends the withdrawal (Codex verification rounds 1 and 2, 21 Oct)
+            UID = SESS["user"]["id"]
+            v4 = json.loads(json.dumps(DB)); v4["profile"]["consent"] = {"v": 4, "at": NOW, "luna": False, "improve": True}
+            v4["profile"]["consentEvents"] = [dict(e, notice=4) for e in v4["profile"]["consentEvents"]] + [{"id": "ce3", "purpose": "improve_logging", "action": "grant", "at": NOW, "notice": 4, "method": "you", "uid": UID, "sent": True}]
+            v4["profile"]["analysis"] = {"on": True, "v": 4, "at": NOW, "uid": UID, "syncedAt": NOW, "scope": "from_now", "rev": NOW}
+            renew = {}
+            for case in ("kept", "elsewhere", "untick"):
+                acct = {"notice_version": 4, "history_scope": "from_now", "accepted_at": NOW, "withdrawn_at": (NOW if case == "elsewhere" else None), "updated_at": NOW}
+                reads, writes = [], []
+                ctxi = await browser.new_context(viewport={"width": 390, "height": 844})
+                await ctxi.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(v4))); await ctxi.add_init_script(SESSION_SEED)
+                pi = await ctxi.new_page(); await pi.route("**/*", gate)
+                def acct_handler(acct, reads, writes):  # one-argument handler: Playwright passes the request too when a handler takes more
+                    async def acct_route(route):
+                        u = route.request.url
+                        if "/rest/v1/analysis_consent?" in u and route.request.method == "GET":
+                            reads.append(u); return await route.fulfill(status=200, content_type="application/json", body=json.dumps([acct]))
+                        if "/rpc/analysis_consent_set" in u: writes.append(u); return await route.abort()
+                        return await route.fallback()
+                    return acct_route
+                await pi.route("**/rest/v1/**", acct_handler(acct, reads, writes))  # registered last, so it is asked first; everything else falls back to the gate
+                await pi.goto(BASE + "room.html", wait_until="networkidle"); await pi.wait_for_timeout(900)
+                await pi.evaluate("()=>{window.__imp=[]; window.__toasts=[]; OvuAuth.setImprove=function(on,m){__imp.push([!!on,m]); return Promise.resolve({ok:true});}; var t=document.querySelector('#toast'); if (t) new MutationObserver(function(){ __toasts.push(t.textContent); }).observe(t, {childList:true, subtree:true, characterData:true});}")
+                pre = await pi.evaluate("()=>({shown: !document.querySelector('#consent').hidden, ticked: !!(document.querySelector('#c_improve_logging')||{}).checked})")
+                if case == "untick": await pi.evaluate("()=>{document.querySelector('#cExtras').open=true}"); await pi.uncheck("#c_improve_logging")
+                await pi.check("#cAge"); await pi.click("#cAgree"); await pi.wait_for_timeout(1200)
+                renew[case] = await pi.evaluate("()=>{var a=OvuStore.profile().analysis||{}; return {calls: window.__imp, v: OvuStore.profile().consent && OvuStore.profile().consent.v, hidden: document.querySelector('#consent').hidden, on: a.on === true, at: a.at, mirrorV: a.v, allows: OvuConsent.allows('improve_logging'), told: window.__toasts.some(function(x){return /off on your account/.test(x);})};}")
+                renew[case].update(pre); renew[case]["reads"] = len(reads); renew[case]["writes"] = len(writes)
+                await ctxi.close()
+            k, e2, u2 = renew["kept"], renew["elsewhere"], renew["untick"]
+            check("renewing the notice with Help improve logging still on reads the account, sends nothing, and keeps the consent's start and version", k["shown"] and k["ticked"] and k["calls"] == [] and k["reads"] >= 1 and k["writes"] == 0 and k["v"] == 5 and k["hidden"] and k["on"] and k["at"] == NOW and k["mirrorV"] == 4 and k["allows"] and not k["told"], k)
+            check("if the account turned it off elsewhere, the renewed notice leaves it off on this phone too and says so; unticking it sends one withdrawal", e2["calls"] == [] and e2["reads"] >= 1 and e2["writes"] == 0 and e2["v"] == 5 and e2["hidden"] and not e2["on"] and not e2["allows"] and e2["told"] and u2["calls"] == [[False, "sheet"]] and u2["v"] == 5 and u2["hidden"], {"elsewhere": e2, "untick": u2})
             # under 18: the room does not open, nothing is saved, and the notice is back on the next visit
             ctx5 = await browser.new_context(viewport={"width": 390, "height": 844}); await ctx5.add_init_script(SESSION_SEED)
             p5 = await ctx5.new_page(); await p5.route("**/*", gate)
@@ -785,6 +1558,8 @@ async def main():
             # Moon Tap: open from the mat sheet, begin, three blooms, stop after the minimum, the entry is saved
             await page.goto(BASE + "room.html", wait_until="networkidle"); await page.wait_for_selector(".hotspot"); await page.wait_for_timeout(800)
             await page.click("nav a[data-tab=mind]"); await page.wait_for_selector("#mindTap", timeout=8000); await page.click("#mindTap"); await page.wait_for_selector("#btapBegin", timeout=8000)
+            kh = await page.evaluate("()=>({how: !!document.querySelector('#btapCard details.btap-how'), steps: document.querySelectorAll('#btapCard details.btap-how li').length, open: document.querySelector('#btapCard details.btap-how').open})")
+            check("Koi Pond: the card carries a folded How to practise list of five steps", kh["how"] and kh["steps"] == 5 and not kh["open"], kh)
             await page.click("#btapBegin"); await page.wait_for_timeout(5600)
             for _ in range(3): await page.mouse.click(195, 300); await page.wait_for_timeout(150)
             f0 = await page.evaluate("()=>{var f=OvuBreathTap.koi()[0], r=document.querySelector('#btap').getBoundingClientRect(); return {x: f.x + r.left, y: f.y + r.top, fx: f.x, fy: f.y}}")
@@ -795,23 +1570,79 @@ async def main():
             gone = ((k2["fish"][0]["x"] - f0["fx"]) ** 2 + (k2["fish"][0]["y"] - f0["fy"]) ** 2) ** 0.5
             check("Koi Pond: no moon, three big koi; a tap on one startles it and it darts away from the tap", k2["moon"] and k2["title"] == "Koi Pond" and len(k2["fish"]) == 3 and k2["big"] and k1["fleeing"] and gone > 40, {"k1": k1, "k2": k2, "gone": gone})
             petals = await page.evaluate("()=>{var c=document.querySelector('#btapWater'); return c && c.width > 30 ? 3 : 0}")
+            await page.evaluate("()=>{ window.__realNowKoi = window.__realNowKoi || Date.now; var base = window.__realNowKoi; Date.now = function () { return base() + 61000; }; }")   # a minute passes (the game saves only a full minute, and only after Yes)
             await page.click("#btapStop"); await page.wait_for_timeout(600)
+            ask = await page.evaluate("()=>({q: document.querySelector('#btapDone b').textContent, yes: !document.querySelector('#btapYes').hidden, n: JSON.parse(localStorage.getItem('ovumind_db_v1')).events.filter(x=>x.type==='mindfulness'&&x.data.kind==='breathtap').length})")
+            check("Koi Pond: Stop after a minute asks before saving to the journal, and nothing is saved yet", "Save this mindful minute" in ask["q"] and ask["yes"] and ask["n"] == 0, ask)
+            await page.click("#btapYes"); await page.wait_for_timeout(500)
+            await page.evaluate("()=>{ if (window.__realNowKoi) Date.now = window.__realNowKoi; }")
             tap = await page.evaluate("()=>{var d=JSON.parse(localStorage.getItem('ovumind_db_v1')); var e=d.events.filter(x=>x.type==='mindfulness'&&x.data.kind==='breathtap'); return {n:e.length, secs:e.length?e[e.length-1].data.seconds:0, taps:e.length?e[e.length-1].data.taps:0, done:!document.querySelector('#btapDone').hidden, text:document.querySelector('#btapDone').innerText}}")
-            check("Koi Pond ripples the water on taps and saves practice time on Stop", petals >= 3 and tap["n"] == 1 and tap["secs"] >= 5 and tap["taps"] == 4 and tap["done"] and "Your pause is saved" in tap["text"], tap)
+            check("Koi Pond ripples the water on taps and saves practice time after Yes", petals >= 3 and tap["n"] == 1 and tap["secs"] >= 60 and tap["taps"] == 4 and tap["done"] and "Your pause is saved" in tap["text"], tap)
             # Light Flower (Jamie and Codex, 20 Oct): a flower of light; a tap lights one petal and one soft note; Stop saves only time
             await page.click("#btapDoneClose"); await page.wait_for_timeout(400)
             await page.click("nav a[data-tab=mind]"); await page.wait_for_selector("#mindFlower", timeout=8000); await page.click("#mindFlower"); await page.wait_for_selector("#lfBegin", timeout=8000)
+            lfh = await page.evaluate("()=>({how: !!document.querySelector('#lfCard details.btap-how'), steps: document.querySelectorAll('#lfCard details.btap-how li').length, paces: [...document.querySelectorAll('#lfPaces [data-pace]')].map(b=>b.dataset.pace).join(), own: (document.querySelector('#lfPaces .on')||{}).dataset.pace, safeHidden: document.querySelector('.lf-pacesafe').hidden})")
+            await page.click("#lfPaces [data-pace=longout]"); await page.wait_for_timeout(100)
+            lfh2 = await page.evaluate("()=>({safeHidden: document.querySelector('.lf-pacesafe').hidden, on: document.querySelector('#lfPaces .on').dataset.pace})")
+            check("Light Flower: a How to practise list of five steps, four breathing paces with the flower's own rhythm chosen, and the gentle-breathing line only once a pace with words is picked", lfh["how"] and lfh["steps"] == 5 and lfh["paces"] == "own,easy,steady,longout" and lfh["own"] == "own" and lfh["safeHidden"] and not lfh2["safeHidden"] and lfh2["on"] == "longout", {"lfh": lfh, "lfh2": lfh2})
             lf0 = await page.evaluate("()=>({title: document.querySelector('#lflower h2').textContent, air: !document.querySelector('.lf-air').hidden, open: !document.querySelector('#lflower').hidden, sound: OvuSound.enabled()})")
             await page.click("#lfBegin"); await page.wait_for_timeout(700)
             box = await page.evaluate("()=>{var r=document.querySelector('#lfFlower').getBoundingClientRect(); return {x: r.left + r.width/2, y: r.top + r.height*0.2, w: r.width}}")
             for _ in range(4): await page.mouse.click(box["x"], box["y"]); await page.wait_for_timeout(60)
             lf1 = await page.evaluate("()=>{var c=document.querySelector('#lfCanvas'); return {running: OvuLightFlower.running(), canvas: c.width > 200 && c.height > 300, flower: document.querySelector('#lfFlower').getBoundingClientRect().width > 120}}")
             await page.wait_for_timeout(1500)
+            await page.evaluate("()=>{ window.__realNowKoi = window.__realNowKoi || Date.now; var base = window.__realNowKoi; Date.now = function () { return base() + 61000; }; window.__realPerf = window.__realPerf || performance.now.bind(performance); var pb = window.__realPerf; performance.now = function () { return pb() + 61000; }; }")
             await page.click("#lfStop"); await page.wait_for_timeout(500)
+            lfq = await page.evaluate("()=>({q: document.querySelector('#lfDone b').textContent, yes: !document.querySelector('#lfYes').hidden})")
+            check("Light Flower: Stop after a minute asks before saving", "Save this mindful minute" in lfq["q"] and lfq["yes"], lfq)
+            await page.click("#lfYes"); await page.wait_for_timeout(500)
+            await page.evaluate("()=>{ if (window.__realNowKoi) Date.now = window.__realNowKoi; if (window.__realPerf) performance.now = window.__realPerf; }")
             lf2 = await page.evaluate("()=>{var d=JSON.parse(localStorage.getItem('ovumind_db_v1')); var e=d.events.filter(x=>x.type==='mindfulness'&&x.data.kind==='lightflower'); var last=e[e.length-1]; return {n: e.length, secs: last ? last.data.seconds : 0, taps: last ? ('taps' in last.data) : null, done: !document.querySelector('#lfDone').hidden, text: document.querySelector('#lfDone b').textContent, sub: (document.querySelector('#toast .toastsub')||{}).textContent || ''}}")
             check("Light Flower opens from the Mind hub with the soft-air choice, sound on by default, and lights petals on a drawn flower", lf0["title"] == "Light Flower" and lf0["open"] and lf0["air"] and lf0["sound"] and lf1["running"] and lf1["canvas"] and lf1["flower"], {"lf0": lf0, "lf1": lf1})
-            check("Stop saves only the practice time (no tap count), says the pause is saved, and the mindful line follows", lf2["n"] == 1 and lf2["secs"] >= 2 and lf2["taps"] is False and lf2["done"] and "Your pause is saved" in lf2["text"] and ("quiet detail" in lf2["sub"] or "note has faded" in lf2["sub"]), lf2)
+            check("Yes saves only the practice time (no tap count), says the pause is saved, and the mindful line follows", lf2["n"] == 1 and lf2["secs"] >= 60 and lf2["taps"] is False and lf2["done"] and "Your pause is saved" in lf2["text"] and ("quiet detail" in lf2["sub"] or "note has faded" in lf2["sub"]), lf2)
+            lfp = await page.evaluate("()=>{var d=JSON.parse(localStorage.getItem('ovumind_db_v1')); var e=d.events.filter(x=>x.type==='mindfulness'&&x.data.kind==='lightflower'); return {pace: e[e.length-1].data.pace, word: (document.querySelector('#lfBreath')||{}).textContent}}")
+            check("Light Flower: the saved practice carries the Long out pace, and the breath word was shown on the stage", lfp["pace"] == "longout" and lfp["word"] in ("in", "out"), lfp)
             await page.click("#lfDoneClose"); await page.wait_for_timeout(300)
+            # water in the food diary (Jamie, 21 Oct): a record with examples of amounts, hearts once for recording, information by answers, the Water tile, the old page redirects
+            wq0 = await page.evaluate("()=>({chip: !!document.querySelector('#ciQuick [data-qa=water]'), tile: (document.querySelector('.citile[data-ci=water] b')||{}).textContent, food: !!document.querySelector('.citile[data-ci=food]')})")
+            await page.click("nav a[data-tab=food]"); await page.wait_for_selector("#dTabs button[data-dpane=today]", timeout=8000); await page.click("#dTabs button[data-dpane=today]"); await page.wait_for_selector("#waterStrip .wstrip", timeout=8000)
+            w0 = await page.evaluate("()=>({head: document.querySelector('#waterStrip .whead b').textContent, hearts: OvuRewards.ledger().hearts, info: !!document.querySelector('#waterStrip details.winfo'), ask: !!document.querySelector('#waterStrip [data-water=questions]'), bar: !!document.querySelector('#waterStrip progress, #waterStrip .bar'), text: document.querySelector('#waterStrip').textContent})")
+            await page.click("#waterStrip [data-water=add][data-ml='250']"); await page.wait_for_timeout(300)
+            w1 = await page.evaluate("()=>({head: document.querySelector('#waterStrip .whead b').textContent, hearts: OvuRewards.ledger().hearts})")
+            await page.click("#waterStrip [data-water=add][data-ml='200']"); await page.wait_for_timeout(300)
+            w2 = await page.evaluate("()=>({head: document.querySelector('#waterStrip .whead b').textContent, hearts: OvuRewards.ledger().hearts, n: document.querySelectorAll('#waterStrip .wlist li').length})")
+            page.once("dialog", lambda d: asyncio.ensure_future(d.accept()))
+            await page.click("#waterStrip .wlist li:first-child [data-water=remove]"); await page.wait_for_timeout(300)
+            w3 = await page.evaluate("()=>({head: document.querySelector('#waterStrip .whead b').textContent, hearts: OvuRewards.ledger().hearts, n: document.querySelectorAll('#waterStrip .wlist li').length})")
+            check("water: nothing recorded shows a plain head with information folded under it and no bar; 250 ml then 200 ml add up; the first record earns six hearts once and the second none; Remove takes one away and the hearts stay", wq0["chip"] and wq0["tile"] == "Add" and not wq0["food"] and "Nothing recorded" in w0["text"] and w0["info"] and w0["ask"] and not w0["bar"] and "250 ml" in w1["head"] and w1["hearts"] == w0["hearts"] + 6 and "450 ml" in w2["head"] and w2["hearts"] == w1["hearts"] and w2["n"] == 2 and "200 ml" in w3["head"] and w3["n"] == 1 and w3["hearts"] == w1["hearts"], {"w0": {"head": w0["head"], "hearts": w0["hearts"]}, "w1": w1, "w2": w2, "w3": w3, "wq0": wq0})
+            check("water: no goal, target, percentage or streak words in the strip", not any(k in w0["text"].lower() for k in ["goal", "target", "remaining", "on track", "%", "streak", "dehydrat"]), w0["text"][:200])
+            await page.click("#waterStrip [data-water=questions]"); await page.wait_for_selector("#wqSave", timeout=8000)
+            await page.click(".wq[data-q=kidney] [data-v=yes]"); await page.click(".wq[data-q=heart] [data-v=no]"); await page.click(".wq[data-q=advice] [data-v=no]"); await page.click(".wq[data-q=preg] [data-v=no]"); await page.click("#wqSave"); await page.wait_for_selector("#waterStrip .wstrip.care", timeout=8000)
+            wc = await page.evaluate("()=>({care: !!document.querySelector('#waterStrip .wstrip.care'), text: document.querySelector('#waterStrip').textContent, hearts: OvuRewards.ledger().hearts})")
+            await page.click("#waterStrip [data-water=hide]"); await page.wait_for_timeout(200)
+            wh = await page.evaluate("()=>document.querySelector('#waterStrip .whead b').textContent")
+            await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(400)
+            wt = await page.evaluate("()=>({tile: (document.querySelector('.citile[data-ci=water] b')||{}).textContent, state: document.querySelector('.citile[data-ci=water]').className})")
+            check("water: kidney disease answered yes shows the care line (care team, plain water only) and pays nothing extra; Hide amounts shows a count; the Water tile reads the record", wc["care"] and "care team" in wc["text"] and "plain water" in wc["text"] and wc["hearts"] == w1["hearts"] and "record" in wh and wt["tile"] == "1 record" and "s-done" in wt["state"], {"wc": {"care": wc["care"], "hearts": wc["hearts"]}, "wh": wh, "wt": wt})
+            await page.goto(BASE + "hydration.html", wait_until="domcontentloaded"); await page.wait_for_timeout(1800)
+            hy = await page.evaluate("()=>({path: location.pathname.split('/').pop(), sheet: OvuRoom.sheetId && OvuRoom.sheetId(), total: OvuWater.dayTotal(OvuStore.today())})")
+            check("water: the old hydration page lands in the room's food diary, and the records survive the reload", hy["path"] == "room.html" and hy["sheet"] == "diary" and hy["total"] == 200, hy)
+            await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(300)
+            # Listen with Erin (Jamie, 21 Oct): the playable episodes shuffle, the locked ones sit at the bottom under one label, Shuffle reorders
+            # the Listen sheet shows Erin's episode covers from her own Substack (by design: nothing is copied to our servers); the smoke answers those image requests itself so the third-party count stays about tracking, not her content
+            PNG1 = bytes.fromhex("89504e470d0a1a0a0000000d494844520000000100000001080600000" "01f15c4890000000d49444154789c6360000002000154a24f5d0000000049454e44ae426082")
+            async def cover_ok(route): await route.fulfill(status=200, body=PNG1, content_type="image/png")
+            await page.route("**/substack-video.s3.amazonaws.com/**", cover_ok); await page.route("**/substackcdn.com/**", cover_ok)
+            await page.click("nav a[data-tab=mind]"); await page.wait_for_selector("#podShelf [data-pod-open]", timeout=8000); await page.evaluate("()=>document.querySelector('#podShelf [data-pod-open]').click()"); await page.wait_for_selector("#podList .podep", timeout=8000)
+            po1 = await page.evaluate("()=>{var l=[...document.querySelectorAll('#podList .podep')]; var ids=l.map(b=>b.dataset.ep); var lk=l.map(b=>b.classList.contains('locked')); var first=lk.indexOf(true); return {ids: ids, n: l.length, lockedLast: first<0 || lk.slice(first).every(Boolean), label: !!document.querySelector('#podList .podlocked'), shuffle: !!document.querySelector('#podShuffle')}}")
+            orders = [po1["ids"]]
+            for _ in range(3):
+                await page.click("#podShuffle"); await page.wait_for_timeout(200)
+                orders.append(await page.evaluate("()=>[...document.querySelectorAll('#podList .podep')].map(b=>b.dataset.ep)"))
+            po2 = await page.evaluate("()=>{var l=[...document.querySelectorAll('#podList .podep')]; var lk=l.map(b=>b.classList.contains('locked')); var first=lk.indexOf(true); return first<0 || lk.slice(first).every(Boolean)}")
+            check("Listen with Erin: nineteen episodes, the locked ones at the bottom under With Rhythme Plus, and Shuffle gives a new order that keeps them there", po1["n"] == 19 and po1["lockedLast"] and po1["label"] and po1["shuffle"] and any(o != orders[0] for o in orders[1:]) and po2 and all(sorted(o) == sorted(orders[0]) for o in orders), {"n": po1["n"], "lockedLast": po1["lockedLast"], "label": po1["label"], "changed": any(o != orders[0] for o in orders[1:])})
+            await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(300)
+            await page.unroute("**/substack-video.s3.amazonaws.com/**", cover_ok); await page.unroute("**/substackcdn.com/**", cover_ok)
             # Erin's own teeth scripts: the hour picks morning or evening, eight steps each inside four minutes, the clips exist
             late = await page.evaluate("()=>OvuMindful.nextVariation(OvuMindful.byId('teeth'), new Date(2026,9,20,0,40)).when")
             check("just after midnight Erin's teeth script is the evening one, never good morning", late == "evening", late)
@@ -970,7 +1801,7 @@ async def main():
             # Codex second check: the warm-up is silent through the app's shared voice mute (the real wrapper, not a fake), a
             # remembered mute makes Quiet the default and choosing the voice lifts it, and brushing is claimed only when it happened
             wm = await page.evaluate("()=>{var m0 = OvuVoice.muted(); window.__plays = []; var proto = HTMLMediaElement.prototype, prev = proto.play; window.__prevPlay = prev; proto.play = function(){ var r = prev.apply(this, arguments); window.__plays.push({src: String(this.src).slice(0, 22), ours: String(this.src).indexOf('assets/audio/') > -1, muted: this.muted}); if (r && r.catch) r.catch(function(){}); return r; }; OvuVoice.set(false); OvuMorning.begin('yourway', true); var quietStart = window.__plays.slice(); OvuMorning.cancel(); OvuVoice.set(true); OvuMorning.open(); var box = document.querySelector('#mQuiet'); var dflt = !!(box && box.checked); OvuRoom.closeSheet(); window.__plays = []; OvuMorning.begin('yourway', false); var voiced = window.__plays.slice(), lifted = !OvuVoice.muted(); OvuMorning.cancel(); proto.play = prev; OvuVoice.set(m0); return {quietStart: quietStart, dflt: dflt, voiced: voiced, lifted: lifted}}")
-            check("the warm-up is a muted silent sound the voice mute leaves alone; a remembered mute makes Quiet the default and choosing the voice lifts it", len(wm["quietStart"]) == 1 and wm["quietStart"][0]["src"].startswith("data:audio/wav") and wm["quietStart"][0]["muted"] and not wm["quietStart"][0]["ours"] and wm["dflt"] and wm["lifted"] and len(wm["voiced"]) >= 1 and wm["voiced"][0]["ours"] and not wm["voiced"][0]["muted"], wm)
+            check("the warm-up is a muted silent sound the voice mute leaves alone; a remembered mute makes Quiet the default, and choosing the voice plays this run aloud while the app-wide switch stays off (Jamie, 22 Oct)", len(wm["quietStart"]) == 1 and wm["quietStart"][0]["src"].startswith("data:audio/wav") and wm["quietStart"][0]["muted"] and not wm["quietStart"][0]["ours"] and wm["dflt"] and not wm["lifted"] and len(wm["voiced"]) >= 1 and wm["voiced"][0]["ours"] and not wm["voiced"][0]["muted"], wm)
             await page.evaluate("()=>{if (OvuRoom.sheetOpen()) OvuRoom.closeSheet(); OvuMorning.begin('erin', true)}"); await page.wait_for_timeout(100)
             await page.click("#mpSkipPart"); await page.click("#mpReady"); await page.wait_for_timeout(100)
             await page.evaluate("()=>{window.__dn4 = Date.now; var n0 = window.__dn4; Date.now = function(){return n0() + 40000};}")
@@ -1176,6 +2007,7 @@ async def main():
             await page.wait_for_timeout(1400)
             after = await page.evaluate("()=>({caring: OvuGreenhouse.caring(), hud: document.querySelector('#hud').classList.contains('on'), img: document.querySelector('#avatarImg').getAttribute('src')})")
             await page.evaluate("()=>OvuGreenhouse.finishCare(true)")
+            await page.wait_for_timeout(500); await page.evaluate("()=>{var y=document.querySelector('#ghYes'); if(y) y.click();}"); await page.wait_for_timeout(300)   # the minute saves only after Yes (Codex integrity fix, 22 Oct)
             await page.evaluate("()=>{OvuRoom.closeSheet && OvuRoom.closeSheet(); OvuGreenhouse.startCare('hoya');}"); await page.wait_for_timeout(200)
             await page.click('#hudStop'); await page.wait_for_timeout(300)
             stopped = await page.evaluate("()=>({caring: OvuGreenhouse.caring(), hud: document.querySelector('#hud').classList.contains('on')})")
@@ -1269,15 +2101,23 @@ async def main():
             await page.wait_for_timeout(500)
             hb0 = await page.evaluate("()=>({beds: document.querySelectorAll('#ownedProps .ghbed').length, label: (document.querySelector('.ghbed[data-bed=hb1]')||{getAttribute:()=>''}).getAttribute('aria-label'), diary: OvuStore.list().length})")
             await page.evaluate("()=>OvuLane.openGrocer()"); await page.wait_for_timeout(250)
-            hbuy = await page.evaluate("()=>{var n=document.querySelectorAll('#grocerHerbs [data-herbstart]').length, b=document.querySelector('#grocerHerbs [data-herbstart=ginger]'), freeBefore=/free/.test(b?b.textContent:''); if(b) b.click(); var after=document.querySelector('#grocerHerbs [data-herbstart=ginger]'); return {n: n, freeBefore: freeBefore, claimed: !OvuGreenhouse.freeStartOpen(OvuStore), priced: after ? /♥/.test(after.textContent) && !/free/.test(after.textContent) : false, seeds: OvuGreenhouse.herbState(OvuStore).seeds.ginger||0, lemongrassFarm: !!document.querySelector('#grocerBuy [data-unlock=lemongrass]')}}")
+            await page.evaluate("()=>{var b=document.querySelector('#grocerHerbs [data-herbstart=ginger]'); window.__t={n: document.querySelectorAll('#grocerHerbs [data-herbstart]').length, freeBefore: /free/.test(b?b.textContent:'')}; if(b) b.click();}")
+            await page.wait_for_timeout(600)  # the farm lock answers on a later task
+            hbuy = await page.evaluate("()=>{var n=window.__t.n, freeBefore=window.__t.freeBefore; var after=document.querySelector('#grocerHerbs [data-herbstart=ginger]'); return {n: n, freeBefore: freeBefore, claimed: !OvuGreenhouse.freeStartOpen(OvuStore), priced: after ? /\\d+ hearts/.test(after.textContent) && !/free/.test(after.textContent) : false, seeds: OvuGreenhouse.herbState(OvuStore).seeds.ginger||0, lemongrassFarm: !!document.querySelector('#grocerBuy [data-unlock=lemongrass]')}}")
             check("Hay & Harvest sells the four greenhouse herbs, the first one free; a free ginger start lands in the greenhouse bag and the shelf shows prices after, and lemongrass is not a farm unlock any more", hb0["beds"] == 4 and "empty" in (hb0["label"] or "") and hbuy["n"] == 4 and hbuy["freeBefore"] and hbuy["claimed"] and hbuy["priced"] and hbuy["seeds"] == 1 and not hbuy["lemongrassFarm"], [hb0, hbuy])
             await page.evaluate("()=>{OvuRoom.closeSheet(); OvuGreenhouse.slowMs = 0; document.querySelector('.ghbed[data-bed=hb1]').click();}")
             try: await page.wait_for_selector('#sheet[aria-hidden="false"] #herbActs [data-herb=plant][data-kind=ginger]', timeout=15000)
             except Exception: pass
-            hp = await page.evaluate("()=>{var pos=OvuRoom.pos(), b=document.querySelector('#herbActs [data-herb=plant][data-kind=ginger]'); if(!b) return {btn:false, pos:pos}; b.click(); var bed=OvuGreenhouse.herbState(OvuStore).beds.hb1; var w=document.querySelector('#herbActs [data-herb=water]'); if(w) w.click(); bed=OvuGreenhouse.herbState(OvuStore).beds.hb1; return {btn:true, pos:pos, herb: bed&&bed.herb, days: OvuGreenhouse.herbDays(bed), stam: OvuStamina.value(), again: !!document.querySelector('#herbActs [data-herb=water]'), seeds: OvuGreenhouse.herbState(OvuStore).seeds.ginger||0}}")
+            await page.evaluate("()=>{var b=document.querySelector('#herbActs [data-herb=plant][data-kind=ginger]'); window.__t={pos: OvuRoom.pos(), btn: !!b}; if(b) b.click();}")
+            await page.wait_for_timeout(600)  # the farm lock answers on a later task
+            await page.evaluate("()=>{var w=document.querySelector('#herbActs [data-herb=water]'); if(w) w.click();}")
+            await page.wait_for_timeout(600)
+            hp = await page.evaluate("()=>{var pos=window.__t.pos; if(!window.__t.btn) return {btn:false, pos:pos}; var bed=OvuGreenhouse.herbState(OvuStore).beds.hb1; return {btn:true, pos:pos, herb: bed&&bed.herb, days: OvuGreenhouse.herbDays(bed), stam: OvuStamina.value(), again: !!document.querySelector('#herbActs [data-herb=water]'), seeds: OvuGreenhouse.herbState(OvuStore).seeds.ginger||0}}")
             check("tapping a planter walks her to its stand point; planting the ginger and watering it once costs energy and counts one day", hp["btn"] and abs(hp["pos"]["x"] - 39) < 1.5 and abs(hp["pos"]["y"] - 68.6) < 1.5 and hp["herb"] == "ginger" and hp["days"] == 1 and hp["stam"] == 100 - 2 - 6 and not hp["again"] and hp["seeds"] == 0, hp)
             await page.evaluate("()=>{var g=OvuGreenhouse.herbState(OvuStore), b=g.beds.hb1, d=b.watered[0]; b.watered=['2020-01-01','2020-01-02','2020-01-03','2020-01-04','2020-01-05',d]; OvuStore.setState({greenhouse:g}); OvuGreenhouse.renderBeds(); OvuGreenhouse.openHerbBed('hb1');}"); await page.wait_for_timeout(200)
-            hk = await page.evaluate("()=>{var ripe=document.querySelector('.ghbed[data-bed=hb1]').classList.contains('ripe'), b=document.querySelector('#herbActs [data-herb=pick]'); if(!b) return {btn:false}; b.click(); var bed=OvuGreenhouse.herbState(OvuStore).beds.hb1; return {btn:true, ripe:ripe, basket: OvuFarm.farmState(OvuStore).harvest.ginger||0, stays: bed&&bed.herb, cuts: bed&&bed.cuts, brew: !!document.querySelector('#herbActs [data-herb=brew]')}}")
+            await page.evaluate("()=>{var b=document.querySelector('#herbActs [data-herb=pick]'); window.__t={ripe: document.querySelector('.ghbed[data-bed=hb1]').classList.contains('ripe'), btn: !!b}; if(b) b.click();}")
+            await page.wait_for_timeout(600)  # the farm lock answers on a later task
+            hk = await page.evaluate("()=>{var ripe=window.__t.ripe; if(!window.__t.btn) return {btn:false}; var bed=OvuGreenhouse.herbState(OvuStore).beds.hb1; return {btn:true, ripe:ripe, basket: OvuFarm.farmState(OvuStore).harvest.ginger||0, stays: bed&&bed.herb, cuts: bed&&bed.cuts, brew: !!document.querySelector('#herbActs [data-herb=brew]')}}")
             await page.evaluate("()=>OvuFarm.openBasket()"); await page.wait_for_timeout(150)
             hk["listed"] = await page.evaluate("()=>/Ginger/.test(document.querySelector('#sheet .basketlist')?.textContent||'')")
             check("a ripe planter sparkles; picking puts two pieces of ginger in the farm basket, the ginger stays to grow again, and the basket lists it", hk["btn"] and hk["ripe"] and hk["basket"] == 2 and hk["stays"] == "ginger" and hk["cuts"] == 1 and hk["brew"] and hk["listed"], hk)
@@ -1316,6 +2156,8 @@ async def main():
             await page.wait_for_timeout(900)
             farm = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, beds: document.querySelectorAll('#ownedProps .bed').length, hots: [...document.querySelectorAll('.hotspot')].map(h=>h.dataset.id).join(','), here: document.querySelector('#mapHere')?.textContent, zone: document.querySelector('#zoneName')?.textContent})")
             check("the garden path walks her onto the farm: twelve beds on the plate, six hotspots (the barn path and the harbour steps too), the pill saying Farm", farm["layout"] == "farm" and farm["beds"] == 12 and farm["hots"] == "farmgate,shed,well,basket,barnpath,harboursteps" and farm["here"] == "Farm" and farm["zone"] == "Your farm", farm)
+            hits = await page.evaluate("()=>{ var plate=document.querySelector('#ownedProps').getBoundingClientRect(), host=document.querySelector('#sceneInner')||document.querySelector('#ownedProps'); return OvuFarm.BEDS.map(function(b){ var el=document.querySelector('#ownedProps .bed[data-id='+b.id+']'), r=el.getBoundingClientRect(), x=r.left+r.width/2, y=r.top+r.height/2, hit=document.elementFromPoint(x,y); return {id:b.id, got: hit && hit.closest && hit.closest('.bed') ? hit.closest('.bed').dataset.id : (hit ? hit.className : null)}; }); }")
+            check("Codex (22 Oct): a tap on each bed's own soil lands on that bed, never on a plant drawn in front of it", all(h["id"] == h["got"] for h in hits), [h for h in hits if h["id"] != h["got"]])
             # the first visit explains the four steps once (Jamie, 20 Oct: "it's confusing")
             try: await page.wait_for_selector('#sheet[aria-hidden="false"] .farmsteps', timeout=6000)
             except Exception: pass
@@ -1328,7 +2170,9 @@ async def main():
             sh = await page.evaluate("()=>{OvuFarm.openShed(); var b=document.querySelector('#shedBuy'); return {shelf: !!b, packs: document.querySelectorAll('#sheet [data-pack]').length, unlocks: document.querySelectorAll('#sheet [data-unlock]').length, tools: b ? b.querySelectorAll('[data-tool]').length : 0, free: document.querySelectorAll('#shedActs [data-seed]').length, grocer: /Hay & Harvest/.test((document.querySelector('#shedGrocer')||{}).textContent||'')}}")
             check("the shed has its two tools for hearts beside the free seeds, and points to Hay & Harvest for seed packs and new crops", sh["shelf"] and sh["packs"] == 0 and sh["unlocks"] == 0 and sh["tools"] == 2 and sh["free"] >= 5 and sh["grocer"], sh)
             await page.evaluate("()=>OvuRoom.hideSheet()"); await page.wait_for_timeout(200)
-            direct = await page.evaluate("()=>{var d=OvuGameTime.dayKey(); var b=OvuFarm.BEDS.filter(x=>!OvuFarm.hasWeeds(null,x.id,d))[1]; OvuFarm.openBed(b.id); var btn=document.querySelector('#bedActs [data-bed=shedplant][data-crop=radish]'); if(!btn) return {btn:false}; btn.click(); var bb=OvuFarm.bed(OvuStore,b.id); var r={btn:true, crop: bb&&bb.crop, left: OvuFarm.seedsLeftToday(OvuStore,d)}; var f=OvuStore.state().farm; delete f.beds[b.id]; f.seedsByDay={}; f.seeds={}; OvuStore.setState({farm:f, stamina:null}); OvuRoom.closeSheet(); return r}")
+            await page.evaluate("()=>{var d=OvuGameTime.dayKey(); var b=OvuFarm.BEDS.filter(x=>!OvuFarm.hasWeeds(null,x.id,d))[1]; OvuFarm.openBed(b.id); var btn=document.querySelector('#bedActs [data-bed=shedplant][data-crop=radish]'); window.__t={bed:b.id, btn:!!btn}; if(btn) btn.click();}")
+            await page.wait_for_timeout(600)  # the farm lock answers on a later task
+            direct = await page.evaluate("()=>{var d=OvuGameTime.dayKey(); if(!window.__t.btn) return {btn:false}; var bb=OvuFarm.bed(OvuStore,window.__t.bed); var r={btn:true, crop: bb&&bb.crop, left: OvuFarm.seedsLeftToday(OvuStore,d)}; var f=OvuStore.state().farm; delete f.beds[window.__t.bed]; f.seedsByDay={}; f.seeds={}; OvuStore.setState({farm:f, stamina:null}); OvuRoom.closeSheet(); return r}")
             check("an empty bed plants straight from the shed's seeds for today, no trip to the shed", direct["btn"] and direct["crop"] == "radish" and direct["left"] == 2, direct)
             seeds = await page.evaluate("()=>{var d=OvuGameTime.dayKey(); var a=OvuFarm.takeSeed(OvuStore,'radish',d), b=OvuFarm.takeSeed(OvuStore,'radish',d), c=OvuFarm.takeSeed(OvuStore,'carrot',d), x=OvuFarm.takeSeed(OvuStore,'carrot',d); return {a:a.ok,b:b.ok,c:c.ok,x:x.ok,left:OvuFarm.seedsLeftToday(OvuStore,d)}}")
             check("the shed gives three seeds a day", seeds["a"] and seeds["b"] and seeds["c"] and not seeds["x"] and seeds["left"] == 0, seeds)
@@ -1336,7 +2180,9 @@ async def main():
             bed = await page.evaluate("()=>{var d=OvuGameTime.dayKey(); var b=OvuFarm.BEDS.filter(x=>!OvuFarm.hasWeeds(null,x.id,d))[0]; document.querySelector('#ownedProps .bed[data-id='+b.id+']').click(); return b.id}")
             try: await page.wait_for_selector('#sheet[aria-hidden="false"] #bedActs', timeout=12000)
             except Exception: pass
-            planted = await page.evaluate("(id)=>{var b=document.querySelector('#bedActs [data-bed=plant][data-crop=radish]'); if(!b) return {btn:false}; b.click(); return {btn:true, crop: OvuFarm.bed(OvuStore,id) && OvuFarm.bed(OvuStore,id).crop}}", bed)
+            await page.evaluate("()=>{var b=document.querySelector('#bedActs [data-bed=plant][data-crop=radish]'); window.__t={btn:!!b}; if(b) b.click();}")
+            await page.wait_for_timeout(600)  # the farm lock answers on a later task
+            planted = await page.evaluate("(id)=>{if(!window.__t.btn) return {btn:false}; return {btn:true, crop: OvuFarm.bed(OvuStore,id) && OvuFarm.bed(OvuStore,id).crop}}", bed)
             await page.wait_for_timeout(500)
             # the can starts empty: the bed sends her to the well, the well fills the can, and Back returns her to the bed
             empty = await page.evaluate("()=>({water: !!document.querySelector('#bedActs [data-bed=water]'), well: !!document.querySelector('#bedActs [data-bed=well]')})")
@@ -1355,7 +2201,9 @@ async def main():
             # closing the sheet mid-step frees the farm at once; sleep starting mid-step saves nothing
             freed = await page.evaluate("async (id)=>{OvuFarm.slowMs = 1500; document.querySelector('#bedActs [data-bed=water]').click(); await new Promise(r=>setTimeout(r,200)); OvuRoom.hideSheet(); await new Promise(r=>setTimeout(r,100)); OvuFarm.openBed(id); var ok=!!document.querySelector('#bedActs [data-bed=water]'); await new Promise(r=>setTimeout(r,1600)); var days=OvuFarm.growthDays(OvuFarm.bed(OvuStore,id)); document.querySelector('#bedActs [data-bed=water]').click(); await new Promise(r=>setTimeout(r,200)); OvuStore.setState({sleeping:{startedAt:new Date().toISOString(), bedTime:'23:00'}}); await new Promise(r=>setTimeout(r,1600)); var slept={days: OvuFarm.growthDays(OvuFarm.bed(OvuStore,id)), can: OvuFarm.canLevel(OvuStore), stam: OvuStamina.value()}; OvuStore.setState({sleeping:null}); OvuFarm.slowMs = 0; OvuFarm.openBed(id); return {reopened: ok, days: days, slept: slept}}", bed)
             check("closing a bed mid-pour frees the farm at once and saves nothing; sleep starting mid-pour saves nothing either", freed["reopened"] and freed["days"] == 0 and freed["slept"]["days"] == 0 and freed["slept"]["can"] == 3 and freed["slept"]["stam"] == 100 - 2, freed)
-            watered = await page.evaluate("(id)=>{var b=document.querySelector('#bedActs [data-bed=water]'); if(!b) return {btn:false}; b.click(); var bb=OvuFarm.bed(OvuStore,id); return {btn:true, days: OvuFarm.growthDays(bb), stam: OvuStamina.value(), stage: OvuFarm.stage(bb), can: OvuFarm.canLevel(OvuStore)}}", bed)
+            await page.evaluate("()=>{var b=document.querySelector('#bedActs [data-bed=water]'); window.__t={btn:!!b}; if(b) b.click();}")
+            await page.wait_for_timeout(600)  # the farm lock answers on a later task
+            watered = await page.evaluate("(id)=>{if(!window.__t.btn) return {btn:false}; var bb=OvuFarm.bed(OvuStore,id); return {btn:true, days: OvuFarm.growthDays(bb), stam: OvuStamina.value(), stage: OvuFarm.stage(bb), can: OvuFarm.canLevel(OvuStore)}}", bed)
             check("tapping a bed walks her over and opens it; planting a radish and watering it costs energy and counts one day", planted["btn"] and planted["crop"] == "radish" and watered["btn"] and watered["days"] == 1 and 1 <= watered["stage"] <= 2 and watered["stam"] == 100 - 2 - 6 and watered["can"] == 2, {"planted": planted, "watered": watered})
             await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(300)
             # ripen it by hand (two watered days) and harvest through the sheet: the basket fills, the meal prompt asks, no entry is written
@@ -1385,24 +2233,84 @@ async def main():
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout === 'barn'", timeout=15000)
             except Exception: pass
             yard = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, hots: [...document.querySelectorAll('.hotspot')].map(h=>h.dataset.id).join(','), cave: !!OvuMap.graph(OvuRoom.LAYOUTS, OvuRoom.homeId()).nodes.cave})")
-            check("the farm path leads to the barn yard: the barn door, the hen house, the crack and the way back; the cave is not on the map yet", yard["layout"] == "barn" and yard["hots"] == "barnexit,barndoor,hendoor,crack" and not yard["cave"], yard)
+            check("the farm path leads to the barn yard: the barn door, the hen house, the crack, the ranch counter and the way back; the cave is not on the map yet", yard["layout"] == "barn" and yard["hots"] == "barnexit,barndoor,hendoor,crack,ranchsign" and not yard["cave"], yard)
             await go_to('barninside')
-            cl = await page.evaluate("()=>{OvuBarn.openClover(); var b=document.querySelector('#cloverActs [data-act=milk]'); var cow=!!document.querySelector('#ownedProps .a-clover'); if(b) b.click(); return {cow: cow, milk: OvuFarm.farmState(OvuStore).pantry.milk, stam: OvuStamina.value()}}")
+            await page.evaluate("()=>{OvuBarn.openClover(); var b=document.querySelector('#cloverActs [data-act=milk]'); window.__t={cow: !!document.querySelector('#ownedProps .a-clover')}; if(b) b.click();}")
+            await page.wait_for_timeout(600)  # the farm lock answers on a later task
+            cl = await page.evaluate("()=>{var cow=window.__t.cow; return {cow: cow, milk: OvuFarm.farmState(OvuStore).pantry.milk, stam: OvuStamina.value()}}")
             check("inside the barn Clover stands in her stall; milking puts a pail in the pantry for a little energy", cl["cow"] and cl["milk"] == 1 and cl["stam"] == 100 - 2, cl)
-            tr = await page.evaluate("()=>{var f=OvuFarm.farmState(OvuStore); f.harvest={carrot:1}; OvuStore.setState({farm:f}); OvuBarn.openClover(); var b=document.querySelector('#cloverActs [data-act=treat][data-crop=carrot]'); var had=!!b; if(b) b.click(); var f2=OvuFarm.farmState(OvuStore); return {had: had, left: f2.harvest.carrot||0, today: OvuBarn.treatedToday(OvuStore,'clover',OvuGameTime.dayKey()), toast: document.querySelector('#toast').textContent, line: /had a treat/.test(document.querySelector('#sheet').textContent), stam: OvuStamina.value()}}")
+            await page.evaluate("()=>{var f=OvuFarm.farmState(OvuStore); f.harvest={carrot:1}; OvuStore.setState({farm:f}); OvuBarn.openClover(); var b=document.querySelector('#cloverActs [data-act=treat][data-crop=carrot]'); window.__t={had: !!b}; if(b) b.click();}")
+            await page.wait_for_timeout(600)  # the farm lock answers on a later task
+            tr = await page.evaluate("()=>{var had=window.__t.had; var f2=OvuFarm.farmState(OvuStore); return {had: had, left: f2.harvest.carrot||0, today: OvuBarn.treatedToday(OvuStore,'clover',OvuGameTime.dayKey()), toast: document.querySelector('#toast').textContent, line: /had a treat/.test(document.querySelector('#sheet').textContent), stam: OvuStamina.value()}}")
             check("a carrot from the basket is a treat for Clover: offered only while the basket has one, taken slowly, the basket one lighter, no energy spent", tr["had"] and tr["left"] == 0 and tr["today"] and "took the carrot" in tr["toast"] and tr["line"] and tr["stam"] == 100 - 2, tr)
             await page.evaluate("()=>OvuRoom.hideSheet()"); await go_to('barn'); await go_to('heninside')
-            hn = await page.evaluate("()=>{var eggs=document.querySelectorAll('#ownedProps .nestegg').length, hens=document.querySelectorAll('#ownedProps .animal').length; OvuBarn.openNests(); var b=document.querySelector('#nestActs [data-act=eggs]'); if(b) b.click(); return {eggs: eggs, hens: hens, pantry: OvuFarm.farmState(OvuStore).pantry.egg, left: document.querySelectorAll('#ownedProps .nestegg').length}}")
+            await page.evaluate("()=>{window.__t={eggs: document.querySelectorAll('#ownedProps .nestegg').length, hens: document.querySelectorAll('#ownedProps .animal').length}; OvuBarn.openNests(); var b=document.querySelector('#nestActs [data-act=eggs]'); if(b) b.click();}")
+            await page.wait_for_timeout(600)  # the farm lock answers on a later task
+            hn = await page.evaluate("()=>{var eggs=window.__t.eggs, hens=window.__t.hens; return {eggs: eggs, hens: hens, pantry: OvuFarm.farmState(OvuStore).pantry.egg, left: document.querySelectorAll('#ownedProps .nestegg').length}}")
             check("inside the hen house two hens and two eggs; collecting takes both into the pantry and empties the nests", hn["hens"] == 2 and hn["eggs"] == 2 and hn["pantry"] == 2 and hn["left"] == 0, hn)
+            # the ranch counter (Jamie, 22 Oct: buy a cow or a hen, bigger barn and coop, babies): tester mode pays nothing, so the
+            # counter can be tried; the coop grows to six, a named hen comes home, an egg goes into the incubator, a chick hatches
+            # when its day comes and can be named; nothing writes the diary
+            await page.evaluate("()=>OvuRoom.hideSheet()"); await go_to('barn')  # the nests sheet is still up: travel refuses with a sheet open, and the counter opens only in the yard
+            d0 = await page.evaluate("()=>OvuStore.list().length")
+            await page.evaluate("()=>{OvuStore.setState({tester:{hearts:true}}); var f=OvuFarm.farmState(OvuStore); f.pantry.egg = Math.max(1, f.pantry.egg); OvuStore.setState({farm:f}); OvuBarn.openRanch();}")
+            await page.wait_for_selector('[data-ranch="upgrade:coop"]', timeout=8000)
+            rc0 = await page.evaluate("()=>({title: document.querySelector('#sheetTitle').childNodes[0].textContent, buyHen: document.querySelector('[data-ranch=\"buy:hen\"]').disabled, cowFull: document.querySelector('[data-ranch=\"buy:cow\"]').disabled})")
+            await page.click('[data-ranch="upgrade:coop"]'); await page.wait_for_timeout(500)
+            await page.fill('#rnHen', 'Pip'); await page.click('[data-ranch="buy:hen"]'); await page.wait_for_timeout(500)
+            await page.click('[data-ranch="incubate"]'); await page.wait_for_timeout(500)
+            rc1 = await page.evaluate("()=>{var r=OvuRanch.ranchOf(OvuFarm.farmState(OvuStore)); return {coop: r.coopLevel, hens: r.herd.filter(a=>a.kind==='hen').map(a=>a.name).join(), inc: !!r.incubator, text: document.querySelector('#sheetBody').innerText}}")
+            check("the ranch counter: the starters fill the coop so a hen cannot be bought until the hen house grows; after the upgrade Pip comes home and an egg goes into the incubator", rc0["title"] == "Ranch counter" and rc0["buyHen"] and rc0["cowFull"] and rc1["coop"] == 1 and rc1["hens"] == "Mochi,Kaya,Pip" and rc1["inc"] and "3 of 6 places" in rc1["text"], {"rc0": rc0, "rc1": rc1})
+            await page.evaluate("()=>{var f=OvuFarm.farmState(OvuStore); f.ranch.incubator.due = OvuStore.today(); OvuStore.setState({farm:f}); OvuRoom.closeSheet(); OvuBarn.settle();}"); await page.wait_for_timeout(400)
+            await go_to('heninside')
+            hh = await page.evaluate("()=>({animals: [...document.querySelectorAll('#ownedProps .animal')].map(a=>a.getAttribute('aria-label')), babies: document.querySelectorAll('#ownedProps .animal.baby').length})")
+            await page.evaluate("()=>OvuBarn.openNests()"); await page.wait_for_selector('[data-rename]', timeout=8000)
+            await page.click('[data-rename]'); await page.wait_for_selector('#rnName', timeout=8000); await page.fill('#rnName', 'Dot'); await page.click('#rnSave'); await page.wait_for_timeout(500)
+            nm = await page.evaluate("()=>({names: OvuRanch.ranchOf(OvuFarm.farmState(OvuStore)).herd.map(a=>a.name).join(), eggsReady: OvuBarn.eggsReady(OvuStore, OvuStore.today()).length, diary: OvuStore.list().length})")
+            check("the chick hatches when its day comes, stands small among the hens, can be named Dot, lays nothing yet, and the ranch wrote no diary entry", len(hh["animals"]) == 4 and hh["babies"] == 1 and "Dot" in nm["names"] and nm["eggsReady"] <= 3 and nm["diary"] == d0, {"hh": hh, "nm": nm})
+            await page.evaluate("()=>{OvuRoom.closeSheet(); OvuStore.setState({tester:null});}")
+            # a real purchase: hearts go down by the price in the same save as the animal arrives
+            await go_to('barn')
+            await page.evaluate("()=>OvuBarn.openRanch()"); await page.wait_for_selector('[data-ranch="buy:hen"]', timeout=8000)
+            pay = await page.evaluate("()=>({before: OvuRewards.ledger().hearts, can: !document.querySelector('[data-ranch=\"buy:hen\"]').disabled})")
+            await page.fill('#rnHen', 'Bao'); await page.click('[data-ranch="buy:hen"]'); await page.wait_for_timeout(600)
+            pay["after"] = await page.evaluate("()=>OvuRewards.ledger().hearts"); pay["hens"] = await page.evaluate("()=>OvuRanch.ranchOf(OvuFarm.farmState(OvuStore)).herd.filter(a=>a.kind==='hen').map(a=>a.name).join()")
+            check("outside tester mode a hen costs 120 hearts, taken in the same save as Bao arrives", pay["can"] and pay["after"] == pay["before"] - 120 and pay["hens"].endswith("Bao"), pay)
+            await page.evaluate("()=>{OvuRoom.closeSheet(); OvuStore.setState({tester:{hearts:true}});}")  # back to the seeded profile: later sections (Harbour Lane's hours, free purchases) run in tester mode, whatever the clock says on the CI runner
             await page.evaluate("()=>OvuRoom.hideSheet()"); await go_to('barn')
             await page.evaluate("()=>OvuBarn.openCrack()"); await page.wait_for_timeout(200)
             await page.click('#crackGo')
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout === 'cave'", timeout=12000)
             except Exception: pass
             await page.wait_for_timeout(600)
-            cv = await page.evaluate("()=>{var st=JSON.stringify(OvuStore.state().stamina), d=OvuStore.list().length; OvuBarn.openBasket(); var b=document.querySelector('#basketActs [data-act=cook]'); if(b) b.click(); var p=OvuFarm.farmState(OvuStore).pantry; return {layout: document.querySelector('#scene').dataset.layout, map: !!OvuMap.graph(OvuRoom.LAYOUTS, OvuRoom.homeId()).nodes.cave, onsen: p.onsenegg, eggs: p.egg, sameEnergy: JSON.stringify(OvuStore.state().stamina) === st, sameDiary: OvuStore.list().length === d, done: !!document.querySelector('#cookDone'), primary: (document.querySelector('#cookDone')||{}).className||''}}")
-            check("stepping through the crack finds the hidden spring, which then shows on the map; onsen eggs change no energy or diary, and Done comes first", cv["layout"] == "cave" and cv["map"] and cv["onsen"] == 2 and cv["eggs"] == 0 and cv["sameEnergy"] and cv["sameDiary"] and cv["done"] and "primary" in cv["primary"], cv)
+            await page.evaluate("()=>{window.__t={st: JSON.stringify(OvuStore.state().stamina), d: OvuStore.list().length, before: OvuFarm.farmState(OvuStore).pantry.egg}; OvuBarn.openBasket(); var b=document.querySelector('#basketActs [data-act=cook]'); if(b) b.click();}")
+            await page.wait_for_timeout(600)  # the farm lock answers on a later task
+            cv = await page.evaluate("()=>{var st=window.__t.st, d=window.__t.d, before=window.__t.before; var p=OvuFarm.farmState(OvuStore).pantry; return {before: before, layout: document.querySelector('#scene').dataset.layout, map: !!OvuMap.graph(OvuRoom.LAYOUTS, OvuRoom.homeId()).nodes.cave, onsen: p.onsenegg, eggs: p.egg, sameEnergy: JSON.stringify(OvuStore.state().stamina) === st, sameDiary: OvuStore.list().length === d, done: !!document.querySelector('#cookDone'), primary: (document.querySelector('#cookDone')||{}).className||''}}")
+            check("stepping through the crack finds the hidden spring, which then shows on the map; onsen eggs change no energy or diary, and Done comes first", cv["layout"] == "cave" and cv["map"] and cv["before"] >= 1 and cv["onsen"] == cv["before"] and cv["eggs"] == 0 and cv["sameEnergy"] and cv["sameDiary"] and cv["done"] and "primary" in cv["primary"], cv)
             await page.click('#cookDone')
+            # the soak (22 Oct): she walks to the edge and only her head and shoulders show, a towel on her head; Get out brings her back
+            await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('springsoak'))")
+            try: await page.wait_for_function("()=>OvuSoak.soaking()", timeout=12000)
+            except Exception: pass
+            await page.wait_for_timeout(300)
+            try: await page.wait_for_function("()=>getComputedStyle(document.querySelector('#avatar')).opacity === '0'", timeout=3000)
+            except Exception: pass
+            sk = await page.evaluate("()=>{var e=document.querySelector('#ownedProps .soaker'), a=document.querySelector('#avatar'); return {on: OvuSoak.soaking(), img: e ? e.querySelector('img').getAttribute('src').split('/').pop() : null, loaded: !!(e && e.querySelector('img').naturalWidth>0), hidden: getComputedStyle(a).opacity === '0', stop: !!document.querySelector('#soakStop'), d: OvuStore.list().length, st: JSON.stringify(OvuStore.state().stamina)}}")
+            await page.evaluate("()=>{var b=document.querySelector('#soakStop'); if(b) b.click()}")
+            try: await page.wait_for_function("()=>getComputedStyle(document.querySelector('#avatar')).opacity === '1'", timeout=3000)
+            except Exception: pass
+            sk2 = await page.evaluate("()=>({on: OvuSoak.soaking(), shown: getComputedStyle(document.querySelector('#avatar')).opacity !== '0', stop: !!document.querySelector('#soakStop'), d: OvuStore.list().length, st: JSON.stringify(OvuStore.state().stamina)})")
+            check("the warm water: she soaks with only her head and shoulders above the water and a towel on her head; her standing picture is hidden; Get out brings her back; nothing is counted", sk["on"] and sk["img"] in ("soak-base.webp", "soak-tudung.webp") and sk["loaded"] and sk["hidden"] and sk["stop"] and not sk2["on"] and sk2["shown"] and not sk2["stop"] and sk2["d"] == sk["d"] and sk2["st"] == sk["st"], [sk, sk2])
+            # Mind while soaking (Codex, 22 Oct): opening the mat ends the soak first, so she is never in the water and on the mat at once
+            await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('springsoak'))")
+            try: await page.wait_for_function("()=>OvuSoak.soaking()", timeout=12000)
+            except Exception: pass
+            sm0 = await page.evaluate("()=>OvuSoak.soaking()")
+            await page.evaluate("()=>document.querySelector('nav a[data-tab=mind]').click()"); await page.wait_for_timeout(700)
+            sm = await page.evaluate("()=>({soak: OvuSoak.soaking(), med: OvuRoom.meditating(), stop: !!document.querySelector('#soakStop'), soaker: !!document.querySelector('#ownedProps .soaker'), cls: document.querySelector('#scene').classList.contains('soaking')})")
+            await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(400)
+            sm2 = await page.evaluate("()=>({med: OvuRoom.meditating()})")
+            check("opening Mind while she soaks ends the soak first: the mat opens, the water picture and Get out are gone, and closing Mind lets her up", sm0 and not sm["soak"] and sm["med"] and not sm["stop"] and not sm["soaker"] and not sm["cls"] and not sm2["med"], [sm0, sm, sm2])
             # the hidden spring (21 Oct): sitting by the water is the tone; one Stop for both; no diary, no hearts, no energy
             await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('warmstone'))")
             try: await page.wait_for_function("()=>OvuRoom.sheetOpen() && OvuRoom.sheetId && OvuRoom.sheetId()==='cavetones'", timeout=12000)
@@ -1413,7 +2321,11 @@ async def main():
             except Exception: pass
             t1 = await page.evaluate("(t0)=>({playing: OvuTones.playing(), rem: OvuTones.remaining(), sitting: OvuTones.sitting(), stop: document.querySelector('#springStop') && document.querySelector('#springStop').textContent.trim(), sheet: OvuRoom.sheetOpen(), fx: OvuSeats.fxKind(), glints: document.querySelectorAll('#seatfx .glint').length, pill: !!document.querySelector('#tonePill'), hearts: OvuRewards.ledger().hearts - t0.hearts, e: OvuStamina.value() - t0.e, d: OvuStore.list().length - t0.d})", t0)
             await page.click('#springStop'); await page.wait_for_timeout(300)
-            t2 = await page.evaluate("()=>({playing: OvuTones.playing(), sitting: OvuTones.sitting(), stop: !!document.querySelector('#springStop'), fx: OvuSeats.fxKind()})")
+            t2 = await page.evaluate("()=>({playing: OvuTones.playing(), sitting: OvuTones.sitting(), stop: !!document.querySelector('#springStop'), fx: OvuSeats.fxKind(), live: OvuTones.liveNodes()})")
+            try: await page.wait_for_function("()=>OvuTones.liveNodes()===0", timeout=12000)
+            except Exception: pass
+            t2["liveAfter"] = await page.evaluate("()=>OvuTones.liveNodes()")
+            check("the sung-bowl voice (22 Oct) holds its nodes while it fades after Stop and lets every one go within a few seconds", t2["live"] > 0 and t2["liveAfter"] == 0, t2)
             check("the warm stone offers nine pitches and a length with no promises; Sit by the water hums at the chosen pitch for the chosen time with her seated and crystal glints; one Stop sound and stand up ends both; nothing is written, paid or spent", t0["sheet"] == "cavetones" and t0["chips"] == 9 and not t0["claim"] and t0["btn"].endswith("Sit by the water") and t1["playing"] == 396 and 590 <= t1["rem"] <= 600 and t1["sitting"] and t1["stop"].endswith("Stop sound and stand up") and not t1["sheet"] and t1["fx"] == "crystals" and t1["glints"] == 7 and not t1["pill"] and t1["hearts"] == 0 and t1["e"] >= 0 and t1["d"] == 0 and t2["playing"] is None and not t2["sitting"] and not t2["stop"] and t2["fx"] is None, {"t0": t0, "t1": t1, "t2": t2})
             await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('crystals'))")
             try: await page.wait_for_function("()=>OvuRoom.sheetOpen() && OvuRoom.sheetId && OvuRoom.sheetId()==='cavetones'", timeout=12000)
@@ -1426,6 +2338,22 @@ async def main():
             await go_to('barn'); await go_to('farm')
             ta = await page.evaluate("()=>({playing: OvuTones.playing(), sitting: OvuTones.sitting()})")
             check("a tone left humming stops, and she is up, as soon as she leaves the spring", tb == 396 and ta["playing"] is None and not ta["sitting"], {"before": tb, "after": ta})
+            # a timed quiet sit (no sound) stood up early must leave no timer behind (Codex round three, 23 Oct): back in, Just sit for ten minutes, Stand up, Just sit again untimed
+            await go_to('barn'); await go_to('cave')
+            await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('warmstone'))")
+            try: await page.wait_for_function("()=>OvuRoom.sheetOpen() && OvuRoom.sheetId && OvuRoom.sheetId()==='cavetones'", timeout=12000)
+            except Exception: pass
+            await page.click("#toneSnd .chipbtn[data-snd='none']"); await page.click("#toneMin .chipbtn[data-min='10']"); await page.click("#toneActs [data-tone=start]"); await page.wait_for_timeout(300)
+            q1 = await page.evaluate("()=>({sitting: OvuTones.sitting(), rem: OvuTones.remaining(), playing: OvuTones.playing()})")
+            await page.click('#springStop'); await page.wait_for_timeout(300)
+            await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('warmstone'))")
+            try: await page.wait_for_function("()=>OvuRoom.sheetOpen() && OvuRoom.sheetId && OvuRoom.sheetId()==='cavetones'", timeout=12000)
+            except Exception: pass
+            await page.click("#toneSnd .chipbtn[data-snd='none']"); await page.click("#toneMin .chipbtn[data-min='0']"); await page.click("#toneActs [data-tone=start]"); await page.wait_for_timeout(300)
+            q2 = await page.evaluate("()=>({sitting: OvuTones.sitting(), rem: OvuTones.remaining(), playing: OvuTones.playing()})")
+            await page.click('#springStop'); await page.wait_for_timeout(300)
+            check("a timed quiet sit stood up early leaves no timer: the next untimed sit has no remaining time", q1["sitting"] and q1["playing"] is None and q1["rem"] is not None and 590 <= q1["rem"] <= 600 and q2["sitting"] and q2["rem"] is None, {"q1": q1, "q2": q2})
+            await go_to('barn'); await go_to('farm')  # back where the block left her, for the farm gate check that follows
             await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('farmgate'))")
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout === 'garden'", timeout=12000)
             except Exception: pass
@@ -1442,10 +2370,10 @@ async def main():
             base = await page.evaluate("()=>({e: OvuStamina.value(), d: OvuStore.list().length})")
             await page.evaluate("()=>{OvuHarbour.openSpot('jetty'); document.querySelector('#spotActs [data-act=cast]').click();}"); await page.wait_for_timeout(400)
             bt = await page.evaluate("()=>({bite: document.querySelector('#scene').classList.contains('bite'), line: !!document.querySelector('#ownedProps .castline'), lift: !!document.querySelector('#spotActs [data-bite=lift]'), leave: !!document.querySelector('#spotActs [data-bite=leave]'), casts: OvuHarbour.harbourState(OvuStore).casts})")
-            check("a cast puts a line and a float on the water; when a fish comes, Lift gently and Let it be wait with no clock, and nothing is written yet", bt["bite"] and bt["line"] and bt["lift"] and bt["leave"] and bt["casts"] == 0, bt)
+            check("a cast puts a line and a float on the water; when a fish bites, Reel in and Let it be are offered, and nothing is written yet", bt["bite"] and bt["line"] and bt["lift"] and bt["leave"] and bt["casts"] == 0, bt)
             await page.click("#spotActs [data-bite=lift]"); await page.wait_for_timeout(400)
             rv = await page.evaluate("(b)=>({first: /First time/.test(document.querySelector('#sheet').textContent), fact: !!document.querySelector('#sheet .fishfact'), src: !!document.querySelector('#sheet .fishsrc'), img: (document.querySelector('#sheet .fishcard img')||{}).naturalWidth||0, line: !!document.querySelector('#ownedProps .castline'), book: Object.keys(OvuHarbour.harbourState(OvuStore).book), spent: b.e - OvuStamina.value(), diary: OvuStore.list().length - b.d, go: !!document.querySelector('#fishGo')})", base)
-            check("lifting shows the fish with its fact and source, writes a first meeting in the book, charges one cast of energy, takes the line in, and writes no diary entry", rv["first"] and rv["fact"] and rv["src"] and rv["img"] > 0 and not rv["line"] and len(rv["book"]) == 1 and rv["spent"] == 3 and rv["diary"] == 0 and rv["go"], rv)
+            check("lifting shows the fish with its fact and source, writes a first meeting in the book, charges one cast of energy, takes the line in, and writes no diary entry", rv["first"] and rv["fact"] and not rv["src"] and rv["img"] > 0 and not rv["line"] and len(rv["book"]) == 1 and rv["spent"] == 3 and rv["diary"] == 0 and rv["go"], rv)
             await page.click("#fishGo"); await page.wait_for_timeout(300)
             await page.evaluate("()=>document.querySelector('#spotActs [data-act=cast]').click()"); await page.wait_for_timeout(300)
             await page.click("#spotActs [data-bite=leave]"); await page.wait_for_timeout(300)
@@ -1462,24 +2390,42 @@ async def main():
             # Harbour Lane (21 Oct): the signpost opens the lane; the grocer sells seeds and swaps, Bait & Fin sells floats, the gym opens the movement log, the post box keeps letters sealed
             lane_base = await page.evaluate("()=>({d: OvuStore.list().length, farm: JSON.stringify(OvuStore.state().farm||null), lane: JSON.stringify(OvuStore.state().lane||null)})")
             await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('hblane'))")
+            try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='lane' && !document.querySelector('#scene').classList.contains('fading')", timeout=15000)
+            except Exception: pass
+            await page.wait_for_timeout(500)
+            lw = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, hots: [...document.querySelectorAll('.hotspot')].map(h=>h.dataset.id).join(','), img: document.querySelector('#roomDay').getAttribute('src')||'', pos: OvuRoom.pos(), map: !!OvuMap.graph(OvuRoom.LAYOUTS, OvuRoom.homeId()).nodes.lane})")
+            check("the signpost by the hut walks her up Harbour Lane, to its foot: four shopfronts, the post box and the path back; the lane is on the map", lw["layout"] == "lane" and lw["hots"] == "lanegrocer,laneboutique,lanegym,lanefish,lanepost,laneexit" and "lane-v1" in lw["img"] and abs(lw["pos"]["x"] - 51) < 2 and abs(lw["pos"]["y"] - 84) < 2 and lw["map"], lw)
+            await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('laneexit'))")  # back down, so the harbour checks below (the float on the water) run at the harbour
+            try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='harbour' && !document.querySelector('#scene').classList.contains('fading')", timeout=15000)
+            except Exception: pass
+            await page.wait_for_timeout(500)
+            lb = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, pos: OvuRoom.pos()})")
+            check("the lane's path takes her back down to the harbour, at the signpost", lb["layout"] == "harbour" and abs(lb["pos"]["x"] - 23) < 2 and abs(lb["pos"]["y"] - 51) < 2, lb)
+            await page.evaluate("()=>OvuLane.openLane()")
             try: await page.wait_for_function("()=>OvuRoom.sheetOpen() && OvuRoom.sheetId()==='lane'", timeout=12000)
             except Exception: pass
             ln = await page.evaluate("()=>({id: OvuRoom.sheetId(), places: [...document.querySelectorAll('#sheet .lane [data-place]')].map(b=>b.dataset.place).join(','), post: /Always open/.test(document.querySelector('#sheet .lane [data-place=post]').textContent)})")
-            check("the signpost by the hut opens Harbour Lane: the grocer, the boutique, the gym, the fish store and the post box, which is always open", ln["id"] == "lane" and ln["places"] == "grocer,boutique,gym,fish,post" and ln["post"], ln)
+            check("the lane's own sheet lists the grocer, the boutique, the gym, the fish store and the post box, which is always open", ln["id"] == "lane" and ln["places"] == "grocer,boutique,gym,fish,post" and ln["post"], ln)
             await page.evaluate("()=>{var f=OvuFarm.farmState(OvuStore); f.harvest={}; OvuStore.setState({farm:f})}")
-            await page.click("#sheet .lane [data-place=grocer]"); await page.wait_for_timeout(300)
-            gr = await page.evaluate("()=>{var f0=OvuFarm.farmState(OvuStore), r0=f0.seeds.radish||0; var p=document.querySelector('#grocerBuy [data-pack=radish]'); var packs=document.querySelectorAll('#grocerBuy [data-pack]').length, unlocks=document.querySelectorAll('#grocerBuy [data-unlock]').length; if(p) p.click(); return {id: OvuRoom.sheetId(), packs: packs, unlocks: unlocks, gained: (OvuFarm.farmState(OvuStore).seeds.radish||0) - r0, empty: /Nothing to swap yet/.test(document.querySelector('#sheet').textContent)}}")
+            await page.evaluate("()=>OvuLane.openPlace('grocer')"); await page.wait_for_timeout(300)  # with the lane drawn its sheet only lists; the counters are in the rooms
+            await page.evaluate("()=>{var f0=OvuFarm.farmState(OvuStore); var p=document.querySelector('#grocerBuy [data-pack=radish]'); window.__t={r0: f0.seeds.radish||0, packs: document.querySelectorAll('#grocerBuy [data-pack]').length, unlocks: document.querySelectorAll('#grocerBuy [data-unlock]').length}; if(p) p.click();}")
+            await page.wait_for_timeout(600)  # the farm lock answers on a later task
+            gr = await page.evaluate("()=>{var r0=window.__t.r0, packs=window.__t.packs, unlocks=window.__t.unlocks; return {id: OvuRoom.sheetId(), packs: packs, unlocks: unlocks, gained: (OvuFarm.farmState(OvuStore).seeds.radish||0) - r0, empty: /Nothing to swap yet/.test(document.querySelector('#sheet').textContent)}}")
             check("Hay & Harvest sells a pack for every crop she grows and four local crops (lemongrass moved to the greenhouse); a radish pack puts three seeds in the shed; an empty basket has nothing to swap", gr["id"] == "lane-grocer" and gr["packs"] >= 5 and gr["unlocks"] == 4 and gr["gained"] == 3 and gr["empty"], gr)
             await page.evaluate("()=>{var f=OvuFarm.farmState(OvuStore); f.harvest={radish:3}; OvuStore.setState({farm:f}); OvuLane.openGrocer()}"); await page.wait_for_timeout(200)
             await page.click("#swapGive [data-give=radish]"); await page.wait_for_timeout(200)
-            sw = await page.evaluate("()=>{var c0=OvuFarm.farmState(OvuStore).seeds.carrot||0, h0=OvuRewards.ledger().hearts; var t=document.querySelector('#swapTake [data-take=carrot]'); if(t) t.click(); var f=OvuFarm.farmState(OvuStore); return {take: !!t, carrot: (f.seeds.carrot||0) - c0, radish: f.harvest.radish||0, hearts: OvuRewards.ledger().hearts - h0}}")
+            await page.evaluate("()=>{var t=document.querySelector('#swapTake [data-take=carrot]'); window.__t={c0: OvuFarm.farmState(OvuStore).seeds.carrot||0, h0: OvuRewards.ledger().hearts, take: !!t}; if(t) t.click();}")
+            await page.wait_for_timeout(600)  # the farm lock answers on a later task
+            sw = await page.evaluate("()=>{var c0=window.__t.c0, h0=window.__t.h0, t=window.__t.take; var f=OvuFarm.farmState(OvuStore); return {take: !!t, carrot: (f.seeds.carrot||0) - c0, radish: f.harvest.radish||0, hearts: OvuRewards.ledger().hearts - h0}}")
             check("the seed swap: choose three radishes, take a carrot seed; the basket gives three, the shed gains one, no hearts change hands", sw["take"] and sw["carrot"] == 1 and sw["radish"] == 0 and sw["hearts"] == 0, sw)
             await page.evaluate("()=>{var f=OvuFarm.farmState(OvuStore); f.harvest={ginger:3}; OvuStore.setState({farm:f}); OvuLane.openGrocer()}"); await page.wait_for_timeout(200)
             await page.click("#swapGive [data-give=ginger]"); await page.wait_for_timeout(200)
-            hsw = await page.evaluate("()=>{var p0=OvuGreenhouse.herbState(OvuStore).seeds.pandan||0, h0=OvuRewards.ledger().hearts; var t=document.querySelector('#swapTake [data-take=pandan]'); if(t) t.click(); return {take: !!t, pandan: (OvuGreenhouse.herbState(OvuStore).seeds.pandan||0) - p0, ginger: OvuFarm.farmState(OvuStore).harvest.ginger||0, hearts: OvuRewards.ledger().hearts - h0}}")
+            await page.evaluate("()=>{var t=document.querySelector('#swapTake [data-take=pandan]'); window.__t={p0: OvuGreenhouse.herbState(OvuStore).seeds.pandan||0, h0: OvuRewards.ledger().hearts, take: !!t}; if(t) t.click();}")
+            await page.wait_for_timeout(600)  # the farm lock answers on a later task
+            hsw = await page.evaluate("()=>{var p0=window.__t.p0, h0=window.__t.h0, t=window.__t.take; return {take: !!t, pandan: (OvuGreenhouse.herbState(OvuStore).seeds.pandan||0) - p0, ginger: OvuFarm.farmState(OvuStore).harvest.ginger||0, hearts: OvuRewards.ledger().hearts - h0}}")
             check("herbs count at the swap: three ginger for a pandan start for the greenhouse, no hearts", hsw["take"] and hsw["pandan"] == 1 and hsw["ginger"] == 0 and hsw["hearts"] == 0, hsw)
             await page.click("#sheet [data-lane=back]"); await page.wait_for_timeout(200)
-            await page.click("#sheet .lane [data-place=fish]"); await page.wait_for_timeout(300)
+            await page.evaluate("()=>OvuLane.openPlace('fish')"); await page.wait_for_timeout(300)
             await page.click("#floatList [data-float=mint]"); await page.wait_for_timeout(300)
             fs_ = await page.evaluate("()=>({id: OvuRoom.sheetId(), floats: document.querySelectorAll('#floatList [data-float]').length, using: OvuLane.floatOf(OvuStore).id, on: (document.querySelector('#floatList [data-float=mint]')||{}).getAttribute && document.querySelector('#floatList [data-float=mint]').getAttribute('aria-pressed'), aquarium: !!document.querySelector('#sheet [data-rail=aquarium][disabled]')})")
             await page.evaluate("()=>{OvuHarbour.openSpot('jetty'); document.querySelector('#spotActs [data-act=cast]').click();}"); await page.wait_for_timeout(400)
@@ -1487,10 +2433,10 @@ async def main():
             await page.evaluate("()=>{var b=document.querySelector('#spotActs [data-bite=leave]'); if(b) b.click()}"); await page.wait_for_timeout(200)
             check("Bait & Fin: five floats, a mint one bought goes on the line at once and the float on the water is mint; the aquarium waits for its art", fs_["id"] == "lane-fish" and fs_["floats"] == 5 and fs_["using"] == "mint" and fs_["on"] == "true" and fs_["aquarium"] and fs_["line"].strip() == "#8fd1b5", fs_)
             await page.evaluate("()=>OvuLane.openPlace('boutique')"); await page.wait_for_timeout(200)
-            bq = await page.evaluate("()=>({id: OvuRoom.sheetId(), rail: document.querySelectorAll('#railList [data-rail][disabled]').length})")
+            bq = await page.evaluate("()=>({id: OvuRoom.sheetId(), rails: !!document.querySelector('#railOpen'), fitBtn: !!document.querySelector('#fitRoom'), soon: OvuLane.RAIL.length, ready: OvuLane.RAIL.filter(function(o){return o.ready}).length})")
             await page.click("#fitRoom"); await page.wait_for_timeout(200)
             bq["fit"] = await page.evaluate("()=>OvuRoom.sheetId()")
-            check("Petal & Thread: the new rail waits for its art and cannot be bought; the fitting room is her wardrobe", bq["id"] == "lane-boutique" and bq["rail"] == 2 and bq["fit"] == "wardrobe", bq)
+            check("Petal & Thread: the shop offers the rails and the fitting room; new arrivals wait for their art and cannot be bought; away from the shop the fitting room is her wardrobe", bq["id"] == "lane-boutique" and bq["rails"] and bq["fitBtn"] and bq["soon"] == 2 and bq["ready"] == 0 and bq["fit"] == "wardrobe", bq)
             await page.evaluate("()=>OvuLane.openPlace('gym')"); await page.wait_for_timeout(200)
             gy = await page.evaluate("()=>({id: OvuRoom.sheetId(), st: document.querySelectorAll('#gymList [data-station]').length})")
             await page.click("#gymList [data-station=treadmill]"); await page.wait_for_timeout(300)
@@ -1513,6 +2459,103 @@ async def main():
             dl = await page.evaluate("(b)=>({left: OvuLane.laneState(OvuStore).letters.map(x=>x.id), diary: OvuStore.list().length - b.d})", lane_base)
             check("Delete takes two taps and removes the letter; nothing on the lane wrote a diary entry", "larrived" not in dl["left"] and len(dl["left"]) == 1 and dl["diary"] == 0, dl)
             await page.evaluate("(b)=>{OvuRoom.hideSheet(); OvuStore.setState({farm: JSON.parse(b.farm), lane: JSON.parse(b.lane)})}", lane_base); await page.wait_for_timeout(200)
+            # Harbour Lane as a place (21 Oct): each shopfront takes her into its room; the counters, the fitting room and the stations open what the lane has; the doors bring her back where she came in; the fish store and the post box are sheets
+            async def lane_go(hid, want):
+                await page.evaluate("(h)=>{ if (OvuRoom.sheetOpen()) OvuRoom.hideSheet(); OvuRoom.tap(OvuRoom.hotspot(h)); }", hid)
+                try: await page.wait_for_function("(t)=>document.querySelector('#scene').dataset.layout===t && !document.querySelector('#scene').classList.contains('fading') && !document.querySelector('#avatar').classList.contains('walking')", arg=want, timeout=15000)
+                except Exception: pass
+                await page.wait_for_timeout(400)
+                return await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, pos: OvuRoom.pos(), hots: [...document.querySelectorAll('.hotspot')].map(h=>h.dataset.id).join(','), img: document.querySelector('#roomDay').getAttribute('src')||''})")
+            async def lane_sheet(hid):
+                await page.evaluate("(h)=>{ if (OvuRoom.sheetOpen()) OvuRoom.hideSheet(); OvuRoom.tap(OvuRoom.hotspot(h)); }", hid)
+                try: await page.wait_for_function("()=>OvuRoom.sheetOpen()", timeout=12000)
+                except Exception: pass
+                await page.wait_for_timeout(250)
+                return await page.evaluate("()=>({id: OvuRoom.sheetOpen() ? OvuRoom.sheetId() : null, layout: document.querySelector('#scene').dataset.layout})")
+            near = lambda p, x, y: abs(p["x"] - x) < 2 and abs(p["y"] - y) < 2
+            await page.evaluate("()=>OvuRoom.hideSheet()"); await page.wait_for_timeout(300)
+            lbase = await page.evaluate("()=>({d: OvuStore.list().length, st: JSON.stringify([OvuStore.state().farm||null, OvuStore.state().lane||null, OvuStore.state().rewards||null])})")
+            up = await lane_go('hblane', 'lane')
+            check("walking onto the signpost's doorstep from the harbour takes her up the lane again", up["layout"] == "lane" and near(up["pos"], 51, 84), up)
+            gi = await lane_go('lanegrocer', 'lane-grocer')
+            # the grocer's keeper (22 Oct): at her height by the counter; a tap says hello in a bubble and to screen readers
+            kp = await page.evaluate("()=>{var k=document.querySelector('#ownedProps .keeper'); if(!k) return null; k.click(); var r=k.getBoundingClientRect(), a=document.querySelector('#avatar').getBoundingClientRect(); return {id: k.dataset.id, h: r.height, ah: a.height, loaded: k.querySelector('img').naturalWidth>0, saying: k.classList.contains('saying'), line: k.querySelector('.keepsay').textContent, live: (document.getElementById('keeperLive')||{}).textContent||'', label: k.getAttribute('aria-label')}}")
+            sh = await page.evaluate("()=>{var k=document.querySelector('#ownedProps .keeper'), a=document.querySelector('#avatar'); var ks=getComputedStyle(k,'::before'), as_=getComputedStyle(a,'::before'); var kr=k.querySelector('img').getBoundingClientRect(), pl=document.querySelector('#roomDay').getBoundingClientRect(); return {kShadow: ks.content!=='none' && ks.backgroundImage!=='none', sameShadow: ks.backgroundImage===as_.backgroundImage && ks.width===as_.width, feetGap: Math.abs(kr.bottom - (pl.top + pl.height*parseFloat(k.style.top)/100)), kFilter: getComputedStyle(k).filter, aFilter: getComputedStyle(a).filter}}")
+            check("Hay & Harvest has its keeper by the counter at her height; a tap says hello in a bubble and for screen readers", kp and kp["id"] == "keeper-grocer" and kp["loaded"] and abs(kp["h"] - kp["ah"]) < 1.5 and kp["saying"] and kp["line"].startswith("Good ") and kp["line"] in kp["live"] and "Tap to say hello" in kp["label"], kp)
+            check("nobody floats (Jamie, 22 Oct): the keeper's picture ends exactly on its floor point, with her ground shadow under the feet and her drop shadow", sh["kShadow"] and sh["sameShadow"] and sh["feetGap"] < 1.5 and sh["kFilter"] == sh["aFilter"], sh)
+            # depth (Codex, 22 Oct): at the door she is lower on the floor than Auntie Lin and draws in front of her; at the rack she is higher and draws behind
+            DZ = "()=>{var k=document.querySelector('#ownedProps .keeper'), a=document.querySelector('#avatar'); return {kz: +k.style.zIndex, az: +a.style.zIndex, ky: parseFloat(k.style.top), ay: OvuRoom.pos().y}}"
+            z1 = await page.evaluate(DZ)
+            await lane_sheet('grocerrack'); await page.wait_for_timeout(300); z2 = await page.evaluate(DZ)
+            await page.evaluate("()=>OvuRoom.hideSheet()"); await page.wait_for_timeout(300)
+            check("Auntie Lin stands in the depth order by her feet: at the door she draws in front of her, at the rack behind her", z1["kz"] >= 2 and z1["ay"] > z1["ky"] and z1["az"] > z1["kz"] and z2["ay"] < z2["ky"] and z2["az"] < z2["kz"], [z1, z2])
+            # hit target (22 Oct): a tap on her figure reaches her; a tap on the empty canvas beside her legs passes through to what is behind
+            ht = await page.evaluate("()=>{var k=document.querySelector('#ownedProps .keeper'), r=k.querySelector('img').getBoundingClientRect(); var at=function(fx,fy){var e=document.elementFromPoint(r.left+r.width*fx, r.top+r.height*fy); return !!(e && e.closest('.keeper'));}; return {body: at(0.5, 0.45), side: at(0.05, 0.86), clip: k.querySelector('img').style.clipPath.slice(0, 8)}}")
+            check("a tap on Auntie Lin's figure reaches her, while the empty canvas beside her legs lets a tap through to whatever is behind", ht["body"] and not ht["side"] and ht["clip"] == "polygon(", ht)
+            gc = await lane_sheet('grocercounter')
+            await page.click('#sheet[aria-hidden="false"] [data-lane=back]'); await page.wait_for_timeout(400)
+            gb = await page.evaluate("()=>({open: OvuRoom.sheetOpen(), layout: document.querySelector('#scene').dataset.layout})")
+            check("inside the grocer, the counter's Back row closes the counter and she is still in the grocer (no sheet carries her to another shop)", not gb["open"] and gb["layout"] == "lane-grocer", gb)
+            go = await lane_go('grocermat', 'lane')
+            check("Hay & Harvest's door takes her inside to its mat; its counter opens the grocer; its mat brings her back to the lane at the grocer's door", gi["layout"] == "lane-grocer" and near(gi["pos"], 50, 80) and gi["hots"] == "grocermat,grocercounter,grocerrack" and "shop-grocer-2f-v1" in gi["img"] and gc["id"] == "lane-grocer" and gc["layout"] == "lane-grocer" and go["layout"] == "lane" and near(go["pos"], 47, 36), [gi, gc, go])
+            bi = await lane_go('laneboutique', 'lane-boutique')
+            bf = await lane_sheet('boutiquefit')
+            # trying on (21 Oct): any outfit, a Plus drop too, is shown in the room and saves nothing; Keep saves one she has; leaving puts her own clothes back
+            TRY = "()=>{var t=OvuRoom.tryingOn(); return {t: t, src: document.querySelector('#avatarImg').getAttribute('src')||'', bar: (document.querySelector('#tryBar.on')||{}).textContent||'', plus: !!document.querySelector('#tryBar [data-tb=plus]'), keep: !!document.querySelector('#tryBar [data-tb=keep]'), outfit: OvuStore.profile().outfit||'base', acc: OvuStore.profile().accessory, d: OvuStore.list().length, h: OvuRewards.ledger().hearts, cards: document.querySelectorAll('#tryList [data-try]').length}}"
+            async def try_card(oid):
+                if not await page.evaluate("()=>OvuRoom.sheetId()==='fitting'"):
+                    await page.evaluate("()=>OvuBoutique.openFitting()"); await page.wait_for_timeout(300)
+                await page.click("#tryList [data-try=%s]" % oid)
+                try: await page.wait_for_function("(o)=>{var t=OvuRoom.tryingOn(); return t && t.outfit===o && (document.querySelector('#avatarImg').getAttribute('src')||'').indexOf('avatar-'+o+'.webp')>-1 && !document.querySelector('#avatar').classList.contains('twirling')}", arg=oid, timeout=8000)
+                except Exception: pass
+                await page.wait_for_timeout(300)
+                return await page.evaluate(TRY)
+            t0 = await page.evaluate(TRY); t0["locked"] = await page.evaluate("()=>OvuRoom.outfitLocked('gown')")
+            tg = await try_card('gown')
+            check("the fitting room offers every outfit; the Starlight gown is tried on in the room, and nothing is saved: outfit, diary and hearts unchanged", t0["cards"] == len(await page.evaluate("()=>OvuRoom.OUTFITS")) and tg["t"] and tg["t"]["outfit"] == "gown" and "avatar-gown.webp" in tg["src"] and "Starlight gown" in tg["bar"] and tg["outfit"] == t0["outfit"] and tg["d"] == t0["d"] and tg["h"] == t0["h"] and (tg["plus"] and not tg["keep"] and "Part of Rhythme Plus" in tg["bar"] if t0["locked"] else tg["keep"]), [t0, tg])
+            tk = await try_card('kebaya-blue')
+            await page.click("#tryBar [data-tb=keep]"); await page.wait_for_timeout(300)
+            kept = await page.evaluate(TRY)
+            check("an outfit she has can be kept, free: Keep saves it as her outfit, ends the try-on and spends no hearts", tk["keep"] and kept["outfit"] == "kebaya-blue" and kept["t"] is None and kept["bar"] == "" and kept["h"] == t0["h"] and kept["d"] == t0["d"], [tk, kept])
+            tp = await try_card('party')
+            await page.click("#tryBar [data-tb=own]"); await page.wait_for_timeout(1800)
+            own = await page.evaluate(TRY)
+            check("Back to my own clothes: she is in what she kept again, and the bar is gone", tp["t"]["outfit"] == "party" and own["t"] is None and "avatar-kebaya-blue.webp" in own["src"] and own["outfit"] == "kebaya-blue" and own["bar"] == "", [tp, own])
+            tl = await try_card('sundress')
+            br = await lane_sheet('boutiquerail')
+            # the rails (Jamie, 22 Oct): every outfit hangs as its own picture; one opens on its hanger beside her in it
+            rl = await page.evaluate("async ()=>{ var tiles=[...document.querySelectorAll('#sheet .railtile')]; var ok=await Promise.all(tiles.map(function(t){ return fetch(t.querySelector('img').getAttribute('src')).then(function(r){return r.ok}); })); return {n: tiles.length, want: OvuRoom.OUTFITS.length + OvuLane.RAIL.length, allOk: ok.every(Boolean), plus: [...document.querySelectorAll('#sheet .railtile.plus small')].map(e=>e.textContent), fresh: [...document.querySelectorAll('#railNew .railtile small')].map(e=>e.textContent)}; }")
+            await page.evaluate("()=>OvuBoutique.openItem('gown')"); await page.wait_for_timeout(500)
+            rg = await page.evaluate("()=>({id: OvuRoom.sheetId(), imgs: [...document.querySelectorAll('.railview img')].map(i=>i.getAttribute('src').split('/').pop()), tryBtn: !!document.querySelector('#itemTry'), money: /S\\$|USD|\\$\\d/.test(document.querySelector('#sheetBody').textContent)})")
+            await page.evaluate("()=>OvuBoutique.openItem('batik')"); await page.wait_for_timeout(500)
+            rb = await page.evaluate("()=>({imgs: [...document.querySelectorAll('.railview img')].map(i=>i.getAttribute('src').split('/').pop()), tryBtn: !!document.querySelector('#itemTry'), buy: (document.querySelector('#sheetBody .btn[disabled]')||{}).textContent||''})")
+            check("the rails show every outfit and new arrival as a picture that loads; the gown opens on its hanger beside her in it with Try it on and no money price; a new arrival shows her preview and its hearts, not yet for sale", rl["n"] == rl["want"] and rl["allOk"] and all("Rhythme Plus" in x for x in rl["plus"]) and all("hearts" in x and "arriving soon" in x for x in rl["fresh"]) and rg["id"] == "railitem" and rg["imgs"] == ["rail-gown.webp", "avatar-gown.webp"] and rg["tryBtn"] and not rg["money"] and rb["imgs"] == ["rail-batik.webp", "preview-batik.webp"] and not rb["tryBtn"] and "120 hearts" in rb["buy"], [rl, rg, rb])
+            await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(300)
+            bo = await lane_go('boutiquemat', 'lane')
+            lv = await page.evaluate(TRY)
+            check("leaving the boutique in a try-on puts her own clothes back, and nothing about it was saved", tl["t"]["outfit"] == "sundress" and lv["t"] is None and "avatar-kebaya-blue.webp" in lv["src"] and lv["outfit"] == "kebaya-blue" and lv["bar"] == "" and lv["d"] == t0["d"] and lv["h"] == t0["h"], [tl, lv])
+            await page.evaluate("(o)=>OvuRoom.setOutfit(o, true)", t0["outfit"]); await page.wait_for_timeout(300)
+            check("Petal & Thread: inside, the fitting room opens the try-on and the rails open the picture rail; out through the arch she is back at its door", bi["layout"] == "lane-boutique" and bf["id"] == "fitting" and br["id"] == "rail" and bo["layout"] == "lane" and near(bo["pos"], 54, 59), [bi, bf, br, bo])
+            yi = await lane_go('lanegym', 'lane-gym')
+            yt = await lane_sheet('gymtreadmill')
+            await page.click('#gymJustLog'); await page.wait_for_timeout(300)
+            ywalk = await page.evaluate("()=>OvuRoom.sheetId()==='move' && !!document.querySelector('#sheet [data-mact=walk][aria-pressed=true]')")
+            yw2 = await lane_sheet('gymweights')
+            await page.click('#gymJustLog'); await page.wait_for_timeout(300)
+            ystr = await page.evaluate("()=>OvuRoom.sheetId()==='move' && !!document.querySelector('#sheet [data-mact=strength][aria-pressed=true]')")
+            await page.evaluate("()=>{ OvuRoom.hideSheet(); OvuMap.open(); }"); await page.wait_for_timeout(600)
+            ym = await page.evaluate("()=>({pins: [...document.querySelectorAll('#sheet .mapexit')].map(e=>e.textContent.trim()+'@'+parseFloat(e.style.left)+','+parseFloat(e.style.top)), first: (document.querySelector('#mapRoute li')||{}).textContent||'', head: (document.querySelector('#sheet .mapnow b')||{}).textContent||''})")
+            check("the map inside the gym pins the gym's own door to the lane and the way home starts with leaving the gym; it says she is on Harbour Lane", len(ym["pins"]) == 1 and ym["pins"][0].endswith("Harbour Lane@50,70") and "Door" in ym["first"] and "Harbour Lane" in ym["head"], ym)
+            await page.evaluate("()=>OvuRoom.hideSheet()"); await page.wait_for_timeout(300)
+            yo = await lane_go('gymdoor', 'lane')
+            check("Tideline Gym: she arrives on its floor; the treadmill and the weights open their workout sheets, whose Just log movement is the movement log as before; its door brings her back to the lane at the gym", yi["layout"] == "lane-gym" and near(yi["pos"], 46, 57) and yt["id"] == "gym-treadmill" and ywalk and yw2["id"] == "gym-weights" and ystr and yo["layout"] == "lane" and near(yo["pos"], 55, 36), [yi, yt, ywalk, yo])
+            fs2 = await lane_sheet('lanefish')
+            pb2 = await lane_sheet('lanepost')
+            lafter = await page.evaluate("(b)=>({d: OvuStore.list().length - b.d, same: JSON.stringify([OvuStore.state().farm||null, OvuStore.state().lane||null, OvuStore.state().rewards||null]) === b.st})", lbase)
+            check("Bait & Fin (its room not drawn yet) and the post box open their sheets on the lane; walking in and out of the rooms wrote nothing, logged nothing and spent nothing", fs2["id"] == "lane-fish" and fs2["layout"] == "lane" and pb2["id"] == "lane-post" and lafter["d"] == 0 and lafter["same"], [fs2, pb2, lafter])
+            await page.evaluate("()=>{ OvuRoom.hideSheet(); OvuRoom.placeAvatar({x: 51, y: 72}, false); }"); await page.wait_for_timeout(300)
+            hb2 = await lane_go('laneexit', 'harbour')
+            check("from anywhere on the lane, its path takes her down to the harbour at the signpost", hb2["layout"] == "harbour" and near(hb2["pos"], 23, 51), hb2)
             await page.evaluate("()=>{Math.random = window.__rnd; OvuCare.slowMs = null; OvuRoom.tap(OvuRoom.hotspot('harbourexit'))}")
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout === 'farm'", timeout=12000)
             except Exception: pass
@@ -1547,7 +2590,11 @@ async def main():
             ky = await page.evaluate("(b)=>({id: OvuRoom.sheetId(), notes: (document.querySelector('#fdFoods')||{}).value, tag: !!document.querySelector('#tagChips [data-tag=home-cooked].on'), diary: OvuStore.list().length - b.d})", kc_base)
             check("Yes opens the food diary with the dish and Home-cooked filled in, and nothing is saved until she saves it", ky["id"] == "diary" and ky["notes"] == "Tomato and egg, cooked at home" and ky["tag"] and ky["diary"] == 0, ky)
             await page.evaluate("()=>{OvuRoom.hideSheet(); OvuCare.slowMs = null; OvuLane.openPlace('grocer')}"); await page.wait_for_timeout(300)
-            kg = await page.evaluate("()=>{var g0=OvuFarm.farmState(OvuStore).kitchen.garlic||0, e0=OvuFarm.farmState(OvuStore).pantry.egg; var n=document.querySelectorAll('#grocerStaples [data-staple]').length; var b=document.querySelector('#grocerStaples [data-staple=garlic]'); if(b) b.click(); var e=document.querySelector('#grocerStaples [data-staple=egg]'); if(e) e.click(); var f=OvuFarm.farmState(OvuStore); return {id: OvuRoom.sheetId(), n: n, garlic: (f.kitchen.garlic||0) - g0, egg: f.pantry.egg - e0}}")
+            await page.evaluate("()=>{window.__t={g0: OvuFarm.farmState(OvuStore).kitchen.garlic||0, e0: OvuFarm.farmState(OvuStore).pantry.egg, n: document.querySelectorAll('#grocerStaples [data-staple]').length}; var b=document.querySelector('#grocerStaples [data-staple=garlic]'); if(b) b.click();}")
+            await page.wait_for_timeout(600)  # the farm lock answers on a later task
+            await page.evaluate("()=>{var e=document.querySelector('#grocerStaples [data-staple=egg]'); if(e) e.click();}")
+            await page.wait_for_timeout(600)  # the farm lock answers on a later task
+            kg = await page.evaluate("()=>{var g0=window.__t.g0, e0=window.__t.e0, n=window.__t.n; var f=OvuFarm.farmState(OvuStore); return {id: OvuRoom.sheetId(), n: n, garlic: (f.kitchen.garlic||0) - g0, egg: f.pantry.egg - e0}}")
             check("Hay & Harvest sells eight kitchen staples; garlic goes to the kitchen and an egg to the barn's pantry", kg["id"] == "lane-grocer" and kg["n"] == 8 and kg["garlic"] == 1 and kg["egg"] == 1, kg)
             await page.evaluate("()=>{OvuRoom.hideSheet(); OvuWalk.travel('familyhome', {visit: true})}")
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='familyhome' && !document.querySelector('#scene').classList.contains('fading')", timeout=12000)
@@ -1566,10 +2613,10 @@ async def main():
             try: await page.wait_for_function("()=>OvuRoom.sheetOpen() && OvuRoom.sheetId()==='seat-street'", timeout=12000)
             except Exception: pass
             sh = await page.evaluate("()=>({id: OvuRoom.sheetId(), name: document.querySelector('#sheet .erin b').textContent, sit: document.querySelector('#seatSit').textContent.trim(), help: document.querySelector('#sheet .help').textContent, hearts: OvuRewards.ledger().hearts, n: OvuStore.list('mindfulness').length, pts: (function(){var m = OvuRewards.ledger().mindDay; return m && m.day === OvuStore.today() ? m.pts : 0})()})")
-            exp_hearts = min(2, max(0, 6 - sh["pts"]))  # the flat practice points inside the day's cap of six, however much earlier checks already earned
+            exp_hearts = min(2, max(0, 20 - sh["pts"]))  # the flat practice points inside the day's cap of twenty (22 Oct), however much earlier checks already earned
             await page.click('#seatBegin'); await page.wait_for_timeout(500)
             sb1 = await page.evaluate("()=>({st: OvuSeats.state(), panel: !document.querySelector('#spanel').hidden, count: document.querySelector('#spCount').textContent, btns: [...document.querySelectorAll('#spBtns button')].map(b=>b.textContent.trim()), sitter: !!document.querySelector('.seatsitter img'), hidden: document.querySelector('#avatar').classList.contains('hidden'), busy: OvuRoom.busy(), fx: OvuSeats.fxKind(), motes: document.querySelectorAll('#seatfx .mote').length, focus: document.activeElement && document.activeElement.id, pos: OvuRoom.pos()})")
-            check("the street bench offers Sounds of the street in Erin's voice or just sitting, with the once-a-day note and her credit; Begin seats her on the bench with the panel (Pause, Next, Voice off, Stop), the room busy and lantern motes drifting", sh["id"] == "seat-street" and sh["name"] == "Sounds of the street" and sh["sit"].endswith("Just sit a while") and "once a day" in sh["help"] and "Erin Lee" in sh["help"] and sb1["st"]["key"] == "street0" and sb1["panel"] and sb1["count"].startswith("Step 1 of 7") and sb1["btns"] == ["Pause", "Next", "Voice off", "Stop"] and sb1["sitter"] and sb1["hidden"] and sb1["busy"] and sb1["fx"] == "lanterns" and sb1["motes"] == 12 and sb1["focus"] == "spanel", {"sh": sh, "sb1": sb1})
+            check("the street bench offers Sounds of the street in Erin's voice or just sitting, with the once-a-day note and her credit; Begin seats her on the bench with the panel (Pause, Next, Voice on: her voice is off until chosen, Stop), the room busy and lantern motes drifting", sh["id"] == "seat-street" and sh["name"] == "Sounds of the street" and sh["sit"].endswith("Just sit a while") and "once a day" in sh["help"] and "Erin Lee" in sh["help"] and sb1["st"]["key"] == "street0" and sb1["panel"] and sb1["count"].startswith("Step 1 of 7") and sb1["btns"] == ["Pause", "Next", "Voice on", "Stop"] and sb1["sitter"] and sb1["hidden"] and sb1["busy"] and sb1["fx"] == "lanterns" and sb1["motes"] == 12 and sb1["focus"] == "spanel", {"sh": sh, "sb1": sb1})
             await page.click('#spPause'); await page.wait_for_timeout(150)
             sp = await page.evaluate("()=>({st: OvuSeats.state(), btn: document.querySelector('#spPause').textContent})")
             await page.click('#spPause'); await page.click('#spNext'); await page.wait_for_timeout(150)
@@ -1688,6 +2735,10 @@ async def main():
             check("joining PCOS counts her (24 now), remembers the choice and starts checking in; the row says she is here", jn["st"]["joined"] and jn["st"]["joined"]["people"] == 24 and jn["st"]["beating"] and "PCOS · 24 people here" in jn["pill"] and jn["saved"] == "pcos" and jn["here"], jn)
             check("every plaza call carries her own sign-in token, not the shared key alone", pauth and all(a == "Bearer smoke-token" for a in pauth), pauth[:3])
             await p4.evaluate("()=>OvuRoom.closeSheet()"); await p4.wait_for_timeout(300)
+            await p4.click("#deckTabs [data-deck=channel]"); await p4.wait_for_timeout(250)
+            chj = await p4.evaluate("()=>({text: document.querySelector('#deckChannel').innerText, board: !!document.querySelector('#deckChannel [data-today=board]'), friends: !!document.querySelector('#deckChannel [data-today=friends]'), walk: !!document.querySelector('#deckChannel [data-today=plaza]')})")
+            check("joined and counted, the Channel tab opens with the group's name, the live count including her, the noticeboard prompt and Plaza friends, and no walk button", "PCOS" in chj["text"] and "24 people here, with you" in chj["text"] and "prompt" in chj["text"].lower() and "Plaza friends" in chj["text"] and chj["board"] and chj["friends"] and not chj["walk"], chj)
+            await p4.click("#deckTabs [data-deck=today]"); await p4.wait_for_timeout(150)
             await p4.evaluate("()=>OvuPlaza.join('menopause')")
             try: await p4.wait_for_function("()=>/Menopause is full/.test(document.querySelector('#toast').textContent) && !OvuPlaza.state().inflight", timeout=6000)
             except Exception: pass
@@ -1906,7 +2957,7 @@ async def main():
             except Exception: pass
             cs = fcall("social_card_save")
             fs = await p6.evaluate("()=>({text: (document.querySelector('#frSheet')||{}).textContent||'', dot: document.querySelector('#plazaPill').classList.contains('frnew')})")
-            check("Make my card sends the name, the look, the two ticked boxes (18+ and Plaza friends), no expected card and the notice version, and the sheet shows her card, Priya's ask with its hello and the note from her", cs and cs[0]["p_name"] == "Fern" and cs[0]["p_look"] == "kebaya-red" and cs[0]["p_adult"] is True and cs[0]["p_opt_in"] is True and cs[0]["p_expect"] is None and cs[0]["p_hidden"] is False and cs[0]["p_notice"] == 4 and "Fern" in fs["text"] and "Hello, nice to see you here." in fs["text"] and "Hope today is gentle with you." in fs["text"] and "Welcome her in." in fs["text"], {"save": cs, "text": fs["text"][:200]})
+            check("Make my card sends the name, the look, the two ticked boxes (18+ and Plaza friends), no expected card and the notice version, and the sheet shows her card, Priya's ask with its hello and the note from her", cs and cs[0]["p_name"] == "Fern" and cs[0]["p_look"] == "kebaya-red" and cs[0]["p_adult"] is True and cs[0]["p_opt_in"] is True and cs[0]["p_expect"] is None and cs[0]["p_hidden"] is False and cs[0]["p_notice"] == 5 and "Fern" in fs["text"] and "Hello, nice to see you here." in fs["text"] and "Hope today is gentle with you." in fs["text"] and "Welcome her in." in fs["text"], {"save": cs, "text": fs["text"][:200]})
             check("opening the sheet marks the note read (the sender is never told), and the pill still shows a dot for the ask", fcall("social_read") and fcall("social_read")[0]["p_upto"] == 7 and fs["dot"], fcall("social_read"))
             await shot("friends-sheet")
             await p6.evaluate("()=>OvuRoom.closeSheet()")
@@ -2174,7 +3225,7 @@ async def main():
             await pr.goto(BASE + "journal.html", wait_until="networkidle"); await pr.wait_for_timeout(400)
             await pr.fill('#rfText', 'Feeling awful today. I want to die.'); await pr.click('#saveRf'); await pr.wait_for_timeout(500)
             rc = await pr.evaluate("()=>{var c=document.querySelector('#rfCare'); return {card: !!c, text: c ? c.textContent : '', role: c && c.getAttribute('role'), url: location.pathname}}")
-            check("a journal reflection that says 'I want to die' shows the help card there, with 995 and SOS", rc["card"] and "Please get help now" in rc["text"] and "1767" in rc["text"] and rc["role"] == "alert", rc)
+            check("a journal reflection that says 'I want to die' shows the help card there, with world-wide wording", rc["card"] and "Please get help now" in rc["text"] and "emergency number" in rc["text"] and "1767" not in rc["text"] and rc["role"] == "alert", rc)
             await ctxR.close()
             # another tab signs out: the wall returns over the open You sheet, the email form is fresh, and a page that loads neither shared script still sends her to the room
             ctxX = await browser.new_context(viewport={"width": 390, "height": 844}); await ctxX.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB))); await ctxX.add_init_script(SESSION_SEED)
@@ -2268,25 +3319,25 @@ async def main():
             # hand opens the care card; the mat draws her in her own clothes; after menopause the calendar says Bleeding, fills
             # nothing and a saved day opens the prompt card; the fertility page shows no invented result
             await page.goto(BASE + "room.html", wait_until="networkidle"); await page.wait_for_selector(".hotspot"); await page.wait_for_timeout(600)
-            await page.evaluate("()=>document.querySelector('.hotspot[data-id=calendar]').click()"); await page.wait_for_selector('#calTabs', timeout=8000)
-            await page.evaluate("()=>document.querySelector('#calTabs [data-tab=symptom]').click()"); await page.wait_for_selector('#saveSym', timeout=8000)
+            await page.evaluate("()=>document.querySelector('.hotspot[data-id=calendar]').click()"); await page.wait_for_selector('#calGrid', timeout=8000)
+            await page.evaluate("()=>OvuRoom.openCalendar('symptom')"); await page.wait_for_selector('#saveSym', timeout=8000)
             await page.evaluate("()=>{document.querySelector('#symChips [data-sym=headache]').click(); document.querySelector('#saveSym').click();}"); await page.wait_for_timeout(600)
             mo = await page.evaluate("()=>({sub: (document.querySelector('#toast .toastsub')||{}).textContent||'', img: document.querySelector('#avatarImg').getAttribute('src')})")
             check("a saved symptom shows a mindful line under the toast and her notebook pose", len(mo["sub"]) > 10 and "act-note" in mo["img"], mo)
             await page.evaluate("()=>{document.querySelector('#symNotes').value='my chest feels tight since lunch'; document.querySelector('#saveSym').click();}"); await page.wait_for_timeout(600)
             cc = await page.evaluate("()=>({care: !!document.querySelector('#careDone'), text: (document.querySelector('.carecard')||{}).textContent||'', toast: (document.querySelector('#toast')||{}).textContent||'', pop: document.querySelector('#heartsChip').classList.contains('pop')})")
-            check("a chest-pain note saved by hand opens the care card with Call 995", cc["care"] and "Call 995" in cc["text"], cc)
+            check("a chest-pain note saved by hand opens the care card that says to call the local emergency number", cc["care"] and "emergency number" in cc["text"] and "995" not in cc["text"], cc)
             check("no hearts toast or heart pop sits beside the care card", "\u2665" not in cc["toast"] and not cc["pop"], cc)
             await page.evaluate("()=>{var b=document.querySelector('#careDone'); if(b) b.click();}"); await page.wait_for_timeout(300)
             await page.evaluate("()=>{OvuStore.setProfile({outfit:'party'}); document.querySelector('nav a[data-tab=mind]').click();}"); await page.wait_for_timeout(800)
             md = await page.evaluate("()=>document.querySelector('#meditator img').getAttribute('src')")
             check("the mat draws her meditating in what she wears", "avatar-meditate-party" in (md or ""), md)
             await page.keyboard.press("Escape"); await page.wait_for_timeout(300)
-            await page.evaluate("()=>{OvuStore.setProfile({outfit:'base', lifeStage:'post'}); document.querySelector('.hotspot[data-id=calendar]').click();}"); await page.wait_for_selector('#calTabs', timeout=8000)
-            pm1 = await page.evaluate("()=>{var tab=document.querySelector('#calTabs [data-tab=period]').textContent; var days=[...document.querySelectorAll('.cal-day[data-date]:not(.future)')].filter(b=>!/p-/.test(b.className)); var d=days[days.length-3]; var before=OvuStore.list('period').length; d.click(); return {tab:tab, added: OvuStore.list('period').length-before, date: d.dataset.date};}"); await page.wait_for_timeout(400)
+            await page.evaluate("()=>{OvuStore.setProfile({outfit:'base', lifeStage:'post'}); document.querySelector('.hotspot[data-id=calendar]').click();}"); await page.wait_for_selector('#calGrid', timeout=8000)
+            pm1 = await page.evaluate("()=>{var tab=document.querySelector('#sheetTitle').childNodes[0].textContent; var days=[...document.querySelectorAll('.cal-day[data-date]:not(.future)')].filter(b=>!/p-/.test(b.className)); var d=days[days.length-3]; var before=OvuStore.list('period').length; d.click(); return {tab:tab, added: OvuStore.list('period').length-before, date: d.dataset.date};}"); await page.wait_for_timeout(400)
             await page.evaluate("()=>{document.querySelector('#flowChips [data-flow=light]').click(); document.querySelector('#savePeriod').click();}"); await page.wait_for_timeout(600)
             pm2 = await page.evaluate("()=>({care: !!document.querySelector('#careDone'), text: (document.querySelector('.carecard')||{}).textContent||''})")
-            check("after menopause the calendar says Bleeding, fills nothing, and a saved day opens the prompt card", pm1["tab"] == "Bleeding" and pm1["added"] == 0 and pm2["care"] and "This is not a period" in pm2["text"], [pm1, pm2["text"][:80]])
+            check("after menopause the Past days sheet fills nothing, and a saved day opens the prompt card", pm1["tab"] == "Past days" and pm1["added"] == 0 and pm2["care"] and "This is not a period" in pm2["text"], [pm1, pm2["text"][:80]])
             await page.evaluate("()=>{var b=document.querySelector('#careDone'); if(b) b.click(); OvuStore.setProfile({lifeStage:''});}"); await page.wait_for_timeout(300)
             # Codex branch review (20 Oct): pain 10 entered on the period form opens the same-day card; a red flag found only after a
             # Luna save (heavy flow logged earlier, then "dizzy today") is shown in the chat
@@ -2307,6 +3358,203 @@ async def main():
             ft = await page.evaluate("()=>({t: document.body.innerText, est: (document.querySelector('#myEstimate')||{}).innerText||''})")
             check("the fertility page shows no invented result and her own estimate is labelled", "85%" not in ft["t"] and "surge detected" not in ft["t"].lower() and len(ft["est"]) > 10 and "Reading your calendar" not in ft["est"], ft["est"][:140])
 
+            # round four of the sync review (20 Oct): real Web Locks and real fetch, two tabs of one phone. The first tab's
+            # pull never answers; within its time limit the sync gives up, aborts the request and lets go of the lock, so
+            # the second tab's sync, queued behind it, then runs. Only ovu-store.js and ovu-sync.js load, on a page with
+            # no scripts of its own, against a host that cannot resolve: every request is answered or held here.
+            ctx8 = await browser.new_context(viewport={"width": 390, "height": 844})
+            await ctx8.add_init_script("window.OVU_CONFIG={supabaseUrl:'https://sync-test.invalid',supabaseKey:'k',functionsBase:'https://sync-test.invalid/functions/v1',syncRequestMs:400};")
+            hold, held_urls, failed_urls = asyncio.Event(), [], []
+            async def sync_gate(route):
+                url, m = route.request.url, route.request.method
+                if url.startswith(BASE): return await route.continue_()
+                if "sync-test.invalid/rest/v1/entries" in url and m == "GET" and not held_urls:
+                    held_urls.append(url); await hold.wait()
+                    try: await route.abort()
+                    except Exception: pass
+                    return
+                if "sync-test.invalid/rest/v1/" in url:
+                    return await route.fulfill(status=200 if m == "GET" else 201, content_type="application/json", body="[]" if m == "GET" else "")
+                await route.abort()
+            await ctx8.route("**/*", sync_gate)
+            ctx8.on("requestfailed", lambda r: failed_urls.append(r.url))
+            stub = "()=>{window.OvuAuth={session:()=>({user:{id:'u1'}}),token:()=>Promise.resolve('t'),userId:()=>'u1'}; window.OvuConsent={needsSheet:()=>false,allows:p=>p==='cloud_sync',record:()=>{},pullAccountState:()=>Promise.resolve(null),flush:()=>Promise.resolve(0),recordedOnAccount:()=>true}; OvuStore.setProfile({cloud:{v:1,at:'2026-10-20T00:00:00Z',uid:'u1'}}); return true;}"  # ovu-sync fails closed without the consent module: a double that opens only the backup door, already on the account
+            tabs8 = []
+            for _ in range(2):
+                t = await ctx8.new_page(); await t.goto(BASE + "404.html")
+                await t.add_script_tag(url=BASE + "ovu-store.js"); await t.add_script_tag(url=BASE + "ovu-sync.js"); await t.evaluate(stub)
+                tabs8.append(t)
+            await tabs8[0].evaluate("()=>{window.__s=OvuSync.syncNow(); return true;}")
+            await tabs8[0].wait_for_timeout(50)
+            try: second = await asyncio.wait_for(tabs8[1].evaluate("()=>{var t0=performance.now(); return OvuSync.syncNow().then(r=>({r:r, ms:Math.round(performance.now()-t0)}));}"), 10)
+            except asyncio.TimeoutError: second = {"r": {}, "ms": -1, "stuck": True}
+            try: first = await asyncio.wait_for(tabs8[0].evaluate("()=>window.__s"), 10)
+            except asyncio.TimeoutError: first = {"stuck": True}
+            locks = await tabs8[0].evaluate("()=>navigator.locks.query().then(q=>({held:q.held.length, pending:q.pending.length}))")
+            await tabs8[0].wait_for_timeout(100); aborted_by_page = list(failed_urls) # before this harness lets go of the held request
+            hold.set(); await tabs8[0].wait_for_timeout(100)
+            check("real Web Locks: a pull that never answers ends the first tab's sync within its limit, and the second tab's sync then runs", bool(held_urls) and first.get("ok") is False and "too long" in (first.get("error") or "") and second["r"].get("ok") is True and second["ms"] >= 250 and locks == {"held": 0, "pending": 0}, {"first": first, "second": second, "locks": locks, "held": len(held_urls)})
+            check("and the page aborted the stalled request itself, not left open", any("rest/v1/entries" in u for u in aborted_by_page), aborted_by_page[:2])
+            await ctx8.close()
+            # recipes and the Mediterranean check (20 Oct): in-room sheets, answers kept on the phone, links open the source
+            await page.goto(BASE + "room.html", wait_until="networkidle"); await page.wait_for_timeout(500)
+            await page.goto(BASE + "room.html#medas"); await page.reload(wait_until="networkidle"); await page.wait_for_selector(".mq", timeout=8000)
+            await page.click('.mq[data-mq="veg"] [data-yn="1"]'); await page.click('.mq[data-mq="fish"] [data-yn="0"]'); await page.wait_for_timeout(200)
+            m1 = await page.evaluate("()=>({count: document.querySelector('#mdYes').textContent, ideas: [...document.querySelectorAll('#mdIdeas .rcard b')].map(b=>b.textContent), saved: OvuStore.state().medas, pressed: document.querySelector('.mq[data-mq=veg] [data-yn=\"1\"]').getAttribute('aria-pressed')})")
+            check("the Mediterranean check counts a yes, suggests fish recipes for a not yet, and keeps the answers", m1["count"] == "1 of 13" and "Sardines with tomato & green beans" in m1["ideas"] and (m1["saved"] or {}).get("answers") == {"veg": True, "fish": False} and m1["pressed"] == "true", m1)
+            MQS = "()=>({saved: (OvuStore.state().medas||{}).answers||null, on: [...document.querySelectorAll('.yn button.on')].map(b=>b.closest('.mq').dataset.mq+':'+b.dataset.yn), count: document.querySelector('#mdYes').textContent})"
+            await page.click('.mq[data-mq="veg"] [data-yn="1"]'); await page.wait_for_timeout(150); d1 = await page.evaluate(MQS)
+            await page.click('.mq[data-mq="fish"] [data-yn="0"]'); await page.wait_for_timeout(150); d2 = await page.evaluate(MQS)
+            await page.click('.mq[data-mq="fish"] [data-yn="1"]'); await page.wait_for_timeout(150); d3 = await page.evaluate(MQS)
+            await page.click('.mq[data-mq="fish"] [data-yn="0"]'); await page.click('.mq[data-mq="veg"] [data-yn="1"]'); await page.wait_for_timeout(150); d4 = await page.evaluate(MQS)
+            check("a second tap on Yes or on Not usually takes that answer back, and switching an answer keeps only the new one, on screen and in the store", d1["saved"] == {"fish": False} and d1["on"] == ["fish:0"] and d2["saved"] is None and d2["on"] == [] and "Tap Yes" in d2["count"] and d3["saved"] == {"fish": True} and d3["on"] == ["fish:1"] and d3["count"] == "1 of 13" and d4["saved"] == {"veg": True, "fish": False} and d4["count"] == "1 of 13", [d1, d2, d3, d4])
+            await page.goto(BASE + "room.html#medas"); await page.reload(wait_until="networkidle"); await page.wait_for_selector(".mq", timeout=8000)
+            m2 = await page.evaluate("()=>({count: document.querySelector('#mdYes').textContent, on: [...document.querySelectorAll('.yn button.on')].length})")
+            check("after a reload the answers are still there", m2["count"] == "1 of 13" and m2["on"] == 2, m2)
+            await page.click("#mdClear"); await page.wait_for_timeout(200)
+            m3 = await page.evaluate("()=>({count: document.querySelector('#mdYes').textContent, saved: OvuStore.state().medas, on: document.querySelectorAll('.yn button.on').length})")
+            check("Clear my answers empties the check and the store", m3["saved"] is None and m3["on"] == 0 and "Not usually" in m3["count"], m3)
+            # another tab saved an answer and its storage event has not arrived yet: a tap here keeps it, and Clear clears it too
+            await page.evaluate("()=>{var db=JSON.parse(localStorage.getItem('ovumind_db_v1')); db.state.medas={v:1, at:new Date().toISOString(), answers:{nuts:true}}; db.state.otherTabMark='kept'; localStorage.setItem('ovumind_db_v1', JSON.stringify(db));}")
+            await page.click('.mq[data-mq="legumes"] [data-yn="0"]'); await page.wait_for_timeout(200)
+            dl = await page.evaluate("()=>({saved: (OvuStore.state().medas||{}).answers, disk: JSON.parse(localStorage.getItem('ovumind_db_v1')).state, count: document.querySelector('#mdYes').textContent})")
+            await page.evaluate("()=>{var db=JSON.parse(localStorage.getItem('ovumind_db_v1')); db.state.medas={v:1, at:new Date().toISOString(), answers:{nuts:true, legumes:false, sofrito:true}}; localStorage.setItem('ovumind_db_v1', JSON.stringify(db));}")
+            await page.click("#mdClear"); await page.wait_for_timeout(200)
+            dc = await page.evaluate("()=>({saved: OvuStore.state().medas, disk: JSON.parse(localStorage.getItem('ovumind_db_v1')).state})")
+            check("an answer saved in another tab whose news has not arrived is kept when she taps here, with that tab's other changes, and Clear empties both", dl["saved"] == {"nuts": True, "legumes": False} and dl["disk"]["medas"]["answers"] == {"nuts": True, "legumes": False} and dl["disk"].get("otherTabMark") == "kept" and dl["count"] == "1 of 13" and dc["saved"] is None and dc["disk"].get("medas") is None and dc["disk"].get("otherTabMark") == "kept", [dl, dc])
+            # the phone refuses the save: nothing looks saved, the store is unchanged and she is told
+            await page.evaluate("()=>{window.__rset=Storage.prototype.setItem; Storage.prototype.setItem=function(k,v){ if(k==='ovumind_db_v1'){ throw new DOMException('full','QuotaExceededError'); } return window.__rset.call(this,k,v); };}")
+            await page.click('.mq[data-mq="nuts"] [data-yn="1"]'); await page.wait_for_timeout(250)
+            mq = await page.evaluate("()=>({pressed: document.querySelector('.mq[data-mq=nuts] [data-yn=\\\"1\\\"]').getAttribute('aria-pressed'), count: document.querySelector('#mdYes').textContent, saved: OvuStore.state().medas, toast: document.querySelector('#toast').textContent})")
+            await page.evaluate("()=>{Storage.prototype.setItem=window.__rset;}")
+            check("when the phone cannot save an answer, it is not shown as kept, the store is unchanged and a message says so", mq["pressed"] == "false" and mq["saved"] is None and "could not save" in mq["toast"] and "of 13" not in mq["count"], mq)
+            await page.click("#mdRecipes"); await page.wait_for_timeout(400)
+            r1 = await page.evaluate("()=>({title: document.querySelector('#sheetTitle').textContent, groups: [...document.querySelectorAll('#recTabs [data-rg]')].map(b=>b.dataset.rg+':'+b.getAttribute('aria-pressed')), links: [...document.querySelectorAll('.rcard')].map(a=>[a.target, a.rel, new URL(a.href).host])})")
+            check("Recipes opens on Everyday from the check, and every card opens its source in a new tab", r1["title"].startswith("Recipes") and "every:true" in r1["groups"] and len(r1["links"]) >= 8 and all(l[0] == "_blank" and "noopener" in l[1] and l[2] in ("www.jeanhailes.org.au", "www.bonehealthandosteoporosis.org", "www.healthhub.sg") for l in r1["links"]), r1)
+            await page.click('#recTabs [data-rg="meno"]'); await page.wait_for_timeout(300)
+            r2 = await page.evaluate("()=>({on: document.querySelector('#recTabs .on').dataset.rg, pressed: document.querySelector('#recTabs .on').getAttribute('aria-pressed'), focus: document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.rg : null, note: document.querySelector('.rnote').textContent})")
+            check("switching to Menopause keeps focus on the chosen button and says what food cannot do", r2["on"] == "meno" and r2["pressed"] == "true" and r2["focus"] == "meno" and "hot flushes" in r2["note"], r2)
+            await page.keyboard.press("Escape"); await page.wait_for_timeout(300)
+            # two tabs on the check: an answer in one does not wipe the other's, and the open check repaints
+            # the second tab is opened from the first (a link opened in a new tab), so both share one renderer and one copy of
+            # localStorage; two unrelated pages of one context did not see each other's writes in CI's headless shell (21 Oct)
+            ta = await ctx.new_page(); await ta.route("**/*", gate); await ta.bring_to_front()
+            await ta.goto(BASE + "room.html", wait_until="networkidle"); await ta.wait_for_timeout(400)
+            await ta.evaluate("()=>{ location.hash = 'medas'; }"); await ta.reload(wait_until="networkidle"); await ta.wait_for_selector(".mq", timeout=15000)
+            async with ctx.expect_page() as pinfo:
+                await ta.evaluate("()=>{ window.__tb = window.open('about:blank'); }")
+            tb = await pinfo.value; await tb.route("**/*", gate)
+            await ta.evaluate("()=>{ window.__tb.location.href = 'room.html#medas'; }")
+            await tb.wait_for_selector(".mq", timeout=15000)
+            # a pointer click into a second tab hung in CI's headless Chromium (21 Oct); this checks how the tabs share the
+            # store, so tap with the button's own click()
+            TAP = "(sel)=>document.querySelector(sel).click()"
+            await ta.evaluate(TAP, '.mq[data-mq="veg"] [data-yn="1"]'); await ta.wait_for_timeout(400)
+            await tb.evaluate(TAP, '.mq[data-mq="fish"] [data-yn="0"]'); await tb.wait_for_timeout(400)
+            # the second tab's save is on the phone at once; a hidden tab may be frozen (CI) and catches up when she comes back to it
+            disk = await tb.evaluate("()=>(JSON.parse(localStorage.getItem('ovumind_db_v1')).state.medas||{}).answers")
+            await ta.bring_to_front()
+            try: await ta.wait_for_function("()=>document.querySelector('.mq[data-mq=fish] [data-yn=\\\"0\\\"]').getAttribute('aria-pressed')==='true'", polling=200, timeout=8000)
+            except Exception: pass
+            two = await ta.evaluate("()=>({saved: (OvuStore.state().medas||{}).answers, fishShown: document.querySelector('.mq[data-mq=fish] [data-yn=\\\"0\\\"]').getAttribute('aria-pressed')})")
+            check("answers given in two tabs are both kept, and the first tab shows the second's answer when she comes back to it", disk == {"veg": True, "fish": False} and two["saved"] == {"veg": True, "fish": False} and two["fishShown"] == "true", {"disk": disk, **two})
+            await tb.evaluate(TAP, "#mdClear"); await tb.wait_for_timeout(300)
+            await ta.close(); await tb.close()
+            # a returning visitor follows a link to the check and taps Home while the room is still starting: the link stays closed
+            th = await ctx.new_page(); await th.route("**/*", gate); await th.bring_to_front()
+            await th.goto(BASE + "room.html#medas", wait_until="domcontentloaded"); await th.wait_for_selector(".hotspot", state="attached", timeout=8000)  # drawn by room.js, so the nav is wired
+            await th.evaluate("()=>{[...document.querySelectorAll('.nav a')].filter(a=>(a.dataset.tab||'home')==='home')[0].click();}"); await th.wait_for_timeout(1500)
+            hm = await th.evaluate("()=>({medas: !!document.querySelector('.mq'), home: (document.querySelector('.nav a.on')||{dataset:{}}).dataset.tab || 'home'})")
+            check("tapping Home while the room starts keeps a link to the check from opening over it", not hm["medas"] and hm["home"] == "home", hm)
+            await th.close(); await page.bring_to_front()
+            # a first visit through the old page's link: signed out, the sign-in wall comes first and nothing opens behind it
+            fresh_db = json.loads(json.dumps(DB)); fresh_db["profile"]["onboarded"] = False; fresh_db["state"].pop("welcomeSeen", None)
+            ctx9 = await browser.new_context(viewport={"width": 390, "height": 844})
+            await ctx9.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(fresh_db)))
+            p9 = await ctx9.new_page(); await p9.route("**/*", gate)
+            p9.on("pageerror", lambda e: errors.append("pageerror (first visit): " + str(e)))
+            await p9.goto(BASE + "medas14.html"); await p9.wait_for_url("**/room.html*", timeout=8000); await p9.wait_for_timeout(1500)
+            w9 = await p9.evaluate("()=>({wall: !!document.querySelector('#welcome:not([hidden])'), sheet: document.querySelector('#sheet').classList.contains('on'), mq: !!document.querySelector('.mq')})")
+            check("the old Mediterranean link, signed out, shows the sign-in wall and opens nothing behind it", w9["wall"] and not w9["sheet"] and not w9["mq"], w9)
+            await ctx9.close()
+            sheet_title = "()=>{var s=document.querySelector('#sheet'); return s && s.classList.contains('on') ? (document.querySelector('#sheetTitle').textContent||'') : ''}"
+            async def first_visit(url):
+                c = await browser.new_context(viewport={"width": 390, "height": 844})
+                await c.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(fresh_db))); await c.add_init_script(SESSION_SEED)
+                pg = await c.new_page(); await pg.route("**/*", gate)
+                pg.on("pageerror", lambda e: errors.append("pageerror (first visit): " + str(e)))
+                await pg.goto(BASE + url); await pg.wait_for_url("**/room.html*", timeout=8000); await pg.wait_for_timeout(900)
+                return c, pg
+            async def walk_intro(pg):
+                n = 0
+                for n in range(45):
+                    if not await pg.query_selector("#onbNext"): break
+                    if await pg.query_selector("#onbSkip"): await pg.evaluate("()=>document.querySelector('#onbSkip').click()")
+                    else:
+                        await pg.evaluate("()=>{document.querySelectorAll('#sheetBody .chips[data-key]').forEach(function(r){ if(r.querySelector('.chipbtn.on')) return; var b=r.querySelector('.chipbtn[data-v=\\\"none\\\"]')||r.querySelector('.chipbtn[data-v]'); if(b) b.click(); });}")
+                        await pg.evaluate("()=>document.querySelector('#onbNext').click()")
+                    await pg.wait_for_timeout(120)
+                await pg.wait_for_timeout(300)
+                return n
+            # a new account signed in: the intro comes first and the check waits for "Enter my room"
+            c10, p10 = await first_visit("medas14.html")
+            await p10.wait_for_timeout(1000)
+            during = await p10.evaluate(sheet_title)
+            steps = await walk_intro(p10)
+            after = await p10.evaluate(sheet_title)
+            check("from the old link, a new account sees the intro first and the check opens once she enters her room", during.startswith("Welcome") or ("Mediterranean" not in during and during != ""), {"during": during})
+            check("after the last intro step the check is open", after.startswith("Mediterranean check"), {"after": after, "steps": steps})
+            await c10.close()
+            # close the intro part way: she chose the room, so nothing pops up later
+            c11, p11 = await first_visit("medas14.html")
+            await p11.wait_for_timeout(1000)
+            await p11.click("#sheetClose"); await p11.wait_for_timeout(1200)
+            left = await p11.evaluate(sheet_title)
+            check("leaving the intro part way drops the old link's destination", left == "", left)
+            await p11.evaluate("()=>{var w=document.querySelector('.hotspot[data-id=\\\"window\\\"]'); if(w) w.click();}")
+            await p11.wait_for_selector("#winIntro", timeout=10000); await p11.click("#winIntro"); await p11.wait_for_timeout(800)
+            await walk_intro(p11)
+            again = await p11.evaluate(sheet_title)
+            check("an intro started again later, and finished, does not bring the old link's check back", "Mediterranean" not in again, again)
+            await c11.close()
+            # a new account with no link: the intro, then nothing else opens
+            c12, p12 = await first_visit("room.html")
+            await p12.wait_for_timeout(1000); await walk_intro(p12); await p12.wait_for_timeout(900)
+            plain = await p12.evaluate(sheet_title)
+            check("a new account with no link opens no sheet after the intro", plain == "", plain)
+            await c12.close()
+            # the desk: four folders she placed leave no room for the rest, so the desk goes back on the grid, says so, and nothing overlaps
+            c13 = await browser.new_context(viewport={"width": 360, "height": 740})
+            await c13.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s); if(!localStorage.getItem('ovumind_desk_v1')) localStorage.setItem('ovumind_desk_v1', JSON.stringify({pos:{cycle:[14,19],fertility:[64,19],chapters:[14,50],nutrition:[64,50]},wall:'cat',custom:null}));" % json.dumps(json.dumps(DB))); await c13.add_init_script(SESSION_SEED)
+            p13 = await c13.new_page(); await p13.route("**/*", gate)
+            p13.on("pageerror", lambda e: errors.append("pageerror (desk): " + str(e)))
+            await p13.goto(BASE + "room.html"); await p13.wait_for_timeout(900)
+            await p13.goto(BASE + "room.html#learn"); await p13.reload(); await p13.wait_for_selector(".dicon", timeout=8000); await p13.wait_for_timeout(900)
+            dk = await p13.evaluate("()=>{var r=[...document.querySelectorAll('.dicon')].map(function(e){return e.getBoundingClientRect();}), bad=0; for(var i=0;i<r.length;i++) for(var j=i+1;j<r.length;j++){ var a=r[i], b=r[j]; if(a.left<b.right-1 && b.left<a.right-1 && a.top<b.bottom-1 && b.top<a.bottom-1) bad++; } return {n:r.length, bad:bad, toast:document.querySelector('#toast').textContent, pos:JSON.parse(localStorage.getItem('ovumind_desk_v1')).pos}}")
+            check("a desk with no room for new folders goes back on the grid with a note, and no folder covers another", dk["n"] >= 10 and dk["bad"] == 0 and "back on the grid" in dk["toast"] and dk["pos"] == {}, dk)
+            await p13.focus('.dicon[data-folder="recipes"]'); await p13.keyboard.press("Enter"); await p13.wait_for_timeout(400)
+            kb = await p13.evaluate("()=>{var f=document.querySelector('#finder'); return {on: !!(f && f.classList.contains('on')), text: f ? f.textContent : ''}}")
+            check("Enter on the Recipes folder opens it, as a tap does", kb["on"] and "For PCOS (PMOS)" in kb["text"], kb)
+            fo = await p13.evaluate("()=>{var a=document.activeElement; return {inFolder: !!(a && a.closest('#finder')), first: a && a.textContent, expanded: document.querySelector('.dicon[data-folder=recipes]').getAttribute('aria-expanded'), label: document.querySelector('#finder').getAttribute('aria-label')}}")
+            await p13.focus('.finder .x'); await p13.keyboard.press("Enter"); await p13.wait_for_timeout(200)
+            fc = await p13.evaluate("()=>({back: document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.folder : null, on: document.querySelector('#finder').classList.contains('on'), expanded: document.querySelector('.dicon[data-folder=recipes]').getAttribute('aria-expanded')})")
+            check("the opened folder takes the keyboard focus and says it is expanded, and closing it puts focus back on its folder", fo["inFolder"] and "For PCOS" in (fo["first"] or "") and fo["expanded"] == "true" and fo["label"] == "Recipes folder" and fc["back"] == "recipes" and not fc["on"] and fc["expanded"] == "false", [fo, fc])
+            box = await p13.evaluate("()=>{var b=document.querySelector('.dicon[data-folder=recipes]').getBoundingClientRect(); return [b.left+b.width/2, b.top+b.height/2]}")
+            await p13.mouse.move(box[0], box[1]); await p13.mouse.down(); await p13.mouse.move(box[0] + 30, box[1] + 12, steps=6); await p13.mouse.up(); await p13.wait_for_timeout(300)
+            shown = await p13.evaluate("()=>{var o={}; document.querySelectorAll('.dicon').forEach(function(b){ o[b.dataset.folder]=[Math.round(parseFloat(b.style.left)*10)/10, Math.round(parseFloat(b.style.top)*10)/10]; }); return {shown:o, saved: JSON.parse(localStorage.getItem('ovumind_desk_v1')).pos, finder: document.querySelector('#finder').classList.contains('on')}}")
+            check("a drag saves every folder exactly where it is shown, and the drag does not open the folder", shown["saved"] == shown["shown"] and len(shown["saved"]) == dk["n"] and shown["saved"]["recipes"] != [2, 35] and not shown["finder"], shown)
+            await p13.goto(BASE + "room.html#learn"); await p13.reload(); await p13.wait_for_selector(".dicon", timeout=8000); await p13.wait_for_timeout(600)
+            back = await p13.evaluate("()=>{var o={}; document.querySelectorAll('.dicon').forEach(function(b){ o[b.dataset.folder]=[parseFloat(b.style.left), parseFloat(b.style.top)]; }); return o}")
+            check("after reopening the desk every folder is where she left it", back == shown["saved"], back)
+            await c13.close()
+            c14 = await browser.new_context(viewport={"width": 320, "height": 568})
+            await c14.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB))); await c14.add_init_script(SESSION_SEED)
+            p14 = await c14.new_page(); await p14.route("**/*", gate)
+            await p14.goto(BASE + "room.html"); await p14.wait_for_timeout(900)
+            await p14.goto(BASE + "room.html#learn"); await p14.reload(); await p14.wait_for_selector(".dicon", timeout=8000); await p14.wait_for_timeout(900)
+            small = await p14.evaluate("()=>{var d=document.querySelector('#dicons').getBoundingClientRect(), r=[...document.querySelectorAll('.dicon')].map(function(e){return e.getBoundingClientRect();}), bad=0, out=0; for(var i=0;i<r.length;i++){ if(r[i].bottom>d.bottom+0.5||r[i].right>d.right+0.5) out++; for(var j=i+1;j<r.length;j++){ var a=r[i], b=r[j]; if(a.left<b.right-0.5 && b.left<a.right-0.5 && a.top<b.bottom-0.5 && b.top<a.bottom-0.5) bad++; } } return {n:r.length, bad:bad, out:out}}")
+            check("on a 320 px phone the default desk has no folder over another and none past the edge", small["n"] >= 10 and small["bad"] == 0 and small["out"] == 0, small)
+            await c14.close()
             # ---------- game music (21 Oct): opt in, one stop, silent where it must be ----------
             ctxm = await browser.new_context(viewport={"width": 390, "height": 844})
             await ctxm.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB))); await ctxm.add_init_script(SESSION_SEED)
@@ -2336,16 +3584,17 @@ async def main():
             m2 = await pm.evaluate("()=>OvuMusic.state()")
             await travel_m('cave'); await pm.wait_for_timeout(1300)
             m3 = await pm.evaluate("()=>OvuMusic.state()")
-            check("music: the garden brings its own theme on a crossfade; the cave has none and the engine goes quiet for the scene", m2["theme"] == "garden" and m2["mode"] == "play" and m3["mode"] == "silent" and m3["why"] == "scene" and m3["running"] is False and m3["gate"] <= 0.01, {"garden": m2, "cave": m3})
+            check("music: the garden brings its own theme on a crossfade; the cave plays its own soft ambient theme (Jamie, 22 Oct)", m2["theme"] == "garden" and m2["mode"] == "play" and m3["mode"] == "play" and m3["theme"] == "cave", {"garden": m2, "cave": m3})
             await travel_m('home'); await pm.wait_for_timeout(1500)
             SILENT = re.search(r"var SILENT = '([^']+)'", open(os.path.join(ROOT, "ovu-morning.js")).read()).group(1)
             dk = await pm.evaluate("""async(sil)=>{var out={};
-              var a=new Audio('assets/audio/guide-interim/teeth-0-0.mp3'); a.volume=1; try{ await a.play(); }catch(e){ out.playErr=String(e); }
+              var m0=OvuVoice.muted(); OvuVoice.set(true); var a=new Audio('assets/audio/guide-interim/teeth-0-0.mp3'); a.volume=1; OvuVoice.allow(a, true); try{ await a.play(); }catch(e){ out.playErr=String(e); }
               await new Promise(r=>setTimeout(r,500)); out.during=OvuMusic.state();
               a.pause(); await new Promise(r=>setTimeout(r,1700)); out.after=OvuMusic.state();
               var s=new Audio(sil); try{ await s.play(); }catch(e){ out.silErr=String(e); } await new Promise(r=>setTimeout(r,400)); out.silent=OvuMusic.state(); s.pause();
+              var q=new Audio('assets/audio/guide-interim/teeth-0-0.mp3'); try{ await q.play(); }catch(e){ out.qErr=String(e); } await new Promise(r=>setTimeout(r,400)); out.underMute=OvuMusic.state(); q.pause(); OvuVoice.set(m0);
               return out; }""", SILENT)
-            check("music: a voice clip ducks the tune to silence while it plays and the tune returns after it; the silent data: clip ducks nothing", dk["during"]["mode"] == "duck" and dk["during"]["media"] == 1 and dk["during"]["running"] is True and dk["after"]["mode"] == "play" and dk["after"]["media"] == 0 and dk["silent"]["mode"] == "play" and dk["silent"]["media"] == 0, dk)
+            check("music: a voice clip she chose to hear ducks the tune to silence while it plays and the tune returns after it; the silent data: clip and a clip under the voice mute duck nothing", dk["during"]["mode"] == "duck" and dk["during"]["media"] == 1 and dk["during"]["running"] is True and dk["after"]["mode"] == "play" and dk["after"]["media"] == 0 and dk["silent"]["mode"] == "play" and dk["silent"]["media"] == 0 and dk["underMute"]["mode"] == "play" and dk["underMute"]["media"] == 0, dk)
             md = await pm.evaluate("""async()=>{ OvuRoom.enterMeditation(); await new Promise(r=>setTimeout(r,900)); var during=OvuMusic.state(); OvuRoom.exitMeditation(); await new Promise(r=>setTimeout(r,1400)); return {during: during, after: OvuMusic.state()}; }""")
             check("music: paced breathing is an activity that needs the ear: silent for its whole length, back afterwards", md["during"]["mode"] == "silent" and md["during"]["why"] == "activity" and md["after"]["mode"] == "play", md)
             sl = await pm.evaluate("""async()=>{ OvuStore.setState({sleeping:{startedAt:new Date().toISOString(), bedTime:'23:00'}}); await new Promise(r=>setTimeout(r,700)); var asleep=OvuMusic.state(); OvuStore.setState({sleeping:null}); await new Promise(r=>setTimeout(r,1400)); return {asleep: asleep, awake: OvuMusic.state()}; }""")
@@ -2385,24 +3634,23 @@ async def main():
             await pc.evaluate("()=>OvuStore.setState({sleeping:{startedAt:new Date().toISOString(), bedTime:'23:00'}})"); await pc.wait_for_timeout(300)
             await pc.click('.nav a[data-tab=cycle]'); await pc.wait_for_timeout(700)
             c1 = await pc.evaluate("()=>({sheet: OvuRoom.sheetId(), tabs: [...document.querySelectorAll('#calTabs button')].map(b=>b.textContent), on: document.querySelector('.nav a[data-tab=cycle]').classList.contains('on')})")
-            check("cycle: the tab is back between Home and Food and opens the calendar even while she sleeps, with Period, Symptoms and Rhythm views", nav[:3] == ["home", "cycle", "food"] and c1["sheet"] == "calendar" and c1["tabs"] == ["Period", "Symptoms", "Rhythm"] and c1["on"], {"nav": nav, "c1": c1})
-            await pc.evaluate("()=>OvuStore.setState({sleeping:null})")
-            await pc.click('#calTabs button[data-tab=rhythm]'); await pc.wait_for_timeout(400)
-            r1 = await pc.evaluate("()=>({panel: document.querySelector('#rhythmPanel').textContent, hiddenCal: document.querySelector('#calBody').hidden, view: OvuStore.state().cycleView, dots: document.querySelectorAll('.ready .dot.on').length})")
-            check("cycle: the Rhythm view shows Building your cycle picture at 0 of 3 for one logged period, Ovulation signs not assessed, no score anywhere", "Building your cycle picture" in r1["panel"] and "0 of 3" in r1["panel"] and r1["dots"] == 0 and "Not assessed" in r1["panel"] and "score" not in r1["panel"].lower() and "unlocked" not in r1["panel"].lower() and r1["hiddenCal"] and r1["view"] == "rhythm", {"dots": r1["dots"], "view": r1["view"], "head": r1["panel"][:160]})
+            check("cycle: the tab sits between Home and Food and opens even while she sleeps, straight onto the scores with no tabs (Jamie, 22 Oct)", nav[:3] == ["home", "cycle", "food"] and c1["sheet"] == "scores" and c1["tabs"] == [] and c1["on"], {"nav": nav, "c1": c1})
+            await pc.evaluate("()=>OvuStore.setState({sleeping:null})"); await pc.wait_for_timeout(400)
+            r1 = await pc.evaluate("()=>({panel: document.querySelector('#rhythmPanel').textContent, hiddenCal: true, view: 'rhythm', dots: document.querySelectorAll('.ready .dot.on').length})")
+            check("cycle: the Scores view leads with Cycle wellness and Circadian rhythm, then Building your cycle picture at 0 of 3 for one logged period, Ovulation signs not assessed", "Cycle wellness" in r1["panel"] and "Circadian rhythm" in r1["panel"] and "Building your cycle picture" in r1["panel"] and "0 of 3" in r1["panel"] and r1["dots"] == 0 and "Not assessed" in r1["panel"] and "unlocked" not in r1["panel"].lower() and r1["hiddenCal"] and r1["view"] == "rhythm", {"dots": r1["dots"], "view": r1["view"], "head": r1["panel"][:160]})
             # four starts a month apart make 3 of 3 and a regularity comparison once the age band is known
             await pc.evaluate("""()=>{var S=OvuStore; S.setProfile({ageRange:'30-34'}); ['2026-07-02','2026-07-30','2026-08-27','2026-09-24'].forEach(function(s){ for(var i=0;i<4;i++) S.add('period', S.addDays(s,i), {flow:i<2?'medium':'light', clots:false, impact:false}, 'room'); });}""")
             await pc.keyboard.press("Escape"); await pc.wait_for_timeout(300)
             await pc.click('.nav a[data-tab=cycle]'); await pc.wait_for_timeout(700)
-            r2 = await pc.evaluate("()=>({tab: document.querySelector('#calTabs button.on').dataset.tab, panel: document.querySelector('#rhythmPanel').textContent, dots: document.querySelectorAll('.ready .dot.on').length, levels: [...document.querySelectorAll('.rcard .lvl')].map(l=>l.textContent)})")
-            check("cycle: the last view is remembered; four starts give 3 of 3, Within the reference range for regularity and lengths, Not assessed for ovulation; levels never add up", r2["tab"] == "rhythm" and r2["dots"] == 3 and "3 of 3" in r2["panel"] and r2["levels"][0] == "Within the reference range in these records" and r2["levels"][1] == "Within the reference range in these records" and r2["levels"][2] == "Not assessed" and "FIGO" in r2["panel"], {"tab": r2["tab"], "dots": r2["dots"], "levels": r2["levels"]})
+            r2 = await pc.evaluate("()=>({tab: OvuRoom.sheetId() === 'scores' ? 'rhythm' : OvuRoom.sheetId(), panel: document.querySelector('#rhythmPanel').textContent, dots: document.querySelectorAll('.ready .dot.on').length, levels: [...document.querySelectorAll('.rcard .lvl')].map(l=>l.textContent)})")
+            check("cycle: the tab opens the scores again; four starts give 3 of 3, Within the reference range for regularity and lengths, Not assessed for ovulation; levels never add up", r2["tab"] == "rhythm" and r2["dots"] == 3 and "3 of 3" in r2["panel"] and r2["levels"][0] == "Within the reference range in these records" and r2["levels"][1] == "Within the reference range in these records" and r2["levels"][2] == "Not assessed" and "FIGO" in r2["panel"], {"tab": r2["tab"], "dots": r2["dots"], "levels": r2["levels"]})
             # after the menopause the tab reads Body and the view keeps symptoms, drops the count and names bleeding as a check
             await pc.evaluate("()=>OvuStore.setProfile({lifeStage:'post', ageRange:'50+'})"); await pc.wait_for_timeout(400)
             await pc.keyboard.press("Escape"); await pc.wait_for_timeout(300)
             lbl = await pc.evaluate("()=>document.querySelector('#navCycle .navlabel').textContent")
             await pc.click('.nav a[data-tab=cycle]'); await pc.wait_for_timeout(700)
             r3 = await pc.evaluate("()=>({tabs: [...document.querySelectorAll('#calTabs button')].map(b=>b.textContent), panel: document.querySelector('#rhythmPanel').textContent})")
-            check("cycle: after the menopause the tab reads Body, the calendar's third view is Your body, there is no cycle count and any bleeding is named as a check", lbl == "Body" and r3["tabs"] == ["Bleeding", "Symptoms", "Your body"] and "Building your cycle picture" not in r3["panel"] and "any bleeding at all" in r3["panel"], {"lbl": lbl, "tabs": r3["tabs"]})
+            check("cycle: after the menopause the tab reads Body, the cycle score is not shown, there is no cycle count and any bleeding is named as a check", lbl == "Body" and r3["tabs"] == [] and "not shown after menopause" in r3["panel"] and "Building your cycle picture" not in r3["panel"] and "any bleeding at all" in r3["panel"], {"lbl": lbl, "tabs": r3["tabs"]})
             check("cycle: no page errors in the cycle run", not cerr, cerr[:3])
             await ctxc.close()
             # ---------- Luna's chat panel (21 Oct): the Ovuluna card, honest about what Luna is ----------
@@ -2418,7 +3666,7 @@ async def main():
             pages_ok = []
             for href in lp["asks"]:
                 r = await pl.request.get(BASE + href); pages_ok.append(r.ok)
-            check("luna: the chat is a floating card with her face, 'Your wellness companion', an honest state line, three ask chips that open real guides, the companion note, and no upsell", lp["card"] and lp["face"] and "Your wellness companion" in lp["title"] and ("Rules only" in lp["state"] or "reading is on" in lp["state"]) and lp["dot"] and len(lp["asks"]) == 3 and all(pages_ok) and "not a doctor" in lp["note"] and "ask about your cycle" in lp["placeholder"] and not lp["upgrade"], {"lp": {k: lp[k] for k in ("card", "face", "title", "state", "asks", "placeholder", "upgrade")}, "pages": pages_ok})
+            check("luna: the chat is a floating card with her face, 'Your wellness companion', an honest state line, two ask chips that open real guides (the stress page is retired), the companion note, and no upsell", lp["card"] and lp["face"] and "Your wellness companion" in lp["title"] and ("Rules only" in lp["state"] or "reading is on" in lp["state"]) and lp["dot"] and len(lp["asks"]) == 2 and all(pages_ok) and "not a doctor" in lp["note"] and "ask about your cycle" in lp["placeholder"] and not lp["upgrade"], {"lp": {k: lp[k] for k in ("card", "face", "title", "state", "asks", "placeholder", "upgrade")}, "pages": pages_ok})
             await pl.keyboard.press("Escape"); await pl.wait_for_timeout(300)
             await pl.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('window'))"); await pl.wait_for_timeout(500)
             other = await pl.evaluate("()=>({card: document.querySelector('#sheet').classList.contains('luna-sheet'), icon: !!document.querySelector('#sheetIcon .ms')})")
@@ -2431,6 +3679,312 @@ async def main():
             check("luna: closed on a tall screen, the card is hidden, untappable and marked hidden for assistive technology", lc["vis"] == "hidden" and lc["pe"] == "none" and not lc["inside"] and lc["aria"] == "true", lc)
             check("luna: no page errors in the Luna run", not lerr, lerr[:3])
             await ctxl.close()
+            # ---------- fasting timing (21 Oct): nothing until the switch, eligibility that withholds, a record with no counter ----------
+            ctxf = await browser.new_context(viewport={"width": 390, "height": 844})
+            await ctxf.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB))); await ctxf.add_init_script(SESSION_SEED)
+            pf = await ctxf.new_page(); await pf.route("**/*", gate)
+            ferr = []; pf.on("pageerror", lambda e: ferr.append("pageerror: " + str(e)))
+            await pf.goto(BASE + "room.html", wait_until="domcontentloaded")
+            try: await pf.wait_for_function("()=>window.OvuFasting && window.OvuRoom && document.querySelector('#scene').dataset.layout && !OvuRoom.busy()", timeout=15000)
+            except Exception: pass
+            async def open_today():
+                await pf.evaluate("()=>OvuRoom.openDiary('today')")
+                try: await pf.wait_for_function("()=>OvuRoom.sheetOpen() && document.querySelector('#fastStrip')", timeout=8000)
+                except Exception: pass
+                await pf.evaluate("()=>{var b=document.querySelector('#dTabs [data-dpane=\"today\"]'); if(b) b.click();}"); await pf.wait_for_timeout(400)
+            await open_today()
+            f0 = await pf.evaluate("()=>({strip: document.querySelector('#fastStrip').textContent, hasOn: !!document.querySelector('[data-fast=\"turn-on\"]'), numbers: /\\d+ h/.test(document.querySelector('#fastStrip').textContent), record: !!document.querySelector('[data-fast=\"start\"]')})")
+            check("fasting: before the switch the food diary shows only an off line with Turn on: no span, no gap, no record control", f0["hasOn"] and not f0["numbers"] and not f0["record"] and "Fasting timing: off" in f0["strip"], f0)
+            await pf.click('[data-fast="turn-on"]')
+            try: await pf.wait_for_function("()=>document.querySelector('#fqSave')", timeout=8000)
+            except Exception: pass
+            qs = await pf.evaluate("()=>[...document.querySelectorAll('.fq')].map(q=>({key:q.dataset.q, locked: !!q.querySelector('button[disabled]'), text: q.querySelector('.lbl').textContent}))")
+            # a yes keeps the record closed
+            await pf.evaluate("()=>{[...document.querySelectorAll('.fq')].forEach(function(q){var v=q.dataset.q==='dm'?'yes':'no'; q.querySelector('button[data-v=\"'+v+'\"]').click();});}")
+            await pf.click('#fqSave'); await pf.wait_for_timeout(900)
+            await open_today()
+            f1 = await pf.evaluate("()=>({strip: document.querySelector('#fastStrip').textContent, record: !!document.querySelector('[data-fast=\"start\"]'), reason: (document.querySelector('.freason')||{}).textContent||'', again: !!document.querySelector('[data-fast=\"answer\"]'), gaps: !!document.querySelector('.fgaps'), care: /call your local emergency number/.test(document.querySelector('#fastStrip').textContent)})")
+            check("fasting: five questions, none locked for this profile; a yes to blood sugar medicines keeps the record control closed, says why, and offers to answer again; the gaps line and the care line show", len(qs) == 5 and not any(q["locked"] for q in qs) and not f1["record"] and "blood sugar" in f1["reason"] and f1["again"] and f1["gaps"] and f1["care"], {"qs": qs, "f1": f1})
+            await pf.click('[data-fast="answer"]')
+            try: await pf.wait_for_function("()=>document.querySelector('#fqSave')", timeout=8000)
+            except Exception: pass
+            await pf.evaluate("()=>{[...document.querySelectorAll('.fq')].forEach(function(q){ q.querySelector('button[data-v=\"no\"]').click();});}")
+            await pf.click('#fqSave'); await pf.wait_for_timeout(900)
+            await open_today()
+            f2 = await pf.evaluate("()=>({record: !!document.querySelector('[data-fast=\"start\"]'), counter: /since[^.]*\\d+ h/.test(document.querySelector('#fastStrip').textContent)})")
+            check("fasting: all five no opens Start a fasting record, and nothing counts", f2["record"] and not f2["counter"], f2)
+            # a record from yesterday evening, then a meal today with a confirmed time offers to end it at the meal's time
+            await pf.click('[data-fast="start"]')
+            try: await pf.wait_for_function("()=>document.querySelector('#fsSave')", timeout=8000)
+            except Exception: pass
+            await pf.evaluate("(d)=>{document.querySelector('#fsDate').value=d; document.querySelector('#fsTime').value='20:15';}", Y1)
+            await pf.click('#fsSave'); await pf.wait_for_timeout(900)
+            await open_today()
+            f3 = await pf.evaluate("()=>({open: /Fasting record open since 20:15 yesterday/.test(document.querySelector('#fastStrip').textContent), counter: /\\(\\d+ h/.test((document.querySelector('.fopen')||{}).textContent||''), end: !!document.querySelector('[data-fast=\"end\"]'), start: !!document.querySelector('[data-fast=\"start\"]')})")
+            check("fasting: the open record reads 'open since 20:15 yesterday' with End record and no running counter, and a second cannot start", f3["open"] and not f3["counter"] and f3["end"] and not f3["start"], f3)
+            await pf.evaluate("()=>{var b=document.querySelector('#dTabs [data-dpane=\"add\"]'); if(b) b.click();}"); await pf.wait_for_timeout(300)
+            await pf.evaluate("()=>{var t=document.querySelector('#fdTime'); t.value='00:30'; t.dispatchEvent(new Event('input',{bubbles:true})); var n=document.querySelector('#fdFoods'); n.value='kaya toast'; document.querySelector('#mealChips button[data-meal=\"lunch\"]').click();}")
+            await pf.click('#saveFood'); await pf.wait_for_timeout(1200)
+            await pf.evaluate("()=>{if(!OvuRoom.sheetOpen()||OvuRoom.sheetId()!=='diary') OvuRoom.openDiary('today');}"); await pf.wait_for_timeout(500)
+            await pf.evaluate("()=>{var b=document.querySelector('#dTabs [data-dpane=\"today\"]'); if(b) b.click();}"); await pf.wait_for_timeout(400)
+            f4 = await pf.evaluate("()=>({offer: (document.querySelector('.foffer')||{}).textContent||'', timeSet: OvuStore.list('food').filter(function(e){return e.data.foods==='kaya toast';}).map(function(e){return e.data.timeSet;})[0], gaps: (document.querySelector('.fgaps')||{}).textContent||''})")
+            check("fasting: the meal saved with a time she set carries timeSet, and the strip offers to end the record at 00:30 with End record and Leave unchanged", "00:30" in f4["offer"] and f4["timeSet"] is True and ("One timed food entry so far (00:30)" in f4["gaps"] or "Timed food entries today" in f4["gaps"]), f4)
+            await pf.click('[data-fast="end-at-meal"]'); await pf.wait_for_timeout(700)
+            f5 = await pf.evaluate("()=>({strip: document.querySelector('#fastStrip').textContent, hist: (document.querySelector('.fhist')||{}).textContent||'', open: !!document.querySelector('.fopen'), start: !!document.querySelector('[data-fast=\"start\"]'), toast: document.querySelector('#toast').textContent, hearts: (OvuRewards.ledger().hearts)})")
+            check("fasting: ending at the meal closes the record, the history shows the length once (4 h 15 m) and Start is offered again", not f5["open"] and f5["start"] and "4 h 15 m" in f5["hist"] and "20:15 yesterday to 00:30" in f5["hist"], f5)
+            # the journal block, a reload, Hide fasting, and the pregnant profile
+            await pf.reload(wait_until="domcontentloaded")
+            try: await pf.wait_for_function("()=>window.OvuFasting && window.OvuRoom && !OvuRoom.busy()", timeout=15000)
+            except Exception: pass
+            kept = await pf.evaluate("()=>({n: OvuFasting.records().length, on: OvuFasting.fasting().on})")
+            await pf.goto(BASE + "journal.html", wait_until="domcontentloaded"); await pf.wait_for_timeout(1200)
+            jb = await pf.evaluate("()=>({block: (document.querySelector('#fastingBlock')||{}).textContent||''})")
+            check("fasting: the record and the switch survive a reload, and the journal shows the block with the ended record and 'not measured fasting'", kept["n"] == 1 and kept["on"] is True and "4 h 15 m" in jb["block"] and "not measured fasting" in jb["block"], {"kept": kept, "journal": jb["block"][:160]})
+            await pf.goto(BASE + "room.html", wait_until="domcontentloaded")
+            try: await pf.wait_for_function("()=>window.OvuFasting && window.OvuRoom && !OvuRoom.busy()", timeout=15000)
+            except Exception: pass
+            await open_today(); await pf.click('[data-fast="hide"]'); await pf.wait_for_timeout(500)
+            f6 = await pf.evaluate("()=>({strip: document.querySelector('#fastStrip').textContent, numbers: /\\d+ h/.test(document.querySelector('#fastStrip').textContent), kept: OvuFasting.records().length})")
+            check("fasting: Hide fasting removes every number and control and keeps the records", "Fasting timing: off" in f6["strip"] and not f6["numbers"] and f6["kept"] == 1, f6)
+            await pf.evaluate("()=>{OvuStore.setProfile({pregState:'pregnant'}); OvuStore.setState({fasting: Object.assign({}, OvuFasting.fasting(), {on: true})});}")
+            await open_today()
+            f7 = await pf.evaluate("()=>({record: !!document.querySelector('[data-fast=\"start\"]'), reason: (document.querySelector('.freason')||{}).textContent||'', gaps: !!document.querySelector('.fgaps')})")
+            check("fasting: a pregnant profile closes the record control with the reason, the intro's answer winning over hers", not f7["record"] and "pregnancy" in f7["reason"], f7)
+            check("fasting: no page errors in the fasting run", not ferr, ferr[:3])
+            await ctxf.close()
+
+            # villagers (22 Oct): at her height on open floor, only the figure takes a tap, a Harvest Moon talk, a gift named, a heart scene after his answer
+            ctxV = await browser.new_context(viewport={"width": 390, "height": 844}); await ctxV.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB))); await ctxV.add_init_script(SESSION_SEED)
+            pv = await ctxV.new_page(); verr = []; pv.on("pageerror", lambda e: verr.append(str(e))); await pv.route("**/*", gate)
+            await pv.goto(BASE + "room.html", wait_until="networkidle"); await pv.wait_for_timeout(900)
+            await pv.evaluate("()=>{ if (OvuRoom.sheetOpen()) OvuRoom.closeSheet(); OvuRoom.isNight=function(){return false}; OvuRoom.asleep=function(){return false}; if (window.OvuPetWalk) OvuPetWalk.auto(false); OvuStore.setProfile({outfit: 'base'}); OvuRoom.restorePose(); OvuStore.setState({villagers: {lu: {points: 15}}}); window.__vspy = {add: 0, spend: 0}; var a = OvuStore.add, m = OvuStore.addMany, s = OvuRewards.spend; OvuStore.add = function(){ __vspy.add++; return a.apply(this, arguments); }; if (m) OvuStore.addMany = function(){ __vspy.add++; return m.apply(this, arguments); }; OvuRewards.spend = function(){ __vspy.spend++; return s.apply(this, arguments); }; OvuWalk.travel('plaza', {entry: {x: 20, y: 58, flip: false}}); }")  # she arrives by the arch, clear of him
+            try: await pv.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='plaza' && !document.querySelector('#scene').classList.contains('fading') && document.querySelector('#ownedProps .villager[data-id=shen] img').complete", timeout=12000)
+            except Exception: pass
+            await pv.evaluate("()=>{ document.querySelector('#ownedProps .villager[data-id=shen]').focus(); }"); await pv.wait_for_timeout(900)  # the follow camera brings him into view, as keyboard focus does
+            vfit = """(id)=>{ var el = document.querySelector('#ownedProps .villager[data-id=' + id + ']'), im = el && el.querySelector('img'), her = document.querySelector('#avatarImg');
+              /* where the shoes meet the ground (the canvas bottom less its 4 px air) against the floor line the sprite stands on (its top, in its parent's box), in screen px; and the contact shadow's width */
+              function feet(box, pic) { var p = box.offsetParent.getBoundingClientRect(), r = pic.getBoundingClientRect(), floor = p.top + p.height * parseFloat(box.style.top) / 100; return Math.round((r.bottom - r.height * 4 / 720 - floor) * 10) / 10; }
+              function shadowW(box) { var cs = getComputedStyle(box, '::before'); return cs.content === 'none' ? 0 : Math.round(parseFloat(cs.width) / box.getBoundingClientRect().width * box.offsetWidth * 10) / 10; }
+              if (!im) return null; var r = im.getBoundingClientRect(), hit = function (x, y) { var e = document.elementFromPoint(x, y); return !!(e && e.closest && e.closest('.villager[data-id=' + id + ']')); };
+              return { n: document.querySelectorAll('#ownedProps .villager').length, nat: [im.naturalWidth, im.naturalHeight], h: im.offsetHeight, herH: her.offsetHeight, herNat: [her.naturalWidth, her.naturalHeight], z: Number(el.style.zIndex), herZ: Number(document.querySelector('#avatar').style.zIndex),
+                chest: hit(r.left + r.width * 0.5, r.top + r.height * 0.42), corner: hit(r.left + r.width * 0.06, r.top + r.height * 0.04), tag: getComputedStyle(el).pointerEvents, imgPe: getComputedStyle(im).pointerEvents, solid: (OvuRoom.layout().solids || []).filter(function (b) { return b.id === 'villager-' + id; }).length,
+                feet: feet(el, im), herFeet: feet(document.querySelector('#avatar'), her), shadow: shadowW(el), herShadow: shadowW(document.querySelector('#avatar')) }; }"""
+            sh = await pv.evaluate(vfit, "shen")
+            mei = await pv.evaluate("()=>Number((document.querySelector('#ownedProps .nbperson[data-nb=mei]')||{style:{}}).style.zIndex)")
+            check("villagers: Shen stands in the plaza at her height (his picture within 1.5 px of hers, both on the 720 canvas), his floor block in the layout once", sh and sh["n"] == 1 and sh["nat"] == [318, 720] and sh["herNat"][1] == 720 and abs(sh["h"] - sh["herH"]) <= 1.5 and sh["solid"] == 1, sh)
+            check("villagers: nobody floats: Shen's shoes and hers sit on their floor lines (within 1.5 px), each with a contact shadow of her footprint", abs(sh["feet"]) <= 1.5 and abs(sh["herFeet"]) <= 1.5 and sh["shadow"] > 0 and abs(sh["shadow"] - sh["herShadow"]) <= 1.5, {k: sh[k] for k in ("feet", "herFeet", "shadow", "herShadow")})
+            check("villagers: only his figure takes a tap: his chest is his, the empty corner of his canvas is not; Mei in front of him draws in front", sh and sh["chest"] and not sh["corner"] and sh["tag"] == "none" and sh["imgPe"] == "auto" and mei > sh["z"] and sh["z"] != sh["herZ"], {"shen": sh, "meiZ": mei})
+            nbc = await pv.evaluate("""()=>{ var el = document.querySelector('#ownedProps .nbperson[data-nb=mei]'), r = el.querySelector('img').getBoundingClientRect(), at = function (x, y) { var e = document.elementFromPoint(r.left + r.width * x, r.top + r.height * y); return e && e.closest && e.closest('.nbperson') ? e.closest('.nbperson').dataset.nb : null; }; return {chest: at(0.5, 0.45), corner: at(0.03, 0.03), tag: getComputedStyle(el.querySelector('.nbtag')).pointerEvents, clip: !!el.querySelector('img').style.clipPath}; }""")
+            check("villagers: a neighbour takes taps only on her figure too (Mei's chest is hers, her canvas corner and name tag are not), so taps reach Shen behind her", nbc["chest"] == "mei" and nbc["corner"] is None and nbc["tag"] == "none" and nbc["clip"], nbc)
+            # a props render and a friends redraw (which clears every .nb) leave exactly one Shen
+            await pv.evaluate("()=>{ OvuRoom.renderProps(); OvuCommunity.redraw(); }"); await pv.wait_for_timeout(300)
+            one = await pv.evaluate("()=>({n: document.querySelectorAll('#ownedProps .villager').length, shenZ: Number(document.querySelector('#ownedProps .villager[data-id=shen]').style.zIndex), meiZ: Number(document.querySelector('#ownedProps .nbperson[data-nb=mei]').style.zIndex) || 0})")
+            check("villagers: a props render and a friends redraw leave exactly one Shen, and Mei (in front of him) is ranked in front again", one["n"] == 1 and one["meiZ"] > one["shenZ"], one)
+            # tap his chest: she walks to his side and his sheet opens with a greeting
+            box = await pv.evaluate("()=>{ var r = document.querySelector('#ownedProps .villager[data-id=shen] img').getBoundingClientRect(); return {x: r.left + r.width * 0.5, y: r.top + r.height * 0.42}; }")
+            await pv.mouse.click(box["x"], box["y"])
+            try: await pv.wait_for_function("()=>OvuRoom.sheetId()==='villager-shen' && document.querySelector('#vSay')", timeout=12000)
+            except Exception: pass
+            g = await pv.evaluate("()=>({id: OvuRoom.sheetId(), say: (document.querySelector('#vSay')||{}).textContent||'', talk: !!document.querySelector('#vActs [data-v=talk]:not([disabled])'), pos: OvuRoom.pos(), want: OvuVillagers.byId('shen').talkAt})")
+            check("villagers: a tap on Shen walks her to his side and opens his sheet with a greeting that knows the season", g["id"] == "villager-shen" and len(g["say"]) > 40 and g["talk"] and abs(g["pos"]["x"] - g["want"]["x"]) < 1.5 and abs(g["pos"]["y"] - g["want"]["y"]) < 1.5 and any(s in g["say"] for s in ["Spring", "Summer", "Autumn", "Winter"]), g)
+            await pv.click("#vActs [data-v=talk]")
+            try: await pv.wait_for_function("()=>document.querySelectorAll('#vActs [data-reply]').length >= 2", timeout=8000)
+            except Exception: pass
+            q = await pv.evaluate("()=>({n: document.querySelectorAll('#vActs [data-reply]').length, ask: document.querySelector('#vSay').textContent, pinned: (OvuStore.state().villagers.shen||{}).chat, pts: OvuStore.state().villagers.shen.points||0})")
+            check("villagers: Talk shows his question with two or three replies; the topic is pinned for the day and nothing is counted yet", 2 <= q["n"] <= 3 and q["pinned"] and q["pinned"]["reply"] is None and q["pts"] == 0 and "?" in q["ask"], q)
+            await pv.click("#vActs [data-reply] >> nth=1")
+            try: await pv.wait_for_function("()=>document.querySelector('#vSay .vyou')", timeout=8000)
+            except Exception: pass
+            a = await pv.evaluate("()=>{ var V = OvuVillagers, st = OvuStore.state().villagers.shen, t = V.topicById(V.byId('shen'), st.chat.topic), r = t.replies.filter(function(x){return x.id===st.chat.reply;})[0]; return {pts: st.points, said: document.querySelector('#vSay .vyou').textContent, ans: document.querySelector('#vSay .vline').textContent, want: r.back, mine: r.say, talked: (document.querySelector('#vActs [data-v=talk]')||{}).textContent, dis: document.querySelector('#vActs [data-v=talk]').disabled, focus: document.activeElement && document.activeElement.id}; }")
+            check("villagers: her reply is answered in character, counts once (3 points), Talk reads Talked today, and focus moves to his answer", a["pts"] == 3 and a["mine"] in a["said"] and a["ans"] == a["want"] and a["dis"] and "Talked today" in a["talked"] and a["focus"] == "vSay", a)
+            cr = await pv.evaluate("""()=>{ function rgb(c) { var m = c.match(/[0-9.]+/g).map(Number); return m; } function lum(c) { return [0, 1, 2].map(function (i) { var v = c[i] / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }).reduce(function (a, v, i) { return a + v * [0.2126, 0.7152, 0.0722][i]; }, 0); }
+              function bg(el) { while (el) { var c = rgb(getComputedStyle(el).backgroundColor); if (c.length < 4 || c[3] > 0.9) { if (c.length >= 3 && !(c.length === 4 && c[3] === 0)) return c; } el = el.parentElement; } return [255, 255, 255]; }
+              return ['.vask', '.vyou', '.vline'].map(function (sel) { var el = document.querySelector('#vSay ' + sel), a = lum(rgb(getComputedStyle(el).color)), b = lum(bg(el)); return Math.round((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05) * 100) / 100; }); }""")
+            check("villagers: his question, her reply and his answer all read at 4.5:1 or better on the sheet", all(x >= 4.5 for x in cr), cr)
+            await pv.evaluate("()=>OvuRoom.closeSheet()"); await pv.wait_for_timeout(300)
+            await pv.evaluate("()=>OvuVillagers.openVillager('shen')"); await pv.wait_for_timeout(300)
+            re_ = await pv.evaluate("()=>({recap: !!document.querySelector('#vSay .vyou'), dis: document.querySelector('#vActs [data-v=talk]').disabled, pts: OvuStore.state().villagers.shen.points})")
+            check("villagers: reopening the same day shows the exchange again and counts nothing more", re_["recap"] and re_["dis"] and re_["pts"] == 3, re_)
+            await pv.evaluate("()=>OvuRoom.closeSheet()"); await pv.wait_for_timeout(300)
+            # keyboard: Enter on his button opens his sheet
+            await pv.evaluate("()=>document.querySelector('#ownedProps .villager[data-id=shen]').focus()"); await pv.keyboard.press("Enter")
+            try: await pv.wait_for_function("()=>OvuRoom.sheetId()==='villager-shen'", timeout=10000)
+            except Exception: pass
+            kb = await pv.evaluate("()=>OvuRoom.sheetId()")
+            check("villagers: his button is a real button: Enter opens his sheet", kb == "villager-shen", kb)
+            await pv.evaluate("()=>OvuRoom.closeSheet()"); await pv.wait_for_timeout(300)
+            # the harbour: Lu at her height on his wider canvas; a loved dish named in his thanks; the 2-heart scene waits behind Continue
+            await pv.evaluate("()=>{ var f = OvuFarm.farmState(OvuStore); f.dishes = Object.assign({}, f.dishes || {}, {tomatoegg: 1}); OvuStore.setState({farm: f}); OvuWalk.travel('harbour', {entry: {x: 34, y: 73, flip: false}}); }")
+            try: await pv.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='harbour' && !document.querySelector('#scene').classList.contains('fading') && document.querySelector('#ownedProps .villager[data-id=lu] img').complete", timeout=12000)
+            except Exception: pass
+            await pv.evaluate("()=>{ document.querySelector('#ownedProps .villager[data-id=lu]').focus(); }"); await pv.wait_for_timeout(900)
+            lu = await pv.evaluate(vfit, "lu")
+            check("villagers: Lu stands at the harbour at her height on his wider canvas (364 wide, within 1.5 px of hers); only his figure takes a tap", lu and lu["nat"] == [364, 720] and abs(lu["h"] - lu["herH"]) <= 1.5 and lu["chest"] and not lu["corner"] and lu["solid"] == 1, lu)
+            check("villagers: nobody floats: Lu's shoes and hers sit on their floor lines (within 1.5 px), his contact shadow her footprint though his canvas is wider", abs(lu["feet"]) <= 1.5 and abs(lu["herFeet"]) <= 1.5 and lu["shadow"] > 0 and abs(lu["shadow"] - lu["herShadow"]) <= 1.5, {k: lu[k] for k in ("feet", "herFeet", "shadow", "herShadow")})
+            await pv.evaluate("()=>OvuVillagers.openVillager('lu')"); await pv.wait_for_timeout(300)
+            await pv.click("#vActs [data-v=talk]")
+            try: await pv.wait_for_function("()=>document.querySelectorAll('#vActs [data-reply]').length >= 2", timeout=8000)
+            except Exception: pass
+            await pv.click("#vActs [data-reply] >> nth=0")
+            try: await pv.wait_for_function("()=>document.querySelector('#vSay .vyou')", timeout=8000)
+            except Exception: pass
+            gift = await pv.evaluate("()=>{ var b = [...document.querySelectorAll('#vGifts [data-gift]')].filter(function(x){ return /Tomato and egg/.test(x.textContent); })[0]; if (!b) return null; b.click(); return true; }")
+            try: await pv.wait_for_function("()=>document.querySelector('#vSay .vthanks')", timeout=8000)
+            except Exception: pass
+            gv = await pv.evaluate("()=>({gift: true, thanks: (document.querySelector('#vSay .vthanks')||{}).textContent||'', id: OvuRoom.sheetId(), cont: !!document.querySelector('#vActs [data-v=scene]'), pts: OvuStore.state().villagers.lu.points, dish: (OvuFarm.farmState(OvuStore).dishes||{}).tomatoegg||0})")
+            check("villagers: a loved dish is named in Lu's thanks, leaves the bag in the same save, and the 2-heart scene waits behind Continue so his answer shows first", gift and "tomato and egg" in gv["thanks"].lower() and gv["id"] == "villager-lu" and gv["cont"] and gv["pts"] == 26 and gv["dish"] == 0, gv)
+            await pv.click("#vActs [data-v=scene]")
+            try: await pv.wait_for_function("()=>OvuRoom.sheetId()==='villager-event'", timeout=8000)
+            except Exception: pass
+            await pv.click("#vEvDone")
+            try: await pv.wait_for_function("()=>OvuRoom.sheetId()==='villager-lu'", timeout=8000)
+            except Exception: pass
+            ev = await pv.evaluate("()=>({seen: OvuStore.state().villagers.lu.seen, chat: !!OvuStore.state().villagers.lu.chat.reply, spy: window.__vspy})")
+            check("villagers: the heart scene is kept, today's exchange survives it, and nothing wrote a diary entry or spent hearts", ev["seen"] == [2] and ev["chat"] and ev["spy"]["add"] == 0 and ev["spy"]["spend"] == 0, ev)
+            # a change queued behind another tab's farm lock lands only if its sheet is still open: Talk, a reply and a gift, each closed before the lock frees
+            await pv.evaluate("()=>{ OvuRoom.closeSheet(); var f = OvuFarm.farmState(OvuStore); f.dishes = Object.assign({}, f.dishes || {}, {pandanrice: 1}); OvuStore.setState({farm: f, villagers: Object.assign({}, OvuStore.state().villagers, {shen: {points: 3, seen: []}})}); OvuWalk.travel('plaza', {entry: {x: 20, y: 58, flip: false}}); }")
+            await pv.wait_for_timeout(1500)
+            pl = await ctxV.new_page(); await pl.route("**/*", gate); await pl.goto(BASE + "404.html", wait_until="domcontentloaded")
+            BARRIER = "()=>navigator.locks.request('ovumind-farm', function () { return true; })"  # Web Locks grant in request order: this waits until the queued write has run (Codex round 2)
+            HOLD = "()=>{ window.__held = new Promise(function (got) { navigator.locks.request('ovumind-farm', function () { got(true); return new Promise(function (r) { window.__release = r; }); }); }); return window.__held; }"
+            async def queued(action):
+                await pl.evaluate(HOLD)
+                await pv.evaluate("()=>OvuVillagers.openVillager('shen')"); await pv.wait_for_timeout(300)
+                await pv.evaluate(action); await pv.wait_for_timeout(300)
+                await pv.evaluate("()=>OvuRoom.closeSheet()"); await pv.wait_for_timeout(200)
+                await pl.evaluate("()=>window.__release()"); await pv.evaluate(BARRIER)
+                return await pv.evaluate("()=>({shen: OvuStore.state().villagers.shen, dish: (OvuFarm.farmState(OvuStore).dishes || {}).pandanrice || 0, sheet: OvuRoom.sheetId()})")
+            q1 = await queued("()=>document.querySelector('#vActs [data-v=talk]').click()")
+            await pv.evaluate("()=>OvuVillagers.openVillager('shen')"); await pv.wait_for_timeout(300)
+            await pv.evaluate("()=>document.querySelector('#vActs [data-v=talk]').click()"); await pv.wait_for_timeout(700)  # offered with the lock free: the reply buttons show
+            await pl.evaluate(HOLD)
+            await pv.evaluate("()=>document.querySelector('#vActs [data-reply]').click()"); await pv.wait_for_timeout(300)
+            await pv.evaluate("()=>OvuRoom.closeSheet()"); await pv.wait_for_timeout(200)
+            await pl.evaluate("()=>window.__release()"); await pv.evaluate(BARRIER)
+            q2 = await pv.evaluate("()=>({shen: OvuStore.state().villagers.shen, sheet: OvuRoom.sheetId()})")
+            q3 = await queued("()=>[...document.querySelectorAll('#vGifts [data-gift]')].filter(function(x){ return /Pandan rice/.test(x.textContent); })[0].click()")
+            check("villagers: a Talk, a reply and a gift queued behind another tab's farm lock change nothing once she has closed the sheet (no topic pinned, no points, the dish still in her bag)", not (q1["shen"].get("chat")) and q1["shen"]["points"] == 3 and q1["sheet"] is None and q2["shen"]["chat"]["reply"] is None and q2["shen"]["points"] == 3 and q2["sheet"] is None and q3["dish"] == 1 and q3["shen"]["points"] == 3 and not q3["shen"].get("gifted"), {"talk": q1, "reply": q2, "gift": q3})
+            await pl.close()
+            check("villagers: no page errors", not verr, verr[:3])
+            await ctxV.close()
+            await check_legacy_pages(browser)  # the older pages and the Settings sheet (22 Oct)
+            await gym_checks(browser, gate)  # Tideline Gym workouts, in a context of their own with a fake clock
+
+            # 1t. tidy up (23 Oct): clutter on the floor by the clock, "Tidy up your room" with the magical broom (ovu-tidy.js).
+            # Seeded floors, the sweep run eight times faster (OvuTidy.fast), every end condition from the Codex design review.
+            import copy as _copy
+            _past = (datetime.datetime.now() - datetime.timedelta(hours=1)).isoformat()
+            def tidy_db(items):
+                d = _copy.deepcopy(DB); d["state"]["tidy"] = {"items": items, "last": _past, "day": {"d": TODAY, "n": len(items)}, "tidiedAt": None, "n": len(items)}; return d
+            TWO = [{"id": "ta", "kind": "sock", "at": _past, "slot": 0}, {"id": "tb", "kind": "cup", "at": _past, "slot": 1}]
+            THREE = TWO + [{"id": "tc", "kind": "books", "at": _past, "slot": 2}]
+            async def tidy_ctx(items, **kw):
+                c = await browser.new_context(viewport={"width": 390, "height": 844}, **kw); await c.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(tidy_db(items)))); await c.add_init_script(SESSION_SEED)
+                pg = await c.new_page(); errs = []; pg.on("pageerror", lambda e: errs.append(str(e))); await pg.route("**/*", gate)
+                await pg.goto(BASE + "room.html", wait_until="networkidle"); await pg.wait_for_timeout(1200)
+                await pg.evaluate("()=>{ if (OvuRoom.sheetOpen()) OvuRoom.closeSheet(); if (window.OvuPetWalk && OvuPetWalk.auto) OvuPetWalk.auto(false); OvuTidy.fast(true); window.__puffs = 0; window.__sparks = 0; new MutationObserver(function(ms){ ms.forEach(function(m){ m.addedNodes.forEach(function(n){ if (n.classList) { if (n.classList.contains('puff')) window.__puffs++; if (n.classList.contains('spark')) window.__sparks++; } }); }); }).observe(document.querySelector('#tidyLayer'), {childList: true}); }")
+                return c, pg, errs
+            TST = "()=>{ var sw = OvuTidy.sweeping(), b = document.querySelector('#tidyLayer .broom'), bi = b && b.querySelector('img'), av = document.querySelector('#avatar img'), L = OvuRoom.layout(); return { practice: OvuRoom.practiceOn(), title: document.querySelector('#hudTitle').textContent, hud: document.querySelector('#hud').classList.contains('on'), sw: sw, broom: !!b, bh: bi ? bi.offsetHeight : 0, ah: av.offsetHeight, onFloor: sw ? OvuWalk.inZones(L.zones, sw.x, sw.y) && !OvuWalk.blocked(L.solids, sw.x, sw.y) : null, src: (document.querySelector('#avatarImg').getAttribute('src')||'').split('/').pop(), acting: document.querySelector('#avatar').classList.contains('acting'), bshadow: b ? getComputedStyle(b, '::before').backgroundImage.indexOf('radial-gradient') > -1 : null, items: OvuTidy.items().length, state: ((OvuStore.state().tidy||{}).items||[]).length, puffs: window.__puffs, sparks: window.__sparks, sparksLeft: document.querySelectorAll('#tidyLayer .spark').length, puffsLeft: document.querySelectorAll('#tidyLayer .puff').length, toast: document.querySelector('#toast').textContent, sheet: OvuRoom.sheetId(), hearts: OvuRewards.ledger().hearts, saved: OvuStore.list('mindfulness').filter(function(e){ return e.data && e.data.activity === 'tidy'; }).length }; }"
+            async def begin_tidy(pg):
+                await pg.evaluate("()=>OvuRoom.openEveryday('tidy')"); await pg.wait_for_selector('#sheet[aria-hidden="false"] #actStart', timeout=10000)
+                await pg.click('#actStart'); await pg.wait_for_timeout(500)
+            # a. the floor: two things inside the floor polygon, grounded, smaller than her, with their words
+            ctxT, pt, terr = await tidy_ctx(TWO)
+            f0 = await pt.evaluate("()=>{ var L = OvuRoom.layout(), its = OvuTidy.items(), ah = document.querySelector('#avatar img').offsetHeight; var els = Array.prototype.slice.call(document.querySelectorAll('#tidyLayer .tidyitem')); return { n: its.length, onFloor: its.every(function(i){ return OvuWalk.inZones(L.zones, i.x, i.y) && !OvuWalk.blocked(L.solids, i.x, i.y); }), shadow: els.map(function(el){ var b = getComputedStyle(el, '::before'); return b.backgroundImage.indexOf('radial-gradient') > -1 && parseFloat(b.width) > 0; }), filt: els.map(function(el){ return getComputedStyle(el.querySelector('img')).filter; }), hs: els.map(function(el){ return el.querySelector('img').offsetHeight; }), ah: ah, labels: els.map(function(el){ return el.getAttribute('aria-label'); }), z: els.map(function(el){ return el.style.zIndex; }), kinds: els.map(function(el){ return el.className; }) }; }")
+            check("two things lie on the floor inside the room's floor polygon, each with the ground shadow at its base, an edge shadow with no offset, smaller than her, ranked by depth and named for a screen reader", f0["n"] == 2 and f0["onFloor"] and all(f0["shadow"]) and all("0px 0px 1.5px" in f and "1px 1.5px" not in f.replace("0px 0px 1.5px", "") for f in f0["filt"]) and all(0 < h < f0["ah"] * 0.6 for h in f0["hs"]) and all(z for z in f0["z"]) and all("floor" in (l or "") for l in f0["labels"]) and "sock" in f0["kinds"][0] + f0["kinds"][1], f0)
+            # b. tapping the sock opens Everyday mindfulness on Tidy up your room, with the broom card and the written-guide note
+            await pt.click('#tidyLayer .tidyitem.sock'); await pt.wait_for_selector('#sheet[aria-hidden="false"] #actStart', timeout=8000)
+            f1 = await pt.evaluate("()=>({ sheet: OvuRoom.sheetId(), act: document.querySelector('#actStart').dataset.act, card: (document.querySelector('#actDetail img')||{}).getAttribute ? document.querySelector('#actDetail img').getAttribute('src') : '', text: document.querySelector('#actDetail').textContent, listCard: (document.querySelector('.act[data-act=tidy] img')||{getAttribute:function(){return ''}}).getAttribute('src'), listText: (document.querySelector('.act[data-act=tidy]')||{}).textContent || '' })")
+            check("tapping the sock opens Everyday mindfulness with Tidy up your room selected: the broom on its card, text guide on the list, and the written-guide note in the detail", f1["sheet"] == "everyday" and f1["act"] == "tidy" and "tidy-broom" in f1["card"] and "tidy-broom" in f1["listCard"] and "text guide" in f1["listText"] and "written guide" in f1["text"], f1)
+            # c. Begin: she stands in her own clothes, the broom appears beside her at her scale, sweeps both things with puffs and sparkles, dissolves
+            h0 = await pt.evaluate("()=>OvuRewards.ledger().hearts")
+            await pt.click('#actStart'); await pt.wait_for_timeout(500); s0 = await pt.evaluate(TST)
+            sweptId = None
+            try: sweptId = await pt.wait_for_function("()=>{ var el = document.querySelector('#tidyLayer .tidyitem.swept'); return el ? el.dataset.id : null; }", timeout=20000); sweptId = await sweptId.json_value()
+            except Exception: pass
+            await pt.wait_for_timeout(300); fade = await pt.evaluate("(id)=>{ var el = document.querySelector('#tidyLayer .tidyitem[data-id=\"' + id + '\"]'); return el ? { op: parseFloat(getComputedStyle(el).opacity), anim: getComputedStyle(el).animationName, swept: el.classList.contains('swept') } : { gone: true }; }", sweptId or "")
+            check("a swept thing fades out over half a second: 300 ms after its write the same thing is still there, mid-fade, in its own exit animation (not removed by the game save's props redraw, not held opaque by its entrance animation)", sweptId is not None and fade.get("swept") and 0.02 < fade.get("op", 1) < 0.9 and fade.get("anim") == "tidyout", { "id": sweptId, "fade": fade })
+            check("Begin starts the practice with its name on the bar, she stays standing in her own clothes (no pose), and the broom appears on the floor beside her at 50 to 70 percent of her height with her ground shadow", s0["practice"] and s0["title"] == "Tidy up your room" and s0["hud"] and s0["sw"] is not None and s0["broom"] and s0["onFloor"] and 0.5 * s0["ah"] <= s0["bh"] <= 0.7 * s0["ah"] and s0["bshadow"] and s0["src"] == "avatar-base.webp" and s0["acting"], s0)
+            try: await pt.wait_for_function("()=>!OvuTidy.sweeping()", timeout=30000)
+            except Exception: pass
+            await pt.wait_for_timeout(700); s1 = await pt.evaluate(TST)   # the last swept thing fades for half a second
+            check("the broom sweeps both things away, a puff and a sparkle trail each, then dissolves: nothing on the floor, nothing in the save, no broom, spark or puff left, and the practice goes on with its bar", s1["sw"] is None and s1["items"] == 0 and s1["state"] == 0 and s1["puffs"] >= 2 and s1["sparks"] >= 6 and not s1["broom"] and s1["sparksLeft"] == 0 and s1["puffsLeft"] == 0 and s1["practice"] and s1["hud"], s1)
+            await pt.evaluate("()=>document.querySelector('#hudStop').click()"); await pt.wait_for_timeout(600); s2 = await pt.evaluate(TST)
+            check("Stop before a minute records nothing: the toast says so, no entry, hearts unchanged, she is back to standing", not s2["practice"] and "under a minute" in s2["toast"] and s2["saved"] == 0 and s2["hearts"] == h0 and s2["sheet"] is None, s2)
+            check("tidy: no page errors (floor, tap, full sweep)", not terr, terr[:3]); await ctxT.close()
+            # d. a partial sweep: Stop mid-way leaves the unswept things; stopEverything (sleep) too; the replaced floor ends it; a failed write keeps the thing
+            ctxP, pp, perr = await tidy_ctx(THREE)
+            await pp.evaluate("()=>OvuTidy.fast(false)")   # the real pace: the first thing goes after about five seconds, so Stop lands with two still on the floor
+            await begin_tidy(pp)
+            try: await pp.wait_for_function("()=>{ var s = OvuTidy.sweeping(); return s && s.swept.length >= 1; }", timeout=20000)
+            except Exception: pass
+            await pp.evaluate("()=>document.querySelector('#hudStop').click()"); await pp.wait_for_timeout(300); p1 = await pp.evaluate(TST)
+            await pp.wait_for_timeout(400); p1b = await pp.evaluate(TST)   # the thing it swept finishes its half-second fade after Stop; the broom, sparks and puffs go at once
+            check("Stop mid-sweep ends the broom at once: no broom, spark or puff left, the thing it swept finishes fading and the others stay on the floor and in the save", p1["sw"] is None and not p1["broom"] and p1["sparksLeft"] == 0 and p1["puffsLeft"] == 0 and not p1["practice"] and 1 <= p1b["items"] <= 2 and p1b["items"] == p1b["state"] and p1b["items"] == p1["state"], { "at300": p1, "at700": p1b })
+            await pp.evaluate("()=>OvuTidy.fast(false)")   # at the real pace nothing is swept in the first seconds, so the interruption lands mid-sweep
+            await begin_tidy(pp)
+            try: await pp.wait_for_function("()=>{ var s = OvuTidy.sweeping(); return s && s.phase === 'move'; }", timeout=8000)
+            except Exception: pass
+            n0 = await pp.evaluate("()=>OvuTidy.items().length")
+            await pp.evaluate("()=>OvuRoom.stopEverything()"); await pp.wait_for_timeout(300); p2 = await pp.evaluate(TST)
+            check("stopEverything (bedtime) mid-sweep leaves nothing behind: no broom, spark or puff, the unswept things stay", p2["sw"] is None and not p2["broom"] and p2["sparksLeft"] == 0 and p2["puffsLeft"] == 0 and p2["items"] == p2["state"] and p2["items"] >= 1, {"p2": p2, "n0": n0})
+            await begin_tidy(pp)
+            try: await pp.wait_for_function("()=>{ var s = OvuTidy.sweeping(); return s && s.phase === 'move'; }", timeout=8000)
+            except Exception: pass
+            p3 = await pp.evaluate("()=>{ OvuStore.commit({ tidy: { items: [], last: new Date().toISOString(), day: { d: OvuStore.today(), n: 0 }, tidiedAt: null, n: 9 } }); var r = { sw: OvuTidy.sweeping(), broom: !!document.querySelector('#tidyLayer .broom'), practice: OvuRoom.practiceOn(), items: OvuTidy.items().length }; OvuTidy.fast(true); return r; }")
+            check("an account copy that replaces the floor under the broom ends the sweep at once (the practice itself goes on), and the floor redraws empty by itself", p3["sw"] is None and not p3["broom"] and p3["practice"] and p3["items"] == 0, p3)
+            await pp.evaluate("()=>OvuRoom.stopEverything()"); await pp.wait_for_timeout(300)
+            await pp.evaluate("()=>{ OvuStore.commit({ tidy: { items: %s, last: new Date().toISOString(), day: { d: OvuStore.today(), n: 2 }, tidiedAt: null, n: 2 } }); OvuTidy.draw(); window.__commit = OvuStore.commit; OvuStore.commit = function () { throw new Error('storage full (test)'); }; }" % json.dumps(TWO))
+            puffs0 = await pp.evaluate("()=>window.__puffs")
+            await begin_tidy(pp)
+            try: await pp.wait_for_function("()=>!OvuTidy.sweeping()", timeout=30000)
+            except Exception: pass
+            p4 = await pp.evaluate("()=>{ OvuStore.commit = window.__commit; var r = { items: OvuTidy.items().length, state: ((OvuStore.state().tidy||{}).items||[]).length, puffs: window.__puffs, broom: !!document.querySelector('#tidyLayer .broom'), practice: OvuRoom.practiceOn() }; return r; }")
+            check("when the save fails under the broom the things stay on the floor and in the store, no puff is faked, and the broom still finishes its round", p4["items"] == 2 and p4["state"] == 2 and p4["puffs"] == puffs0 and not p4["broom"] and p4["practice"], {"p4": p4, "puffs0": puffs0})
+            await pp.evaluate("()=>OvuRoom.stopEverything()"); await pp.wait_for_timeout(300)
+            # e. one activity at a time, both ways
+            await pp.evaluate("()=>{ document.querySelector('#toast').textContent = ''; OvuRoom.runSession('breathe', 2); }"); await pp.wait_for_timeout(400)
+            await pp.click('#tidyLayer .tidyitem.sock'); await pp.wait_for_timeout(400); e1 = await pp.evaluate(TST)
+            check("during Just breathe a tap on the sock is refused with one line naming it, no sheet opens and no broom appears", e1["sw"] is None and not e1["broom"] and "Just breathe is running" in e1["toast"] and e1["sheet"] != "everyday", e1)
+            await pp.evaluate("()=>OvuRoom.stopEverything()"); await pp.wait_for_timeout(500)
+            await begin_tidy(pp); await pp.evaluate("()=>{ document.querySelector('#toast').textContent = ''; OvuRoom.runSession('breathe', 2); }"); await pp.wait_for_timeout(300); e2 = await pp.evaluate(TST)
+            check("during Tidy up your room, Just breathe is refused with one line naming it and the broom keeps sweeping", e2["practice"] and e2["sw"] is not None and e2["broom"] and "Tidy up your room is running" in e2["toast"], e2)
+            await pp.evaluate("()=>OvuRoom.stopEverything()"); await pp.wait_for_timeout(300)
+            # a removal that comes due while the page is hidden waits for her to come back: nothing is written or puffed unseen
+            await pp.evaluate("()=>{ OvuStore.commit({ tidy: { items: %s, last: new Date().toISOString(), day: { d: OvuStore.today(), n: 2 }, tidiedAt: null, n: 2 } }); OvuTidy.fast(true); Object.defineProperty(document, 'hidden', { configurable: true, get: function () { return !!window.__hid; } }); }" % json.dumps(TWO))
+            await begin_tidy(pp)
+            try: await pp.wait_for_function("()=>{ var s = OvuTidy.sweeping(); return s && s.phase === 'move'; }", timeout=8000)
+            except Exception: pass
+            hid0 = await pp.evaluate("()=>{ window.__hid = true; document.dispatchEvent(new Event('visibilitychange')); return { state: ((OvuStore.state().tidy||{}).items||[]).length, puffs: window.__puffs }; }")
+            await pp.wait_for_timeout(2500)
+            hid1 = await pp.evaluate("()=>({ state: ((OvuStore.state().tidy||{}).items||[]).length, puffs: window.__puffs, sw: OvuTidy.sweeping() })")
+            await pp.evaluate("()=>{ window.__hid = false; document.dispatchEvent(new Event('visibilitychange')); }")
+            try: await pp.wait_for_function("()=>!OvuTidy.sweeping()", timeout=30000)
+            except Exception: pass
+            await pp.wait_for_timeout(700); hid2 = await pp.evaluate("()=>({ state: ((OvuStore.state().tidy||{}).items||[]).length, puffs: window.__puffs, items: OvuTidy.items().length })")
+            check("a removal due while the page is hidden is not written or puffed until she is back; then the sweep goes on and clears the floor", hid0["state"] >= 1 and hid1["state"] == hid0["state"] and hid1["puffs"] == hid0["puffs"] and hid1["sw"] is not None and hid2["state"] == 0 and hid2["items"] == 0 and hid2["puffs"] >= hid0["puffs"] + hid0["state"], {"hid0": hid0, "hid1": hid1, "hid2": hid2})
+            await pp.evaluate("()=>{ OvuRoom.stopEverything(); delete document.hidden; }"); await pp.wait_for_timeout(300)
+            check("tidy: no page errors (partial sweeps, replaced floor, failed save, one activity, hidden)", not perr, perr[:3]); await ctxP.close()
+            # f. reduced motion: the broom simply appears at each thing, the things fade, no trail, no puff
+            ctxM, pm, merr = await tidy_ctx(TWO, reduced_motion="reduce")
+            await begin_tidy(pm); m0 = await pm.evaluate(TST)
+            try: await pm.wait_for_function("()=>!OvuTidy.sweeping()", timeout=30000)
+            except Exception: pass
+            await pm.wait_for_timeout(700); m1 = await pm.evaluate(TST)
+            check("with reduced motion the broom appears at each thing in turn, the things fade and go, and there is no sparkle trail and no puff", m0["sw"] is not None and m0["sw"]["still"] and m1["sw"] is None and m1["items"] == 0 and m1["state"] == 0 and m1["sparks"] == 0 and m1["puffs"] == 0 and not m1["broom"], {"m0": m0, "m1": m1})
+            check("tidy: no page errors (reduced motion)", not merr, merr[:3]); await ctxM.close()
+            # g. a full minute: with the clock run forward past 60 s, Stop asks, the broom is already gone before the question, and Yes saves one entry for the practice thank-you
+            ctxC, pc, cerr = await tidy_ctx(TWO)
+            await pc.clock.install(); await pc.evaluate("()=>OvuTidy.fast(0.2)")   # five times slower than real: the broom is still sweeping when the minute is up
+            await begin_tidy(pc)
+            await pc.clock.run_for(66000); await pc.wait_for_timeout(300)
+            c0 = await pc.evaluate(TST)
+            check("after a minute with a slow broom the sweep is still going (so the next check means something)", c0["sw"] is not None and c0["broom"] and c0["practice"], c0)
+            await pc.evaluate("()=>document.querySelector('#hudStop').click()"); await pc.wait_for_timeout(300); c1 = await pc.evaluate(TST)
+            check("after a minute Stop opens the save question, and the broom, every spark and puff are gone before it (the sweep ended with the runner, not behind the sheet)", c1["sheet"] == "practiceDone" and c1["sw"] is None and not c1["broom"] and c1["sparksLeft"] == 0 and c1["puffsLeft"] == 0 and c1["practice"], {"c0": c0, "c1": c1})
+            await pc.evaluate("()=>document.querySelector('#pdYes').click()"); await pc.wait_for_timeout(600); c2 = await pc.evaluate(TST)
+            check("Yes saves one entry for the tidy, the flat practice thank-you is paid, and she is back to standing", c2["saved"] == 1 and c2["hearts"] - c0["hearts"] == 2 and not c2["practice"] and c2["src"] == "avatar-base.webp", {"c0h": c0["hearts"], "c2": c2})
+            check("tidy: no page errors (the minute and the save)", not cerr, cerr[:3]); await ctxC.close()
 
             check("no page errors or console errors across the run", not errors, errors[:3])
             await browser.close()

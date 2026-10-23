@@ -115,10 +115,10 @@
    * at: bottom centre of the planter; box: its footprint (a solid); wp: where she stands to tend it. The chairs and the tea
    * table come down to y 69.5, so the right pair are tended from their sides. */
   var HERB_BEDS = [
-    { id: 'hb1', at: [39, 72.3], w: 5, box: [36.8, 41.2, 69.6, 72.4], wp: { x: 39, y: 68.6, flip: false } },
-    { id: 'hb2', at: [44, 72.3], w: 5, box: [41.8, 46.2, 69.6, 72.4], wp: { x: 45, y: 68.8, flip: false } },
-    { id: 'hb3', at: [55, 72.3], w: 5, box: [52.8, 57.2, 69.6, 72.4], wp: { x: 51.2, y: 71, flip: true } },
-    { id: 'hb4', at: [60, 72.3], w: 5, box: [57.8, 62.2, 69.6, 72.4], wp: { x: 63.8, y: 71.2, flip: true } }
+    { id: 'hb1', at: [39, 72.3], w: 6, box: [36.8, 41.2, 69.6, 72.4], wp: { x: 39, y: 68.6, flip: false } },
+    { id: 'hb2', at: [44, 72.3], w: 6, box: [41.8, 46.2, 69.6, 72.4], wp: { x: 45, y: 68.8, flip: false } },
+    { id: 'hb3', at: [55, 72.3], w: 6, box: [52.8, 57.2, 69.6, 72.4], wp: { x: 51.2, y: 71, flip: true } },
+    { id: 'hb4', at: [60, 72.3], w: 6, box: [57.8, 62.2, 69.6, 72.4], wp: { x: 63.8, y: 71.2, flip: true } }
   ];
   HERB_BEDS.forEach(function (b) { LAYOUT.solids.push({ id: 'herbbed', x0: b.box[0], x1: b.box[1], y0: b.box[2], y1: b.box[3] }); });
   var DAYRX = /^\d{4}-\d{2}-\d{2}$/;
@@ -278,7 +278,12 @@
   }
   function herbSVG(b, day) {
     var st = herbStage(b), wet = herbWateredToday(b, day);
-    return '<svg viewBox="0 0 100 90" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+    /* each planter stands on a little two-tier wooden stand with a soft shadow, so it sits on the floor instead of floating
+       (Jamie, 22 Oct: "a layered bench so it does not look like this") */
+    return '<svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+      '<ellipse cx="50" cy="114" rx="44" ry="5.5" fill="#5b4466" opacity=".2"/><ellipse cx="50" cy="114" rx="30" ry="3" fill="#5b4466" opacity=".18"/>' +
+      '<path d="M22 86 V110 M78 86 V110" stroke="#b27e52" stroke-width="5" stroke-linecap="round"/><path d="M34 84 V104 M66 84 V104" stroke="#9c6c45" stroke-width="4" stroke-linecap="round" opacity=".8"/>' +
+      '<path d="M14 99 L50 94 L86 99 L50 104Z" fill="#e2b98c"/><path d="M14 99 L50 104 L86 99 L86 102 L50 107 L14 102Z" fill="#c4915f"/>' +
       '<path d="M12 60 L50 52 L88 60 L88 80 Q88 86 82 86 L18 86 Q12 86 12 80Z" fill="#d6a173"/><path d="M12 60 L50 52 L88 60 L50 68Z" fill="#e9c49a"/>' +
       '<path d="M12 70 H88 M12 78 H88" stroke="#c18a5c" stroke-width="1.4" opacity=".7"/><path d="M50 68 V86" stroke="#c18a5c" stroke-width="1.2" opacity=".5"/>' +
       '<ellipse cx="50" cy="59" rx="33" ry="6" fill="' + (wet ? '#4f3828' : '#7a5a42') + '"/>' + (wet ? '<ellipse cx="42" cy="58" rx="6" ry="1.4" fill="#8fc6ea" opacity=".55"/>' : '') +
@@ -294,6 +299,7 @@
   /* ---------- the scene ---------- */
   var R = root.OvuRoom; if (!R || !root.document || !root.document.createElement) return;
   var S = root.OvuStore, doc = root.document, ART = R.ART;
+  function lockedF(fn) { var FMl = root.OvuFarm; return FMl && FMl.locked ? FMl.locked(S, fn) : Promise.resolve().then(fn); } /* the one farm lock: the basket and planters are read again inside */
   R.LAYOUTS.greenhouse = LAYOUT;
   function esc(s) { return R.esc(s); }
   function inside(L) { return !!(L && L.id === 'greenhouse'); }
@@ -347,7 +353,7 @@
     R.openSheet('ghcard', it.name, { tea: 'On the potting bench', ask: 'Ask first, before any herb', house: 'A houseplant' }[p.kind] || 'The greenhouse', p.kind === 'house' ? 'potted_plant' : 'local_florist',
       body + '<div class="row"><button type="button" class="btn primary" data-act="care"><span class="ms">' + (p.kind === 'house' ? 'water_drop' : 'yard') + '</span>One mindful minute with it</button>' +
       (p.kind === 'tea' && R.openEveryday ? '<button type="button" class="btn soft" data-act="cup"><span class="ms">local_cafe</span>A mindful cup with Erin</button>' : '') + '</div>' +
-      '<p class="help">' + (p.kind === 'house' ? (it.house.steps || 'Mist, wipe a leaf, notice one thing.') : 'Water, touch a leaf, notice one thing.') + ' Saved to your journal as one minute of calm.</p>');
+      '<p class="help">' + (p.kind === 'house' ? (it.house.steps || 'Mist, wipe a leaf, notice one thing.') : 'Water, touch a leaf, notice one thing.') + ' You can choose whether to save the minute to your journal.</p>');
     doc.getElementById('sheetBody').addEventListener('click', function (e) {
       var b = e.target.closest('[data-act]'); if (!b) return;
       if (b.dataset.act === 'care') startCare(id);
@@ -367,17 +373,18 @@
    * leaving the HUD, her pose and the stop button to it (Codex reviews, 20 Oct: waiting for a timer let a practice start and
    * stop unseen, the hidden minute still saved, and a Stop tap in that window reached the minute instead of the session).
    * Walking away ends it. */
-  var caring = null, stepMs = CARE_STEP * 1000;
+  var caring = null, stepMs = CARE_STEP * 1000, careAsk = null, careAskTimer = 0;
   function other() { return !!(R.sessionOn() || (R.practiceOn && R.practiceOn())); }
   function busyToast() { if (caring && caring.kind === 'brew') R.toast('Finish the cup first.', 'local_cafe'); else R.toast('Finish the minute with the plant first.', 'potted_plant'); }
   /* one minute on the HUD, for a plant (care) or a cup of tea (brew): four lines a quarter-minute apart, Stop at any time */
   function runMinute(c, lines, pose) {
+    clearCareAsk();
     caring = Object.assign(c, { startedAt: Date.now(), timers: [], done: false });
     R.hudOn(true, c.title); R.caption(lines[0]);
     R.setPose(pose); R.els.avatar.classList.add('acting');
-    lines.forEach(function (line, i) { if (i) caring.timers.push(root.setTimeout(function () { if (!caring || caring.done) return; if (other()) return stepAside(); R.caption(line); R.chime('bell', true); }, i * stepMs)); });
-    caring.timers.push(root.setTimeout(function () { if (!caring || caring.done) return; if (other()) return stepAside(); finishCare(true); }, lines.length * stepMs));
-    R.setHudStop(function () { if (!caring) return false; finishCare(false); return true; });
+    lines.forEach(function (line, i) { if (i) c.timers.push(root.setTimeout(function () { if (caring !== c || c.done) return; if (other()) return stepAside(); R.caption(line); R.chime('bell', true); }, i * stepMs)); });
+    c.timers.push(root.setTimeout(function () { if (caring !== c || c.done) return; if (other()) return stepAside(); finishCare(true); }, lines.length * stepMs));
+    R.setHudStop(function () { if (caring !== c || c.done) return false; finishCare(false); return true; });
   }
   function startCare(id) {
     var p = plant(id); if (!p || caring || napping()) return;
@@ -397,24 +404,48 @@
   function stepAside() { var c = caring; if (!c) return; c.done = true; c.timers.forEach(root.clearTimeout); caring = null; R.setHudStop(null); }
   /* leaving, walking off, or anything else that cuts it short: if a practice or session now owns the HUD, just step aside */
   function cutShort() { if (!caring) return; if (other()) stepAside(); else finishCare(false); }
+  /* a completed minute must not replace a form or follow a newer activity */
+  function clearCareAsk() { careAsk = null; root.clearInterval(careAskTimer); careAskTimer = 0; }
+  function askCareSave(ask) {
+    clearCareAsk(); var token = {}; careAsk = token;
+    function ready() { return !caring && !(R.sheetOpen && R.sheetOpen()) && !R.sessionOn() && !(R.practiceOn && R.practiceOn()); }
+    function checkAsk() {
+      if (careAsk !== token) return;
+      if (R.asleep && R.asleep()) { clearCareAsk(); return; }
+      if (ready()) { clearCareAsk(); ask(); }
+    }
+    if (ready()) { checkAsk(); return; }
+    careAskTimer = root.setInterval(checkAsk, 400);
+  }
   function finishCare(completed) {
     var c = caring; if (!c || c.done) return; c.done = true;
     c.timers.forEach(root.clearTimeout); caring = null; R.setHudStop(null);
     R.hudOn(false); R.els.avatar.classList.remove('acting'); R.restorePose();
     if (c.kind === 'brew') return finishBrew(c, completed);
     if (!completed) { R.toast('Stopped. Thank you for the moment you gave it.', 'potted_plant'); return; }
-    var ever = S.list('mindfulness').some(function (e) { return e.data && e.data.practice === 'greenhouse'; }), ev = null;
-    try { ev = S.add('mindfulness', S.today(), { kind: 'informal', first: !ever, practice: 'greenhouse', plant: c.id, minutes: 1, completed: true, startedAt: new Date(c.startedAt).toISOString(), guide: 'Greenhouse, one mindful minute with the ' + c.name.toLowerCase() }); } catch (e) { R.toast('The minute could not be saved: ' + e.message, 'error'); }
-    if (ev) R.afterSave(ev, 'One mindful minute in the greenhouse.');
+    var ever = S.list('mindfulness').some(function (e) { return e.data && e.data.practice === 'greenhouse'; }), day = S.today(), saved = false;
+    askCareSave(function () {
+      R.openSheet('greenhouseDone', 'A moment with ' + c.name.toLowerCase(), 'One mindful minute', 'potted_plant',
+        '<p class="mintro">Save this mindful minute to your journal?</p><div class="row"><button type="button" class="btn primary" id="ghYes">Yes</button><button type="button" class="btn ghost" id="ghNo">No</button></div><p class="help">Save it if you really practised. Caring for the plant does not need a journal entry.</p>');
+      doc.getElementById('ghYes').addEventListener('click', function () {
+        if (saved) return;
+        var ev; try { ev = S.add('mindfulness', day, { kind: 'informal', first: !ever, practice: 'greenhouse', plant: c.id, minutes: 1, completed: true, confirmedReal: true, startedAt: new Date(c.startedAt).toISOString(), guide: 'Greenhouse, one mindful minute with the ' + c.name.toLowerCase() }); }
+        catch (e) { R.toast('The minute could not be saved: ' + e.message + ' Try Yes again, or tap No.', 'error'); return; }
+        saved = true; R.hideSheet(); R.afterSave(ev, 'One mindful minute in the greenhouse.');
+      });
+      doc.getElementById('ghNo').addEventListener('click', function () { saved = true; R.hideSheet(); });
+    });
   }
   /* a finished cup uses one from the basket and says the practice thank-you if today still has one; it writes no diary entry */
   function finishBrew(c, completed) {
     if (!completed) { R.toast('Stopped. The ' + HERBS[c.id].name.toLowerCase() + ' is still in your basket.', 'local_cafe'); return; }
-    var r = brewCup(S, root.OvuRewards, c.id);
-    if (!r.ok) { R.toast(r.why, 'info'); return; }
-    var line = R.moment ? R.moment('brew', { quiet: true }) : '';
-    R.chime('save'); if (R.renderDeck) R.renderDeck();
-    R.toast(c.name + ', sipped slowly.' + (r.points ? ' A thank-you of ' + r.points + ' hearts for the practice.' : ''), 'local_cafe', line);
+    lockedF(function () {
+      var r = brewCup(S, root.OvuRewards, c.id);
+      if (!r.ok) { R.toast(r.why, 'info'); return; }
+      var line = R.moment ? R.moment('brew', { quiet: true }) : '';
+      R.chime('save'); if (R.renderDeck) R.renderDeck();
+      R.toast(c.name + ', sipped slowly.' + (r.points ? ' A thank-you of ' + r.points + ' hearts for the practice.' : ''), 'local_cafe', line);
+    });
   }
 
   /* ---------- the herb planters: tap one, she walks over, and its sheet opens ---------- */
@@ -427,12 +458,20 @@
     LAYOUT.home.x = hb.wp.x; LAYOUT.home.y = hb.wp.y; LAYOUT.home.flip = !!hb.wp.flip;
     R.walkTo(hb.wp, function () { if (!R.busy()) openHerbBed(hb.id); });
   }
+  function stillHere(sheetId, tk, id) { /* the same planter's sheet is still open, she is awake, and the step was not stopped while its save waited for the lock */
+    if (tk && tk.stopped) return false;
+    if (!R.sheetOpen() || R.sheetId() !== sheetId) return false;
+    if (id != null && shownBed !== id) return false; /* another planter's sheet took the place of this one */
+    if (root.OvuCare && root.OvuCare.asleepNow && root.OvuCare.asleepNow()) return false;
+    return napping() ? false : true;
+  }
   function slowStep(box, o, done) {
     if (!root.OvuCare || !root.OvuCare.step) { done(); return; }
     root.OvuCare.step(box, Object.assign({ scene: 'greenhouse' }, o, { ms: GH.slowMs == null ? o.ms : GH.slowMs }), done);
   }
+  var shownBed = null; /* the planter whose sheet is on screen */
   function openHerbBed(id) {
-    var hb = herbBed(id); if (!hb || napping()) return;
+    var hb = herbBed(id); if (!hb || napping()) return; shownBed = id;
     var d = day(), g = herbState(S), b = g.beds[id], h = b ? HERBS[b.herb] : null, n = HERB_BEDS.indexOf(hb) + 1;
     var html = '<div class="bedcard"><div class="bedpic herbpic">' + herbSVG(b, d) + '</div><div class="bedtext">';
     if (h) html += '<b>' + esc(h.name) + '</b><span>' + (herbRipe(b) ? 'Ready to pick.' : herbDays(b) + ' of ' + herbNeed(b) + ' watered days' + (b.cuts ? ' until it is ready again' : '') + '. ' + (herbWateredToday(b, d) ? 'Watered today.' : 'Not watered yet today.')) + '</span>' +
@@ -450,8 +489,11 @@
     R.openSheet('ghbed', 'Planter ' + n, 'The greenhouse herbs', 'yard', html);
     var clr = doc.getElementById('herbClear'); if (clr) clr.addEventListener('click', function () {
       if (!clr.classList.contains('confirm')) { clr.classList.add('confirm'); clr.textContent = 'Tap again: the ' + h.name.toLowerCase() + ' here is let go'; return; }
-      var r = clearHerb(S, id); if (!r.ok) { R.toast(r.why, 'info'); return; }
-      R.chime('tap'); renderBeds(); R.toast('The planter is empty, ready for something new.', 'yard'); openHerbBed(id);
+      lockedF(function () {
+        if (!stillHere('ghbed', null, id)) return;
+        var r = clearHerb(S, id); if (!r.ok) { R.toast(r.why, 'info'); return; }
+        R.chime('tap'); renderBeds(); R.toast('The planter is empty, ready for something new.', 'yard'); openHerbBed(id);
+      });
     });
     var acts = doc.getElementById('herbActs'); if (!acts) return;
     acts.addEventListener('click', function (e) {
@@ -463,7 +505,8 @@
       var herb = btn.dataset.kind, seen = JSON.stringify(herbState(S).beds[id] || null);
       var o = kind === 'plant' ? { ms: 2200, moment: 'herbplant', verb: 'Pressing it into the soil…' } : kind === 'water' ? { ms: 3000, moment: 'herbwater', verb: 'Pouring slowly…' } : { ms: 3000, moment: 'herbharvest', verb: 'Picking slowly…' };
       o.cancel = function () { openHerbBed(id); };
-      slowStep(acts, o, function () {
+      slowStep(acts, o, function (tk) { lockedF(function () {
+        if (!stillHere('ghbed', tk, id)) return; /* a Stop, a close, another sheet or sleep during the lock wait: nothing saved, nothing charged */
         var t = day(); if (t !== now) { openHerbBed(id); return; }
         if (JSON.stringify(herbState(S).beds[id] || null) !== seen) { R.toast('The planter changed in the meantime. Have another look.', 'info'); openHerbBed(id); return; } /* another tab or phone moved first */
         var res = kind === 'plant' ? plantHerb(S, id, herb, t, ST()) : kind === 'water' ? waterHerb(S, id, t, ST()) : harvestHerb(S, id, ST());
@@ -473,7 +516,7 @@
         if (kind === 'water') R.toast(res.ripe ? 'Ready to pick. Tap the planter again.' : 'Watered. ' + res.days + ' of ' + res.need + ' days.', 'water_drop');
         if (kind === 'pick') R.toast(res.n + ' ' + HERBS[res.herb].plural + ' into the basket. It grows again in ' + res.again + ' watered days.', 'shopping_basket');
         openHerbBed(id);
-      });
+      }); });
     });
   }
   /* before the cup: what is in the basket, and the research card when the tea list has one for this herb */
@@ -509,7 +552,7 @@
     R.on('layout', function (L) { cutShort(); render(L); });
     R.on('beforeWalk', cutShort);
     doc.addEventListener('visibilitychange', function () { if (doc.hidden && caring) cutShort(); }); /* away from the app is not a mindful minute (persona walk, 21 Oct) */ /* walking away ends the minute (a practice that moves her takes over instead) */
-    R.on('activity', function () { stepAside(); }); /* a practice or session is starting: hand the HUD over now */
+    R.on('activity', function () { clearCareAsk(); stepAside(); }); /* a practice or session is starting: hand the HUD over now */
     if (root.OvuGameTime && root.OvuGameTime.onNewDay) root.OvuGameTime.onNewDay(function () { renderBeds(); }); /* a new day dries the soil */
     if (S.subscribe) S.subscribe(function (reason) { if (reason === 'external' || String(reason).indexOf('sync') === 0) renderBeds(); }); /* another tab moved a planter */
     R.els.props.addEventListener('click', function (e) { var p = e.target.closest('.ghplant.tappable'); if (p) { e.stopPropagation(); tapPlant(p); return; } var hb = e.target.closest('.ghbed'); if (hb) { e.stopPropagation(); tapBed(hb); } });

@@ -64,9 +64,11 @@
   var AI_IDS = { ai_reading: 1, food_photo_ai: 1, ai_summaries: 1 };
   function aiPaused() { return !(root.OVU_CONFIG && root.OVU_CONFIG.aiPaused === false); } /* off unless the config says so explicitly: a missing or older config keeps it paused */
   function boundTo(p) { var s = state()[p]; return !!(s && s.uid); } /* the choice was recorded on an account */
-  var PAUSED_LINE = 'Paused for now, while we move Luna’s AI help to a service licensed for Singapore. Your diary and Luna’s own rules work as usual.';
+  var PAUSED_LINE = 'Paused for now.';
   function allows(p) { if (AI_IDS[p] && aiPaused()) return false; var s = state()[p]; return !!(s && s.on); }
-  function noticeText() { return PURPOSES.map(function (p) { return p.title + '. ' + p.body; }).join('\n'); }
+  /* the notice's own fixed lines beside the purposes, so the receipt's hash covers them too (v5: the optional birthday; room.html shows the same words) */
+  var NOTICE_LINES = ['Rhythme is for people 18 and over. For that we keep only your confirmation. Your birthday is optional: a month and a day, with the year only if you add it, kept on this phone and used only for the birthday card.'];
+  function noticeText() { return PURPOSES.map(function (p) { return p.title + '. ' + p.body; }).join('\n') + '\n' + NOTICE_LINES.join('\n'); }
   function sha256hex(s) {
     try { return crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(s))).then(function (h) { return Array.prototype.map.call(new Uint8Array(h), function (b) { return ('0' + b.toString(16)).slice(-2); }).join(''); }, function () { return ''; }); } catch (e) { return Promise.resolve(''); }
   }
@@ -95,6 +97,11 @@
     return evs.filter(function (e, i) { return i >= cut || keep[e.purpose] === e.id; });
   }
   function record(purposeId, action, method, extra) {
+    /* An event that names an account other than the one signed in here now (a sync's late answer from before a sign-out
+       or a switch) changes nothing on this phone: that account's own record, which gave the answer, already holds it,
+       and the next sync for that account reconciles it here. Recording it would make it the latest choice and switch
+       off whoever is signed in now (Codex sync review, round five, finding 2). */
+    if (extra && Object.prototype.hasOwnProperty.call(extra, 'uid') && extra.uid !== uid()) return null;
     var ev = Object.assign({ id: newId(), purpose: purposeId, action: action === 'withdraw' ? 'withdraw' : 'grant', at: nowIso(), notice: NOTICE_V, method: method || 'you', uid: uid(), sent: false }, extra || {});
     S.setProfile({ consentEvents: compact(events().concat([ev])) });
     apply();
@@ -150,7 +157,7 @@
   function receipt() {
     var st = state(), evs = events(), last = evs.length ? evs[evs.length - 1] : null, p = S.profile(), u = uid();
     var purposes = {}; PURPOSES.forEach(function (x) { if (!x.hidden) purposes[x.id] = !!(st[x.id] && st[x.id].on); });
-    var pending = u ? evs.filter(function (e) { return e.uid === u && !e.sent && !e.failed; }).length : 0, failed = u ? evs.filter(function (e) { return e.uid === u && e.failed; }).length : 0;
+    var pending = u ? evs.filter(function (e) { return e.uid === u && !e.sent && !e.failed && !e.superseded; }).length : 0, failed = u ? evs.filter(function (e) { return e.uid === u && e.failed; }).length : 0;
     return { noticeVersion: NOTICE_V, noticeHash: hashHex || null, at: last ? last.at : null, userId: u, recorded: !!(u && pending === 0 && failed === 0), pending: pending, failed: failed, device: device(), purposes: purposes, ageAttest: p.ageAttest || null, method: last ? last.method : null, events: evs.length };
   }
   /* what a request to Rhythme's own functions carries for a person without an account: the phone's word, recorded by the function */
@@ -172,9 +179,19 @@
      server refuses outright (a 4xx that is not a session or rate problem) is marked failed and skipped, never a cork. */
   function drain(u, h, n) {
     if (uid() !== u) return Promise.resolve(n);
-    var next = events().filter(function (e) { return e.uid === u && !e.sent && !e.failed; })[0];
+    /* the account's improve-logging choice is recorded by the server's own setter (ovu-auth.js setImprove); its mirror here is
+     * marked recorded only once the account's record, as this phone last read it, holds that same choice, and is never sent */
+    var A = root.OvuAuth, viaAccount = !!(A && A.setImprove);
+    if (viaAccount) { /* an older unsent improve-logging mirror is superseded by a newer choice: it is closed as superseded, never claimed as sent */
+      var imp = events().filter(function (e) { return e.uid === u && e.purpose === 'improve_logging'; }), newest = imp[imp.length - 1];
+      imp.forEach(function (e) { if (e !== newest && !e.sent && !e.failed && !e.superseded) mark(e.id, { superseded: true }); });
+    }
+    function confirmed(e) { var l = viaAccount && A.improveLocal ? A.improveLocal() : null; return !!(l && l.uid === u && l.syncedAt && l.on === (e.action === 'grant')); }
+    var next = events().filter(function (e) { return e.uid === u && !e.sent && !e.failed && !e.superseded && !(e.purpose === 'improve_logging' && viaAccount && !confirmed(e)); })[0];
     if (!next) return Promise.resolve(n);
     var notice = next.notice || NOTICE_V;
+    /* the account's improve-logging choice is recorded by the server's own setter (ovu-auth.js setImprove); the mirror of it is kept on this phone and never sent as a second record */
+    if (next.purpose === 'improve_logging' && viaAccount) { mark(next.id, { sent: true, serverId: null, via: 'account' }); return drain(u, h, n); }
     return rpc('consent_record', { p_purpose: next.purpose, p_action: next.action, p_notice: notice, p_hash: notice >= NOTICE_V ? (h || null) : null, p_method: next.method || 'you', p_device: device(), p_client_at: next.at, p_client_id: next.id }, u).then(function (row) {
       if (row === null || uid() !== u) return n;
       mark(next.id, { sent: true, serverId: row && row.id });
@@ -188,7 +205,7 @@
   function flush() {
     var u = uid(); if (!u) return Promise.resolve(0);
     if (flushing) { flushAgain = true; return flushing; }
-    if (!events().some(function (e) { return e.uid === u && !e.sent && !e.failed; })) return Promise.resolve(0);
+    if (!events().some(function (e) { return e.uid === u && !e.sent && !e.failed && !e.superseded; })) return Promise.resolve(0);
     flushing = noticeHash().then(function (h) { return drain(u, h, 0); }).then(function (n) {
       flushing = null;
       if (flushAgain) { flushAgain = false; return flush().then(function (m) { return n + (m > 0 ? m : 0); }); }
@@ -215,19 +232,30 @@
   }
 
   /* ---------- the sheet (#consent in room.html) ---------- */
+  /* the notice shows each choice as an emoji, its title and one short line; the full consent text (the hashed body) sits
+     under "More" beside it, outside the label so opening it never flips the switch (Jamie, 22 Oct: simpler and prettier). */
+  var HINTS = {
+    cloud_sync: ['cloud', 'Keep a backup in your account, stored in Singapore.'],
+    improve_logging: ['favorite', 'Share anonymous group totals to help improve Rhythme.'],
+    ai_reading: ['auto_awesome', 'Luna’s AI reads notes her own rules cannot.'],
+    food_photo_ai: ['photo_camera', 'Luna’s AI names the food in your photos.'],
+    ai_summaries: ['menu_book', 'Luna’s AI writes your journal readings.']
+  };
   function toggleHTML(p, on, note) {
-    var paused = AI_IDS[p.id] && aiPaused();
-    return '<label class="c-opt' + (paused ? ' c-paused' : '') + '" data-purpose="' + p.id + '"><input type="checkbox" id="c_' + p.id + '"' + (on && !paused ? ' checked' : '') + (paused ? ' disabled' : '') + '><span><b>' + esc(p.title) + '</b><small>' + esc(paused ? PAUSED_LINE : p.body) + (note ? ' ' + esc(note) : '') + '</small></span></label>';
+    var paused = AI_IDS[p.id] && aiPaused(), h = HINTS[p.id] || ['', p.body];
+    return '<div class="c-pick"><label class="c-opt' + (paused ? ' c-paused' : '') + '" data-purpose="' + p.id + '"><input type="checkbox" id="c_' + p.id + '"' + (on && !paused ? ' checked' : '') + (paused ? ' disabled' : '') + '><span>' + (h[0] ? '<i class="c-emo ms" aria-hidden="true">' + h[0] + '</i>' : '') + '<b>' + esc(p.title) + '</b><small>' + esc(paused ? PAUSED_LINE : h[1]) + (note ? ' ' + esc(note) : '') + '</small></span></label>' +
+      '<details class="c-more"><summary>More</summary><p>' + esc(p.body) + '</p></details></div>';
   }
   function fillSheet(c) {
     var st = state(), returning = !!(S.profile().consent && S.profile().consent.at), minor = legacyMinor(), u = uid();
     var title = c.querySelector('#cTitle'), sub = title && title.nextElementSibling, fine = c.querySelector('#cFine'), lbl = c.querySelector('.c-lbl'), box = c.querySelector('#cChoices'), age = c.querySelector('#cAge'), minorNote = c.querySelector('#cMinor');
-    if (title) title.textContent = returning ? 'Our data notice has changed' : 'Before your room opens';
-    if (sub) sub.textContent = returning ? 'Rhythme is now for adults, has accounts and cloud backup, and asks about each use of your data separately. Please read what is new. Your diary on this phone is kept as it is.' : 'What Rhythme keeps, where it goes, and the choices that stay yours.';
+    if (title) title.textContent = returning ? 'Your data choices' : 'Before your room opens';
+    var prevV = (st.health_tracking && st.health_tracking.notice) || 0; /* what changed since the notice she last agreed to */
+    if (sub) sub.textContent = returning ? (prevV >= 4 ? 'New in this notice: Rhythme can ask for your birthday, for a birthday card. It stays on this phone.' : 'Have a quick look at how Rhythme keeps your data and choose what you are happy with. Your diary on this phone is kept as it is.') : 'A cosy diary for your cycle, body and mind.';
     if (fine) fine.textContent = returning ? 'Your diary on this phone is kept as it is.' : 'No diary entries have been saved yet.';
-    if (lbl) lbl.textContent = returning ? 'Your choices (all optional, shown as you have them today; anything new starts off)' : 'Your choices (all optional, all off until you turn them on)';
+    if (lbl) lbl.textContent = 'Optional extras';
     if (minorNote) { minorNote.hidden = !minor; minorNote.style.display = minor ? '' : 'none'; } /* the flag's own display rule would beat the hidden attribute */
-    if (box) box.innerHTML = PURPOSES.filter(function (p) { return !p.required && !p.hidden; }).map(function (p) {
+    if (box) box.innerHTML = PURPOSES.filter(function (p) { return !p.required && !p.hidden && !(AI_IDS[p.id] && aiPaused()); }).map(function (p) {
       var on = !!(st[p.id] && st[p.id].on && (!p.account || !st[p.id].uid || st[p.id].uid === u));
       return toggleHTML(p, on, '') + (p.id === 'ai_reading' && !aiPaused() ? AI_WHERE_HTML : '');
     }).join('');
@@ -239,6 +267,8 @@
     var c = document.getElementById('consent'); if (!c) return;
     c.classList.toggle('returning', !!(S.profile().consent && S.profile().consent.at));
     fillSheet(c);
+    /* the only tick on show is the 18+ one; the optional extras stay folded on a first visit and open for a returning check (Jamie, 22 Oct) */
+    var ex = c.querySelector('#cExtras'); if (ex) ex.open = !!(S.profile().consent && S.profile().consent.at);
     c.hidden = false; try { c.querySelector('.c-scroll').scrollTop = 0; } catch (e) { }
     var age = c.querySelector('#cAge'), health = c.querySelector('#cHealth'), agree = c.querySelector('#cAgree'), under = c.querySelector('#cUnder');
     /* the one required line starts ticked (Jamie, 19 Oct): the diary cannot work without it and tapping I agree is the person's act.
@@ -257,7 +287,25 @@
       function record() { attestAge('sheet'); grant('health_tracking', 'sheet'); setMany(map, 'sheet', true); if (!hasAuth && improve) grant('improve_logging', 'sheet'); }
       function open() { c.hidden = true; if (next) next(); }
       var em = c.querySelector('#cImproveErr'); if (em) em.hidden = true;
-      if (!hasAuth || (!improve && !wasOn)) { record(); open(); return; }
+      /* A choice the account already records is not sent again: a renewed notice that keeps Help improve logging on must not
+         restart the account's consent from now, which would drop the entries it already covered (Codex verification, 21 Oct).
+         The improvement words and their hash are unchanged under this notice, so the account's record and its version stay as
+         they are: keeping a choice is not a new decision. The phone's copy can be stale (it may have been turned off elsewhere),
+         so the account is read first, which changes nothing there, and the phone follows it (Codex verification 2). A tick kept
+         only on this phone (no account yet) still goes through setImprove, so it is recorded under this notice as before. */
+      var an = S.profile().analysis || {}, me = hasAuth && root.OvuAuth.userId ? root.OvuAuth.userId() : null;
+      var held = improve && wasOn && an.on === true && !!an.uid && (!me || an.uid === me);
+      if (!hasAuth || (!improve && !wasOn) || (held && !me)) { record(); open(); return; } /* signed out: nothing to send now; the next sign-in reads the account */
+      if (held) {
+        agree.disabled = true;
+        var settled = false, finish = function () { if (settled) return; settled = true; agree.disabled = !ready(); record(); open(); };
+        var slow = root.setTimeout(finish, 8000); /* a slow account never keeps the room shut; its answer still lands and the phone follows it */
+        (root.OvuAuth.syncImprove ? root.OvuAuth.syncImprove() : Promise.resolve({ action: 'none' })).then(function (r) { return r; }, function () { return { action: 'offline' }; }).then(function (r) {
+          root.clearTimeout(slow); finish();
+          if (r && r.action === 'adopt' && !((S.profile().analysis || {}).on) && ui.toast) ui.toast('Help improve logging is off on your account, so it stays off here too. You can turn it on again in You.', 'info');
+        });
+        return;
+      }
       agree.disabled = true;
       /* a withdrawal has to reach the account before anything on this notice is recorded: if it does not, nothing is saved,
          the notice stays (and comes back after a reload) and says so (Codex legal reviews, 20 Oct: a failed withdrawal was
@@ -339,7 +387,7 @@
 
   root.OvuConsent = {
     aiPaused: aiPaused, boundTo: boundTo, AI_IDS: AI_IDS, PAUSED_LINE: PAUSED_LINE,
-    NOTICE_V: NOTICE_V, AGE_V: AGE_V, PURPOSES: PURPOSES, REGION_AI: REGION_AI, REGION_CLOUD: REGION_CLOUD, AI_WHERE: AI_WHERE, AI_WHERE_HTML: AI_WHERE_HTML,
+    NOTICE_V: NOTICE_V, NOTICE_LINES: NOTICE_LINES, AGE_V: AGE_V, PURPOSES: PURPOSES, REGION_AI: REGION_AI, REGION_CLOUD: REGION_CLOUD, AI_WHERE: AI_WHERE, AI_WHERE_HTML: AI_WHERE_HTML,
     purpose: purpose, events: events, state: state, stateFromEvents: stateFromEvents, allows: allows,
     noticeText: noticeText, noticeHash: noticeHash,
     record: record, grant: grant, withdraw: withdraw, setMany: setMany, apply: apply,

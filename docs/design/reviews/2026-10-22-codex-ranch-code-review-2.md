@@ -1,0 +1,191 @@
+# Codex confirmation reviews of the ranch, 22 October 2026 (rounds 2 to 4)
+
+Model gpt-6.1-sol, read-only, one guarded run each (RUN_STARTED, lock, BLOCK.json). Round 1 is in 2026-10-22-codex-ranch-code-review-1.md.
+
+## Round 2 (after the nine fixes): HOLD
+
+**HOLD.** Finding 1 remains P1: an unlocked care save can overwrite a completed purchase. In-memory reproduction: **120 hearts deducted, purchased hen disappears**. All farm writers must share the transaction.
+
+| # | Result | Evidence |
+|---|---|---|
+| 1 | **NOT FIXED** | `ovu-barn.js:96–97`: care bypasses the lock at `:378`. |
+| 2 | **FIXED** | Sizes follow consumption/purchases: `ovu-kitchen.js:92,105`, `ovu-barn.js:67,561`, `ovu-villagers.js:88`. |
+| 3 | **FIXED** | Birth/due date drives cooldown: `ovu-ranch.js:65,122`. |
+| 4 | **FIXED** | Backdated commands refused: `ovu-ranch.js:82,98,118`. |
+| 5 | **FIXED** | Migration initializes full-love baseline: `ovu-ranch.js:47`. |
+| 6 | **FIXED** | Breeding eligibility clamped to adulthood: `ovu-ranch.js:112`. |
+| 7 | **FIXED** | Naming rejects the reported replacement-animal case: `ovu-barn.js:388,393`. |
+| 8 | **FIXED** | Full dish storage refuses before consumption: `ovu-kitchen.js:88`. |
+| 9 | **FIXED** | Attained adulthood persists: `ovu-ranch.js:52`. |
+
+No new P1 found. **1,777 core checks passed**, plus targeted in-memory probes. Browser smoke not rerun. No files changed.
+
+
+## Round 3 (after every barn, kitchen and villager writer went inside the farm lock): HOLD
+
+**1. NOT FIXED overall.** Locked care preserves Bao, but other barn writes still bypass the transaction.
+
+**P1 reproduced in memory with two stores, shared storage and one lock manager:**
+
+- A’s `settle()` prepares its farm (`ovu-barn.js:413`).
+- B acquires `ovumind-farm`, buys Bao and commits: **three hens, 880 hearts**.
+- A resumes its unlocked save (`ovu-barn.js:415`): **two hens, 880 hearts**. Bao disappears; the 120-heart charge remains.
+
+`settle()` runs when opening the ranch and from boot/new-day callbacks (`ovu-barn.js:425,569–570`). It is ranch-specific, so this is a remaining branch defect. Other omitted barn writes include `maybeHint()` (`:550–553`) and subscriber reconciliation (`:574`).
+
+Kitchen `buyStaple()` also remains unlocked (`ovu-kitchen.js:101–106`, called directly at `ovu-lane.js:194`); an injected pre-commit interleaving likewise removed Bao.
+
+The unchanged farm planting/watering/harvest writers and greenhouse basket writers retain the same concurrent read-modify-write hazard (`ovu-farm.js:105–112,150–154,164–169`; `ovu-greenhouse.js:150–153`). Their locking gap is a **pre-existing follow-up**, not worsened by these commits.
+
+**2. No additional regression found in the listed categories.** Without Web Locks, I verified one invocation and a resolved return value (`ovu-farm.js:240–243`); this fallback provides no cross-tab exclusion. I found no duplicate callback introduced. Cooking and gifting recheck current inventory (`ovu-kitchen.js:85–88`; `ovu-villagers.js:115–124`). Timers remain outside locks (`ovu-barn.js:484–491`; `ovu-kitchen.js:150–162`).
+
+**3. HOLD: P1 remains, incomplete farm-writer locking; no additional P2 identified.**
+
+`node tools/test-core.js`: **1,780 passed, 0 failed**. Its writer check enumerates selected action functions and misses these lifecycle/direct saves (`tools/test-core.js:5138`). No files modified.
+
+
+## Round 4 (after settle, the hint, the subscriber and the grocer staple): HOLD
+
+1. **NOT FIXED (P1).** Boot-settle versus a locked hen purchase passed in both orders, including counter opening. However, grocer seed/unlock purchases still bypass the lock (`ovu-lane.js:186`; `ovu-farm.js:175,180`), as does swapping (`ovu-lane.js:213`).
+
+   Reproduced with real modules, two stores, shared storage and one lock: A’s locked settle prepares its farm (`ovu-barn.js:414`); B successfully buys three seeds for 10 hearts; A saves (`:416`). Final result: **zero seeds, 990 hearts from 1,000**. This remaining grocer path falls within “any grocer writer.”
+
+2. **Regressions and checks:**
+
+   - **P2, delayed ranch reopening:** `ovu-barn.js:424` checks only the scene after awaiting settle. An external redraw (`:571,582`) queued behind another tab’s lock reopens a counter dismissed before completion. Reproduced.
+   - **P2, stale size display:** “every reader trims” is false. Today (`ovu-today.js:71,73`) and barn pantry (`ovu-barn.js:288`) read unreconciled sizes. A restored mismatch displayed **“Egg (3 large)” with count 1**. Account saves copy the farm unchanged (`ovu-gamesave.js:154,201`); the subscriber no longer repairs it (`ovu-barn.js:579`). Kitchen (`ovu-kitchen.js:58,92,105`) and villagers (`ovu-villagers.js:78,88`) use totals and maintain sizes when consuming. Barn sprites (`ovu-barn.js:200,265`) use herd data, not product sizes.
+   - **P2, duplicate viewer routing:** load (`ovu-pageview.js:33`) and polling (`:58`) both dispatch during the 320 ms closing window (`:74`). Both event orders reproduced two `medas` dispatches. `room.js:3596` provides another handoff.
+   - **Cross-origin guard gap:** restricted `loc.pathname` access occurs outside the catch (`ovu-pageview.js:57,58`), causing repeated exceptions. Normal closing eventually clears polling (`:56`), so no permanent normal-close leak was found.
+   - No synchronous-sheet-opening dependency or boolean misuse of `settle()` found: hotspot handlers return `true` themselves (`ovu-barn.js:534`), callers chain/ignore settlement, and smoke tests await selectors. The grocer’s inside-lock `stillOpen` recheck (`ovu-lane.js:195`) correctly cancels dismissed purchases.
+
+`node tools/test-core.js`: **1,780 passed, zero failed**. No files modified.
+
+**HOLD: P1 unlocked grocer writers; P2 delayed ranch reopening, stale size display, duplicate viewer routing and cross-origin polling errors.**
+
+
+
+## Round 5 (after every grocer, farm-scene and greenhouse writer, the counter token, viewSizes and one viewer hand-over): HOLD
+
+(The guarded runner misread Codex's own probe line "Error: The coop is full" as a provider error and wrote a BLOCK.json; the review itself completed. The runner now matches Codex's uppercase `ERROR:` only.)
+
+`node tools/test-core.js`: **1,785 passed, 0 failed**. Additional in-memory interleaving probes found blockers. No files changed.
+
+1. **P1: writes can still be lost.** Farm-save inventory:
+
+   - `ovu-barn.js:30,33,472,564`: locked through their action callers, settle and hint wrappers.
+   - `ovu-kitchen.js:97,106`: locked through cooking completion (`:162`) and grocer (`ovu-lane.js:205`).
+   - `ovu-villagers.js:120`: locked at `:124`.
+   - `ovu-lane.js:194,205,216,230`: seed/unlock, staple, herb-start and swap callers now locked.
+   - `ovu-farm.js:102,141,142,147,173,202,225,226`: active callers locked at `:348,420,431,486,489` or the grocer. `:126` writes only a shadow store; legacy `water()` (`:132`) has no production caller.
+   - **Exception:** `ovu-farm.js:376` calls unlocked `write()` (`:93`). Reproduced: guide captures farm → second store buys Bao under the shared lock → guide saves. **Bao disappears; hearts remain 880 instead of 1,000.**
+   - `ovu-greenhouse.js:192,224,241`, through save/thank sinks (`:153`; `ovu-rewards.js:149`): locked through grocer, planter and brew callers.
+   - `ovu-rewards.js:140,149`: generic sinks rely on caller locking. `spendWith` lives in `ovu-stamina.js:51`, committing at `:54`.
+   - **Exception:** `ovu-gamesave.js:201` applies farm patches under **`ovumind-gamesave`**, not the farm lock (`:242`). Reproduced: link upload captures farm → locked purchase → delayed acknowledgement (`:220`) restores two hens and 1,000 hearts, losing the purchase.
+
+2. **P2 results:**
+
+   - **Delayed reopening: NOT FIXED fully.** Existing-counter dismissal passes. Initial request → another sheet opens/closes → settle resolves still opens the counter (`ovu-barn.js:426–431`).
+   - **Size display: FIXED.** Three stored large eggs with pantry total one displays one; stored mix stays untouched (`ovu-ranch.js:145`; `ovu-today.js:71`; `ovu-barn.js:288`).
+   - **Duplicate routing: FIXED.** Load/poll/nested-boot in each tested order dispatched once (`ovu-pageview.js:55`).
+   - **Cross-origin polling: FIXED.** Throwing pathname or hash getters caused no uncaught error (`ovu-pageview.js:65`).
+
+3. **Async regression, P2:** Care clears its token before queuing the lock (`ovu-care.js:39–44`). Stop, close, replacement-sheet and sleep during that wait still planted, charged two energy, rendered/toasted and reopened the sheet. Farm lacks a re-check (`ovu-farm.js:431–451`); greenhouse likewise (`ovu-greenhouse.js:499–508`); harvest permits a closed sheet (`ovu-farm.js:420`). Shed cancellation passes (`:486,490`). No double charge or charge without effect reproduced; insufficient energy/storage failure preserved resources.
+
+**HOLD: P1 unlocked guide and GameSave overwrite; P2 residual ranch reopening and async cancellation/sheet ownership.**
+
+## Round 6 (after the guide flag and the game-save cycle inside the farm lock, the sheet counter guard and step re-checks): HOLD
+
+1. **P1: NOT FIXED.** With two real stores, shared storage and per-name lock queues, I reproduced: first-link PUT succeeds but its response is lost → sync releases locks → B’s locked seed claim persists `carrot:1` → A retries → `sendPending('link')` applies the old `p.save`, leaving `carrot:0` in both stores (`ovu-gamesave.js:209–221,277`). The uninterrupted pack → PUT → apply window is fixed (`:245`). Only `sync()` requests `ovumind-gamesave`; debounce, auth/startup and visibility callbacks invoke it (`:279,308–313`). No reverse acquisition or cyclic deadlock found. FIFO progress still requires network promises to settle.
+
+2. **P2 results.** **Ranch reopening: FIXED** for request → another sheet opens and closes → settle resolves; no counter opened (`ovu-barn.js:426–432`).
+
+   **Stop: NOT FIXED** for bed, well and planter steps. Timer completes → save queues behind farm lock → tap visible Stop → release lock: action still saves. `cur` becomes `null` before `done()` (`ovu-care.js:39–42`), so Stop returns without calling `o.cancel` (`:44`); `sheetSeq` never changes.
+
+   **Close / other sheet / other sheet opens then closes / sleep: FIXED** while awaiting the lock for bed, harvest, well, planter and clear. Guard probes rejected each (`ovu-farm.js:297–301,355–357,429,440–441`; `ovu-greenhouse.js:461–465,490–492,507–508`). Harvest and clear have no Stop control.
+
+3. **Regressions.** An unrelated external farm change can redraw the unchanged bed/well sheet (`ovu-farm.js:547–555`), increment `sheetSeq` (`room.js:635`) and silently discard its valid queued action. `renderBeds()` alone does not reopen sheets. Ordinary pre-completion `o.cancel` correctly prevents saving. Concurrent guide openings produced exactly one flag write (`ovu-farm.js:385`). No energy-only charge found: effect and charge share the commit (`ovu-stamina.js:51–55`).
+
+   Finite network delay preserves serialization, but blocking every farm action indefinitely is **P2**: fetch and body reading have no deadline (`ovu-gamesave.js:178–179,245`), compounded by ineffective pending Stop.
+
+4. **HOLD: P1 pending-link overwrite; P2 ineffective queued Stop and unbounded farm blocking.**
+
+`node tools/test-core.js`: **1,787 passed, 0 failed**. Files unchanged.
+
+
+
+## Round 7 (after the resent-link rule, the fetch deadline, Stop during the lock wait and the token-based re-check): HOLD
+
+`node tools/test-core.js`: **1,790 passed, 0 failed**. Additional in-memory reproductions used two real stores, shared storage, and per-name lock queues. No files modified.
+
+1. **P1: NOT FIXED.** Existing account → link accepted, answer lost → another tab claims one seed → resend: seed count becomes **1 → 0**, then uploads as 0. `ovu-gamesave.js:231` calls `linkMerge(now, remote)`, which starts from the remote copy and merges only rewards (`:68–77`). Empty-account recovery preserves the write.
+
+   Clash→pull and ordinary newer-revision/tainted pulls still discard unsaved farm changes under the documented account-wins policy (`:240–241`, `:279–283`).
+
+   Normal acknowledgement/repeated-sync cases did **not** duplicate hearts, owned items, or treats: the acknowledgement guard (`:219`) and linked-state check (`:273`) prevent re-merging. However, **tainted link recovery leaks tester rewards**: tainted link accepted → answer lost → farm write → resend produced **1,009 hearts instead of 10**, plus tester items/treats. The retry branch bypasses the tainted target selection (`:275`) and clears taint (`:231–232`).
+
+2. **P2 Stop: FIXED.** Tried timer completion → writer queued behind lock → Stop twice → release. Bed, well, and planter each performed **zero writes, one cancellation** (`ovu-care.js:42–46`; `ovu-farm.js:357,441`; `ovu-greenhouse.js:507`).
+
+   **P2 blocking: NOT FIXED overall.** A hung fetch aborts and releases the lock at 15 seconds. A hung token refresh creates **no deadline**: token acquisition precedes timer creation (`ovu-gamesave.js:175–178`), and auth refresh has no timeout (`ovu-auth.js:69,90`).
+
+   **External redraw: FIXED for the same operation.** All three queued writers survived a redraw. **New P2:** finish A → queue → close/open bed or planter B → release still writes A and reopens A. Guards compare generic `farmbed`/`ghbed` IDs (`ovu-farm.js:298–302,441,461`; `ovu-greenhouse.js:461–465,507,516`).
+
+3. **Other regressions:** Normal completed writers detach Stop through sheet replacement (`room.js:639`). Forcing its detached listener calls cancellation once; repeated calls are guarded (`ovu-care.js:46`). Stop-before-release prevents the writer’s second reopen. Ranch correctly replaces a sheet already open before tapping and rejects intervening openings/dismissal (`ovu-barn.js:426–431`). Undefined-token fallback executed successfully for all three writers; `tk && tk.stopped` is safe.
+
+**HOLD: P1 existing-account link overwrite; P1 tainted-link reward leakage; P2 unbounded auth wait; P2 stale bed/planter takeover.**
+
+
+
+## Round 8 (after the tainted-resend rule, the token-wait deadline and per-bed ownership of a queued save): HOLD on one item
+
+1. **P1: seed overwrite FIXED by policy.** Account-wins covers discarding unlinked farm edits; a field-wise merge would contradict that rule. **However, reward loss remains outside the policy.** Reproduced with two real stores and a mock server: account 10 + phone A’s 5 → link accepted, reply lost → A earns 3 → phone B adds 7 → A resends. Result: **22 hearts, expected 25**. Recovery clears `journal` at `ovu-gamesave.js:236`; the newer-revision pull then replays that empty journal at `ovu-gamesave.js:285`. Preserve A’s unapplied award journal through recovery.
+
+   **Specified tainted cases: FIXED.** Lost reply → tester farm write → resend retained only the account’s 10 hearts/items/treats (`ovu-gamesave.js:235`). With no account copy, the tainted phone made zero uploads and preserved local play (`ovu-gamesave.js:278`).
+
+2. **P2 token deadline: FIXED.** A never-resolving `A().token()` timed out, returned `error`, and allowed a subsequent sync. Late token resolution caused no request (`ovu-gamesave.js:175`, `ovu-gamesave.js:177`).
+
+   **P2 stale bed/planter takeover: FIXED.** Finish A → queue → close A → open B → release produced zero writes and left B open. Guards check the bed identity (`ovu-farm.js:301`, `ovu-greenhouse.js:464`), including harvest and planter clearing (`ovu-farm.js:431`, `ovu-greenhouse.js:493`).
+
+3. **No regression reproduced in the requested cases.** External redraw reopened the same farm bed and its queued operation still committed once (`ovu-farm.js:557`, `ovu-farm.js:443`). Well filling succeeded both with and without `back`; its guard correctly checks `shown.kind`, without comparing the navigation argument (`ovu-farm.js:302`, `ovu-farm.js:359`). A queued harvest from A saved nothing after B replaced it (`ovu-farm.js:431`).
+
+`node tools/test-core.js`: **1,791 passed, 0 failed**. Additional in-memory probes above; no files modified.
+
+**HOLD: P1 post-link awards lost when another phone advances the account before resend; no remaining P2 in the requested cases.**
+
+
+
+## Round 9 (after the resend journal keeps the hearts earned since the link was packed): HOLD on one item
+
+1. **Both requested cases pass.** With B’s intervening +7, A resends and reaches **25**, stable across repeated syncs. Without B, the result is **18**, with no double counting. The preserved journal at `ovu-gamesave.js:238` feeds newer-revision replay (`:286–288`); the same-revision path uploads the current pack (`:291–293`). The parent commit reproduced **22**.
+
+2. **P1 remains: tester mode entered after the link was packed.** Reproduced with real `OvuStore` and `OvuRewards.buy('cat')`:
+   - Account 10 + A’s 5; link accepted, reply lost.
+   - Enable tester, buy the 150-heart cat free, disable tester, resend.
+   - Account ends with **15 hearts and the unpaid cat**.
+
+   Current `m.tainted` is true, but pending `p.tainted` remains false. Resend trusts the older flag (`ovu-gamesave.js:235`), then clears current taint (`:238`), bypassing the protective pull (`:285`). Tester purchasing bypasses payment at `ovu-rewards.js:166–171`. Recovery must honor taint acquired since packing before merging or uploading.
+
+   No additional P1 reproduced in the other tested link/resend/clash/pull cases.
+
+`node tools/test-core.js`: **1,791 passed, 0 failed**. No files modified.
+
+**Verdict: HOLD.**
+
+## Round 10 (after the resend honours tester mode entered since the link was packed): HOLD on one item
+
+1. **The unpaid-cat leak is fixed in both cases**, reproduced using real `OvuStore` and `OvuRewards.buy('cat')` with a mock server. Without an existing account copy, account and phone both finish at **5 hearts, no cat**. With account **10 + phone 5**, the account retains **15**, but the phone finishes at **10**, with no cat. The phone therefore does **not** match the account.
+
+2. **P1 remains: legitimate hearts disappear during recovery.** [ovu-gamesave.js:236](./ovu-gamesave.js#L236) restores the pre-link `p.remote`, although the server accepted `p.save` containing 15 hearts. [ovu-gamesave.js:240](./ovu-gamesave.js#L240) marks that revision acknowledged, clears taint and leaves nothing dirty, preventing reconciliation. Repeated syncs preserve the mismatch. Earning one more heart returns `refused` at [ovu-gamesave.js:294](./ovu-gamesave.js#L294); after earning five total, the account still has **15 instead of 20**. No additional P1 reproduced in the reviewed paths.
+
+`node tools/test-core.js`: **1,791 passed, 0 failed**. No files modified.
+
+**Verdict: HOLD.**
+
+## Round 11 (after the tainted resend takes the copy the server accepted, not the pre-link account copy): MERGE
+
+1. **Yes.** Reproduced with real `OvuStore`/`OvuRewards` and a mock server: recovery gives **15 on both, no cat**; earning five more gives **20 on both**. The accepted payload is restored at `ovu-gamesave.js:236`, with the matching earnings baseline and hash at `:240`. The parent commit reproduces the **10/15** mismatch.
+
+2. **No remaining P1 found** in the reviewed link/resend/clash/pull/tainted paths. Additional probes passed with intervening account writes, normal resend earnings, tainted link clashes and ordinary-save resends (`ovu-gamesave.js:248–249,283–295`). `node tools/test-core.js`: **1,791 passed, 0 failed**. Files unchanged.
+
+**Verdict: MERGE.**
+
+Browser suite on the round-seven tree: 458 passed, 1 failed (the spring's onsen-egg read, a test that read a locked writer on the same task; split in 6e08318, re-run by CI on the pull request).

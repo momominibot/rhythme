@@ -75,7 +75,7 @@
 
   // floating mascot (+ dismiss cross)
   var fab=document.createElement('div'); fab.className='ovmascot'; fab.setAttribute('aria-label','Rhythme companion');
-  fab.innerHTML=orbHTML()+'<span class="ovx" aria-label="Hide Rhythme">✕</span>';
+  fab.innerHTML=orbHTML()+'<span class="ovx" aria-label="Hide Rhythme"></span>';
   document.body.appendChild(fab);
 
   // small restore button (shown when hidden)
@@ -90,7 +90,7 @@
   if(HIDDEN){ fab.style.display='none'; restore.classList.add('on'); }
 
   // random pop-ups from Rhythme (gentle nudges + jokes) triggered as you scroll
-  var NUDGES=['Psst… time for some water? 💧','Take one deep breath with me? 🌬️','How are you feeling today? 💛','You\'re doing lovely today ✨','Little reminder: unclench your jaw & drop your shoulders 😌','Have you moved your body today? A stretch counts 🧘‍♀️'];
+  var NUDGES=['Psst… time for some water?','Take one deep breath with me?','How are you feeling today?','You\'re doing lovely today','Little reminder: unclench your jaw & drop your shoulders','Have you moved your body today? A stretch counts'];
   var bub=document.createElement('div'); bub.className='ovbub'; document.body.appendChild(bub);
   bub.addEventListener('click',open);
   var lastMsg='';
@@ -108,19 +108,19 @@
   window.addEventListener('scroll', function(){ onScroll(window.scrollY||document.documentElement.scrollTop||0); }, {passive:true});
   var _sc=document.querySelector('.scroll'); if(_sc){ _sc.addEventListener('scroll', function(){ onScroll(_sc.scrollTop); }, {passive:true}); }
   // one warm hello shortly after load
-  setTimeout(function(){ if(!HIDDEN && !veil.classList.contains('on')){ bub.textContent='Hi, I\'m here whenever you need me 💛'; bub.classList.add('on'); clearTimeout(bub._t); bub._t=setTimeout(function(){bub.classList.remove('on');},4500);} }, 3200);
+  setTimeout(function(){ if(!HIDDEN && !veil.classList.contains('on')){ bub.textContent='Hi, I\'m here whenever you need me'; bub.classList.add('on'); clearTimeout(bub._t); bub._t=setTimeout(function(){bub.classList.remove('on');},4500);} }, 3200);
 
   // jokes — cheeky but tasteful
   var JOKES=[
-    'Bloated today? Same. This week\'s outfit is elastic waistband and pure confidence. 🎈',
-    'Your hormones called — they\'re doing their monthly group project again and nobody\'s on the same page. 😅',
-    'Estrogen and progesterone walk into a bar and immediately fight over the thermostat. 🔥❄️',
-    'Ovulation week: your body\'s like "let\'s make some questionable decisions." 😏',
-    'Cramps are just your uterus doing hot yoga without asking your permission. 🧘‍♀️',
-    'Your uterus is that dramatic roommate who redecorates once a month and makes it everyone\'s problem. 🩸',
-    'Discharge is normal, babe — your body is self-cleaning. Fancier than most kitchens. ✨',
-    'PMS: when you cry at a dog food advert and then fight someone over the last biscuit. 🍪',
-    'Craving chocolate AND a nap AND a fight? Ah, the luteal phase trilogy. 🍫😴🥊'
+    'Bloated today? Same. This week\'s outfit is elastic waistband and pure confidence.',
+    'Your hormones called — they\'re doing their monthly group project again and nobody\'s on the same page.',
+    'Estrogen and progesterone walk into a bar and immediately fight over the thermostat.',
+    'Ovulation week: your body\'s like "let\'s make some questionable decisions."',
+    'Cramps are just your uterus doing hot yoga without asking your permission.',
+    'Your uterus is that dramatic roommate who redecorates once a month and makes it everyone\'s problem.',
+    'Discharge is normal, babe — your body is self-cleaning. Fancier than most kitchens.',
+    'PMS: when you cry at a dog food advert and then fight someone over the last biscuit.',
+    'Craving chocolate AND a nap AND a fight? Ah, the luteal phase trilogy.'
   ];
   var ji=Math.floor(JOKES.length*0.3);
 
@@ -129,7 +129,7 @@
   // panel
   var veil=document.createElement('div'); veil.className='ovveil';
   veil.innerHTML='<div class="ovsheet"><div class="ovgrab"></div>'
-    +'<div class="ovhead"><div class="orb">'+orbHTML()+'</div><div><b>Hi, I\'m Rhythme</b><span>Your cycle companion ✨</span></div></div>'
+    +'<div class="ovhead"><div class="orb">'+orbHTML()+'</div><div><b>Hi, I\'m Rhythme</b><span>Your cycle companion</span></div></div>'
     +'<div class="ovchips" id="ovchips">'
     +'<div class="ovchip on" data-t="ask"><span class="ms">chat</span>Ask me anything</div>'
     +'<div class="ovchip" data-t="mood"><span class="ms">mood</span>Mood</div>'
@@ -163,7 +163,7 @@
       +'<div style="height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin:4px 0 14px"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#7FAEC9,#BBDBFC);transition:.3s"></div></div>'
       +'<button class="ovbtn" id="ovAddW"><span class="ms">add</span> Log a glass</button> '
       +'<button class="ovbtn ghost" id="ovDelW">Undo</button>'
-      +'<div class="ovfoot" style="margin-top:12px">'+(water>=WGOAL?'Goal smashed — hydration queen 👑':'Keep sipping, you\'ve got this 💧')+'</div></div>';
+      +'<div class="ovfoot" style="margin-top:12px">'+(water>=WGOAL?'Goal smashed — hydration queen':'Keep sipping, you\'ve got this')+'</div></div>';
     pane.querySelectorAll('.ovglasses i').forEach(function(el){ el.onclick=function(){ water=(+el.dataset.i)+1; renderWater(); }; });
     pane.querySelector('#ovAddW').onclick=function(){ if(water<WGOAL)water++; renderWater(); };
     pane.querySelector('#ovDelW').onclick=function(){ if(water>0)water--; renderWater(); };
@@ -193,7 +193,7 @@
     btns.forEach(function(b){ b.onclick=function(){
       btns.forEach(function(x){x.classList.remove('on');x.classList.add('dim');}); b.classList.add('on'); b.classList.remove('dim');
       var label=MOODS.filter(function(m){return m[0]===b.dataset.m;})[0][1];
-      pane.querySelector('#ovMoodMsg').innerHTML='<b style="color:var(--mauve)">'+label+'</b> logged — thanks for checking in 💛';
+      pane.querySelector('#ovMoodMsg').innerHTML='<b style="color:var(--mauve)">'+label+'</b> logged — thanks for checking in';
     };});
   }
 
@@ -208,20 +208,20 @@
   var chat=[];
   function reply(q){
     q=q.toLowerCase();
-    if(/water|hydrat|drink/.test(q)) return 'Let\'s get you sipping 💧 Tap the Water tab and I\'ll track your glasses today.';
-    if(/tired|exhaust|fatigue|sleep/.test(q)) return 'Sounds like your body wants rest. In the luteal phase that\'s totally normal — maybe an early night tonight? 😴';
-    if(/cramp|pain|hurt/.test(q)) return 'Cramps are the worst. A warm compress, magnesium, and gentle movement can help — and I\'m logging it so we spot the pattern. 🩹';
-    if(/sad|down|anxious|stress|cry/.test(q)) return 'I hear you 💛 Want to try a 4-7-8 breath with me? Tap Breathe. And remember — hormones amplify feelings, they don\'t invent your worth.';
+    if(/water|hydrat|drink/.test(q)) return 'Let\'s get you sipping Tap the Water tab and I\'ll track your glasses today.';
+    if(/tired|exhaust|fatigue|sleep/.test(q)) return 'Sounds like your body wants rest. In the luteal phase that\'s totally normal — maybe an early night tonight?';
+    if(/cramp|pain|hurt/.test(q)) return 'Cramps are the worst. A warm compress, magnesium, and gentle movement can help — and I\'m logging it so we spot the pattern.';
+    if(/sad|down|anxious|stress|cry/.test(q)) return 'I hear you Want to try a 4-7-8 breath with me? Tap Breathe. And remember — hormones amplify feelings, they don\'t invent your worth.';
     if(/joke|laugh|funny|cheer/.test(q)) return JOKES[(ji=(ji+1)%JOKES.length)];
-    if(/hi|hey|hello/.test(q)) return 'Hey you ✨ How are you feeling today? I can track water, mood, breathing — or just make you laugh.';
+    if(/hi|hey|hello/.test(q)) return 'Hey you How are you feeling today? I can track water, mood, breathing — or just make you laugh.';
     if(/fertile|ovulat|pregnan|conceive/.test(q)) return 'Your fertile window shows on the Cycle tab — egg-white discharge + a temp dip are your best signs. Want me to open it?';
-    return 'Great question! I\'ll have the full AI answer for you once I\'m fully connected ✨ — for now I can log water, mood, breathing, and cheer you up.';
+    return 'Great question! I\'ll have the full AI answer for you once I\'m fully connected — for now I can log water, mood, breathing, and cheer you up.';
   }
   function renderAsk(){
     pane.innerHTML='<div class="ovchat" id="ovChat"></div>'
       +'<div class="ovask"><input id="ovIn" placeholder="Ask Rhythme anything…"/><button id="ovSend"><span class="ms">arrow_upward</span></button></div>';
     var box=pane.querySelector('#ovChat');
-    if(!chat.length) chat.push(['o','Ask me anything about your cycle, or tell me how you\'re doing 💛']);
+    if(!chat.length) chat.push(['o','Ask me anything about your cycle, or tell me how you\'re doing']);
     function paint(){ box.innerHTML=chat.map(function(m){return '<div class="ovmsg '+m[0]+'">'+m[1]+'</div>';}).join(''); box.scrollTop=box.scrollHeight; }
     paint();
     var inp=pane.querySelector('#ovIn');

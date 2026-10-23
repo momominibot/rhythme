@@ -116,7 +116,8 @@
   function open(seatId) {
     var seat = SEATS[seatId], p = seat && SCRIPTS[seat.practice]; if (!seat) return;
     if (W.napping && W.napping()) return;
-    if (R.sessionOn() || R.practiceOn() || run) { R.hudOn(true); return; }
+    if (run) { showPanel(); return; }
+    if (R.refuseBusy ? R.refuseBusy() : (R.sessionOn() || R.practiceOn())) { if (!R.refuseBusy) R.hudOn(true); return; } /* one activity at a time (room.js activityNow) */
     var mins = Math.max(1, Math.round(total(seat.practice, reduced()) / 60));
     R.openSheet('seat-' + seat.practice, seat.title, seat.sub, 'chair',
       '<div class="erin small"><img src="assets/avatars/erin/erin-chibi-face.webp" alt="Erin Lee"><div><b>' + esc(p.name) + '</b><small>' + esc(p.about) + '. About ' + mins + ' minutes in Erin’s voice, seated. Pause, skip a step or stop whenever you like.</small></div></div>' +
@@ -129,14 +130,15 @@
   var run = null, panel = null, pendingAsk = null, doneWait = 0;
   function otherOwner() {
     if (R.asleep()) return ['She is asleep. Tap the bed to wake her first.', 'bedtime'];
+    var a = R.activityNow && R.activityNow(); if (a && a.kind !== 'seat') return [R.busyLine(a), a.icon, true]; /* true: refuseBusy also brings its controls back */
     if (R.sessionOn() || R.practiceOn() || R.meditating() || (root.OvuMorning && root.OvuMorning.active())) return ['Finish what you are doing first.', 'info'];
     return null;
   }
   function begin(seatId) {
     var seat = SEATS[seatId]; if (!seat || run) return;
-    if (root.OvuSound) root.OvuSound.play('boop'); /* a practice begins */
     var L = R.layout(); if (!L || L.id !== seat.scene) return;
-    var other = otherOwner(); if (other) { R.toast(other[0], other[1]); return; }
+    var other = otherOwner(); if (other) { if (!(other[2] && R.refuseBusy && R.refuseBusy())) R.toast(other[0], other[1]); return; }
+    if (root.OvuSound) root.OvuSound.play('boop'); /* a practice begins (only once nothing refused it) */
     var sp = spotFor(seatId); if (!sp || !sp.spot || !sp.spot.seat) return;
     var st = steps(seat.practice, reduced()), audio = null;
     try { audio = new Audio(); } catch (e) { }
@@ -216,7 +218,7 @@
   }
   function quietToggle() {
     if (!run) return; run.quiet = !run.quiet;
-    if (!run.quiet && root.OvuVoice && root.OvuVoice.muted && root.OvuVoice.muted()) root.OvuVoice.set(false); /* Voice on lifts the app's remembered mute, as Morning start does */
+    if (!run.quiet && root.OvuVoice && root.OvuVoice.allow) root.OvuVoice.allow(run.audio, true); /* Voice on is for this run: the app-wide switch (You tab) stays as she set it (Jamie, 22 Oct) */
     if (run.quiet) { silence(run.audio); run.pending = null; }
     else { var s = step(); if (s && !run.paused) play(s.audio); else if (s) run.pending = s.audio; } /* the voice comes back with the current line from its start */
     paint();
@@ -301,7 +303,7 @@
   function hideFx() { if (fx && fx.parentNode) fx.remove(); fx = null; fxKind = null; }
   function fxTick() { var k = wanted(); if (k !== fxKind) showFx(k); else if (k && fx && !fx.isConnected) showFx(k); }
 
-  SE.open = open; SE.begin = begin; SE.cancel = cancel; SE.stop = stop; SE.active = function () { return !!run; };
+  SE.open = open; SE.begin = begin; SE.cancel = cancel; SE.stop = stop; SE.active = function () { return !!run; }; SE.reveal = function () { if (run) showPanel(); };
   SE.state = function () { return run ? { seat: run.id, i: run.i, key: step() && step().key, paused: run.paused, quiet: run.quiet, left: run.left, seconds: Math.round(run.clock.ms() / 1000), ms: run.clock.ms() } : null; };
   SE.fxKind = function () { return fxKind; }; SE.pendingAsk = function () { return !!pendingAsk; };
   R.on('boot', function () {
@@ -316,6 +318,7 @@
     R.on('layout', function (L) { if (run && (!L || L.id !== run.seat.scene)) cancel(); fxTick(); });
     R.on('activity', function (kind, id) { if (run && !(kind === 'seat' && id === run.id)) cancel(); });
     R.on('beforeWalk', function () { if (run) cancel(); });
+    R.on('outfit', function () { if (run && run.el && G.reseat) G.reseat(run.el, run.spot.seat); }); /* a new outfit mid-practice: she stays seated, in it */
     R.on('props', function () { if (run && run.el && !run.el.isConnected) R.els.props.appendChild(run.el); fxTick(); });
     S.subscribe(function (reason) {
       if (!run && !pendingAsk) return;

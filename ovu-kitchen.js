@@ -9,6 +9,9 @@
 (function (root) {
   'use strict';
   /* one purchase is one portion, enough for one dish; eggs go to the barn's pantry */
+  /* each staple's picture (assets/food): the grocer shows it on the tile (Jamie, 22 Oct: "I need pic") */
+  var STAPLE_PIC = { rice: 'staple-rice', egg: 'eggs', noodles: 'staple-noodles', tofu: 'staple-tofu', garlic: 'staple-garlic', coconut: 'staple-coconut', honey: 'staple-honey', yoghurt: 'greek-yogurt' };
+  function staplePic(k) { return '<img class="croppic" src="assets/food/' + (STAPLE_PIC[k] || 'eggs') + '.webp" alt="">'; }
   var STAPLES = {
     rice: { name: 'Rice', cost: 2, icon: 'rice_bowl' },
     egg: { name: 'Eggs', cost: 3, icon: 'egg', pantry: true, pl: true },
@@ -84,13 +87,16 @@
   /* the dish is made: every ingredient goes in one save, or nothing does; no hearts, no energy, no diary entry */
   function cook(S, id) {
     var c = canCook(S, id); if (!c.ok) return c;
-    var r = c.recipe, f = copy(farm(S));
+    var r = c.recipe, f = copy(farm(S)), RN = root.OvuRanch;
+    if (n0(f.dishes && f.dishes[r.id]) >= 99) return { ok: false, why: 'Your bag already holds 99 of this dish. Give some away first.' }; /* refuse before anything is used (Codex, 22 Oct) */
     Object.keys(r.needs).forEach(function (k) {
       var n = r.needs[k];
       if (FM().CROPS[k] || HERBS[k]) { f.harvest[k] = n0(f.harvest[k]) - n; if (!f.harvest[k]) delete f.harvest[k]; }
-      else if (k === 'egg') f.pantry.egg = n0(f.pantry.egg) - n;
+      else if (k === 'egg') { f.pantry.egg = n0(f.pantry.egg) - n; if (RN) f = RN.takeProduct(f, 'egg', n).farm; /* the size mix follows the eggs out */ }
       else f.kitchen[k] = n0(f.kitchen[k]) - n;
     });
+    /* the dish stays in her bag, Harvest Moon style (Jamie, 22 Oct: "dishes can be used to court the NPC"): up to 99 of each; game state only */
+    f.dishes = Object.assign({}, f.dishes || {}); f.dishes[r.id] = Math.min(99, n0(f.dishes[r.id]) + 1);
     try { if (S.commit) S.commit({ farm: f }); else S.setState({ farm: f }); } catch (e) { return { ok: false, why: 'That could not be saved just now.' }; } /* commit: a failed save leaves memory as it was */
     return { ok: true, recipe: r };
   }
@@ -99,7 +105,7 @@
     var st = STAPLES[id]; if (!st) return { ok: false, why: 'Not on the shelf.' };
     var f = copy(farm(S)), n = st.pantry ? n0(f.pantry.egg) : n0(f.kitchen[id]);
     if (n >= cap()) return { ok: false, why: 'The kitchen has all the ' + st.name.toLowerCase() + ' it can hold.' };
-    if (st.pantry) f.pantry.egg = n + 1; else f.kitchen[id] = n + 1;
+    if (st.pantry) { f.pantry.egg = n + 1; if (root.OvuRanch) f = root.OvuRanch.addProduct(f, 'egg', 'small', 1); } else f.kitchen[id] = n + 1; /* a grocer egg is a small one */
     try { RW.spend(st.cost, 'staple:' + id, { farm: f }); } catch (e) { return { ok: false, why: e.message }; }
     return { ok: true, id: id, have: n + 1 };
   }
@@ -107,7 +113,7 @@
   /* where she can cook: the farm's basket, and a home whose plate draws a kitchen (only the family home today) */
   var STOVES = ['familyhome'];
   var K = { STAPLES: STAPLES, HERBS: HERBS, STEPS: STEPS, STEP_MS: STEP_MS, RECIPES: RECIPES, STOVES: STOVES, recipe: recipe, kitchenOf: kitchenOf, have: have, label: label, needsText: needsText, missing: missing, canCook: canCook, ready: ready, cook: cook, buyStaple: buyStaple, staplesOf: staplesOf, stepMs: null };
-  root.OvuKitchen = K;
+  root.OvuKitchen = K; K.staplePic = staplePic; K.STAPLE_PIC = STAPLE_PIC;
 
   /* ---------- the sheets ---------- */
   var S = root.OvuStore, R = root.OvuRoom, W = root.OvuWalk, doc = root.document;
@@ -127,7 +133,7 @@
   }
   function openKitchen() {
     var here = where();
-    var list = RECIPES.map(function (r) { var c = canCook(S, r.id); return '<button type="button" class="btn soft" data-recipe="' + r.id + '"' + (c.ok ? '' : ' disabled') + '><span class="ms">' + r.icon + '</span><span><b>' + esc(r.name) + '</b><small>' + esc(needsText(r)) + ' · ' + esc(state(r, c)) + '</small></span></button>'; }).join('');
+    var list = RECIPES.map(function (r) { var c = canCook(S, r.id); return '<button type="button" class="btn soft" data-recipe="' + r.id + '"' + (c.ok ? '' : ' disabled') + '><img class="croppic" src="assets/food/dish-' + r.id + '.webp" alt=""><span><b>' + esc(r.name) + '</b><small>' + esc(needsText(r)) + ' · ' + esc(state(r, c)) + '</small></span></button>'; }).join('');
     R.openSheet('kitchen', here === 'farm' ? 'Cook from the basket' : 'The kitchen', 'A dish, one step at a time', 'skillet',
       mind('Choose one dish. Cooking here is slow on purpose.') + '<div class="seedlist one" id="kitchenList">' + list + '</div>' + stockLine(S) +
       '<p class="help">Cooking uses what the dish needs from the basket and the pantry. It earns no hearts, takes no energy and logs nothing for you.</p>');
@@ -155,18 +161,17 @@
     if (!root.OvuCare.step(acts, o, next)) openRecipe(r.id); /* a step that cannot start leaves the recipe as it was */
   }
   function finish(r) {
-    var res = cook(S, r.id);
-    if (!res.ok) { R.toast(res.why, 'info'); openKitchen(); return; }
-    R.chime('save'); openDish(r);
+    var go = function () { var res = cook(S, r.id); if (!res.ok) { R.toast(res.why, 'info'); openKitchen(); return; } R.chime('save'); openDish(r); };
+    if (FM().locked) FM().locked(S, go); else go(); /* the farm lock: another tab's purchase or harvest lands first, then the pot is checked again */
   }
   /* the dish, and one question; Yes opens the food diary filled in, and nothing is saved unless she saves it there */
   function openDish(r) {
     var line = R.moment ? R.moment('cookdish', { quiet: true }) : '';
     R.openSheet('kitchen-dish', r.name, 'On the table', r.icon,
-      '<p>' + esc(r.name) + ' is ready.</p>' + mind(line) +
+      '<div class="dishpic"><img src="assets/food/dish-' + r.id + '.webp" alt="' + esc(r.name) + '"></div><p>' + esc(r.name) + ' is ready.</p>' + mind(line) +
       '<p><b>Did you eat something like this today?</b></p>' +
       '<div class="row"><button type="button" class="btn primary" id="dishYes"><span class="ms">restaurant</span>Yes, open the diary</button><button type="button" class="btn soft" id="dishNo">No</button></div>' +
-      '<p class="help">Only a meal you really ate. The kitchen never logs anything for you.</p>');
+      '<p class="help">It is in your bag now, to share. The diary only gets a meal you really ate.</p>');
     var y = doc.getElementById('dishYes'), n = doc.getElementById('dishNo');
     if (y) y.addEventListener('click', function () { R.chime('tap'); if (R.openDiary) R.openDiary('add', { notes: r.name + ', cooked at home', tags: ['home-cooked'] }); else R.hideSheet(); });
     if (n) n.addEventListener('click', function () { R.chime('tap'); R.hideSheet(); });

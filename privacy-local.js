@@ -5,7 +5,7 @@
   'use strict';
   const STORES = [
     /* the room's own stores (launch sweep, 20 Oct 2026: the list used to start at the earlier pages and missed the diary) */
-    ['ovumind_db_v1', 'Your Rhythme diary: entries, answers, choices and room', 'current'],
+    ['ovumind_db_v1', 'Your Rhythme diary: entries, answers, choices, room, water records and the water questions (water stays on this phone even with cloud backup on)', 'current'],
     ['ovumind_food_journal', 'Older copy of your meals', 'current'],
     ['ovumind_cycle', 'Older copy of your cycle summary', 'current'],
     ['ovumind_ai_v1', "Luna's AI settings", 'preferences'],
@@ -17,6 +17,8 @@
     ['rhythme_podcast_v1', "Erin's podcast listening on this phone", 'additional'],
     ['rhythme_voice_muted', 'Voice on or off', 'preferences'],
     ['ovumind_sync_v1', 'Cloud backup bookkeeping (no entries)', 'preferences'],
+    ['ovumind_sync_pos_v1', 'Cloud backup position: which account and how far it has synced (no entries)', 'preferences'],
+    ['ovumind_sync_reset_v1', 'Cloud backup reset marker (no entries)', 'preferences'],
     ['ovumind_desk_v1', 'Desk layout', 'preferences'],
     ['rhythme_plus_v1', 'Rhythme Plus access on this phone', 'preferences'],
     ['rhythme_plus_v1_pending', 'A Rhythme Plus code being checked', 'preferences'],
@@ -49,7 +51,7 @@
     ['ovuluna_units', 'Measurement units preference', 'preferences'],
     ['ovuluna_auth', 'Legacy local sign-in appearance (not a verified account)', 'legacy'],
     ['ovuluna_preferences_v1', 'Welcome preferences', 'preferences'],
-    ['ovuluna_persona', 'Life-stage appearance', 'preferences'],
+    ['ovuluna_persona', 'Your life chapter (Settings)', 'preferences'],
     ['ovuluna_theme', 'Color theme', 'preferences'],
     ['ovuluna_fontsize', 'Text size', 'preferences'],
     ['ovuluna_hormone_view', 'Hormone chart view', 'preferences'],

@@ -43,7 +43,7 @@
 .prompt-card{ padding:14px 16px; background:linear-gradient(135deg,rgba(196,181,224,.14),rgba(245,198,184,.1)); border:1.5px solid rgba(196,181,224,.3); border-radius:var(--r-sm); margin-bottom:10px; }
 .prompt-card:last-child{ margin-bottom:0; }
 .prompt-card .pc-q{ font-size:13px; font-weight:700; color:var(--ink); line-height:1.45; }
-.prompt-card .pc-q::before{ content:'💬 '; }
+.prompt-card .pc-q::before{ content:''; }
 .prompt-card .pc-hint{ font-size:11px; color:var(--taupe); margin-top:6px; font-style:italic; }
 .shared-insight{ display:flex; gap:10px; padding:12px 0; border-bottom:1px solid var(--line-soft); }
 .shared-insight:last-child{ border-bottom:none; }
@@ -78,7 +78,7 @@
     <div class="card">
       <h2 class="sec" style="margin-top:0">Your Partner</h2>
       <div class="connected-card">
-        <div class="connected-avatar">🧑</div>
+        <div class="connected-avatar"><span class="ms" aria-hidden="true">person</span></div>
         <div class="connected-info">
           <div class="connected-name">Alex Morgan</div>
           <div class="connected-meta">Connected since Aug 12, 2026 · Partner app</div>
@@ -87,8 +87,8 @@
         <a href="settings.html" class="ms" style="color:var(--faded);font-size:22px;text-decoration:none">more_horiz</a>
       </div>
       <div class="grid2" style="margin-top:12px">
-        <div class="metric"><div class="m-ic">📅</div><div class="m-v">27</div><div class="m-l">Days shared</div></div>
-        <div class="metric"><div class="m-ic">💬</div><div class="m-v">14</div><div class="m-l">Insights sent</div></div>
+        <div class="metric"><div class="m-ic"><span class="ms" aria-hidden="true">calendar_month</span></div><div class="m-v">27</div><div class="m-l">Days shared</div></div>
+        <div class="metric"><div class="m-ic"><span class="ms" aria-hidden="true">chat_bubble</span></div><div class="m-v">14</div><div class="m-l">Insights sent</div></div>
       </div>
     </div>
 
@@ -108,19 +108,19 @@
       <h2 class="sec" style="margin-top:0">Shared Cycle Insights</h2>
       <div class="sub" style="margin-bottom:8px">Your partner receives gentle, anonymized updates about your phase and needs. You control what's shared.</div>
       <div class="shared-insight">
-        <span class="si-ic">🌙</span>
+        <span class="si-ic"><span class="ms" aria-hidden="true">bedtime</span></span>
         <div class="si-txt"><b>Luteal phase</b> — your partner knows you may need more rest and comfort this week <span class="qi" data-evidence="cycle-phases">i</span>.</div>
       </div>
       <div class="shared-insight">
-        <span class="si-ic">😴</span>
+        <span class="si-ic"><span class="ms" aria-hidden="true">bedtime</span></span>
         <div class="si-txt"><b>Sleep note</b> — "She's been sleeping 6.2 hrs, may be tired. Progesterone can affect sleep quality <span class="qi" data-evidence="sleep-cycle-hormones">i</span>."</div>
       </div>
       <div class="shared-insight">
-        <span class="si-ic">🍫</span>
+        <span class="si-ic"><span class="ms" aria-hidden="true">cookie</span></span>
         <div class="si-txt"><b>Craving alert</b> — magnesium-rich foods may help with PMS symptoms <span class="qi" data-evidence="magnesium-pms">i</span>. Dark chocolate suggestion sent.</div>
       </div>
       <div class="shared-insight">
-        <span class="si-ic">💧</span>
+        <span class="si-ic"><span class="ms" aria-hidden="true">water_drop</span></span>
         <div class="si-txt"><b>Hydration reminder</b> — shared gentle nudge to drink water together.</div>
       </div>
       <a href="settings.html" class="btn ghost" style="margin-top:10px">Manage Sharing Preferences <span class="ms" style="font-size:18px">arrow_forward</span></a>
@@ -132,22 +132,22 @@
       <div class="sub" style="margin-bottom:12px">A quick guide to each phase — share this to help them understand your rhythm <span class="qi" data-evidence="cycle-phases">i</span>.</div>
       <div class="grid2">
         <div class="phase-know">
-          <div class="pk-head"><span class="pk-ic">🩸</span><span class="pk-name">Menstrual</span></div>
+          <div class="pk-head"><span class="pk-ic"><span class="ms" aria-hidden="true">water_drop</span></span><span class="pk-name">Menstrual</span></div>
           <div class="pk-desc">Days 1–5. Energy is low; body is shedding and resetting.</div>
           <div class="pk-tip"><b>Partner tip:</b> Offer warmth, quiet, and patience. Help with chores so she can rest.</div>
         </div>
         <div class="phase-know">
-          <div class="pk-head"><span class="pk-ic">🌱</span><span class="pk-name">Follicular</span></div>
+          <div class="pk-head"><span class="pk-ic"><span class="ms" aria-hidden="true">eco</span></span><span class="pk-name">Follicular</span></div>
           <div class="pk-desc">Days 6–13. Estrogen rises; energy and confidence build.</div>
           <div class="pk-tip"><b>Partner tip:</b> Plan active dates, adventures, and creative projects together.</div>
         </div>
         <div class="phase-know">
-          <div class="pk-head"><span class="pk-ic">✨</span><span class="pk-name">Ovulation</span></div>
+          <div class="pk-head"><span class="pk-ic"><span class="ms" aria-hidden="true">auto_awesome</span></span><span class="pk-name">Ovulation</span></div>
           <div class="pk-desc">Days 14–16. Peak energy, sociability, and libido.</div>
           <div class="pk-tip"><b>Partner tip:</b> This is a great time for connection, romance, and social plans.</div>
         </div>
         <div class="phase-know">
-          <div class="pk-head"><span class="pk-ic">🌙</span><span class="pk-name">Luteal</span></div>
+          <div class="pk-head"><span class="pk-ic"><span class="ms" aria-hidden="true">bedtime</span></span><span class="pk-name">Luteal</span></div>
           <div class="pk-desc">Days 17–28. Progesterone rises; PMS possible before next period.</div>
           <div class="pk-tip"><b>Partner tip:</b> Be extra supportive. Mood swings and cravings are normal <span class="qi" data-evidence="magnesium-pms">i</span>.</div>
         </div>
@@ -159,7 +159,7 @@
       <h2 class="sec" style="margin-top:0">Intimacy Guide</h2>
       <div class="sub" style="margin-bottom:12px">Desire and comfort shift across the cycle. Here's how to connect at each stage.</div>
       <div class="intimacy-card">
-        <div class="ic-ic">💕</div>
+        <div class="ic-ic"><span class="ms" aria-hidden="true">favorite</span></div>
         <div class="ic-body">
           <div class="ic-t">Ovulation window</div>
           <div class="ic-d">Libido naturally peaks around ovulation due to rising estrogen <span class="qi" data-evidence="cycle-phases">i</span>. This is often a time of heightened connection.</div>
@@ -167,7 +167,7 @@
       </div>
       <div style="height:8px"></div>
       <div class="intimacy-card">
-        <div class="ic-ic">🤗</div>
+        <div class="ic-ic"><span class="ms" aria-hidden="true">volunteer_activism</span></div>
         <div class="ic-body">
           <div class="ic-t">Luteal phase</div>
           <div class="ic-d">Some experience tender breasts or lower desire. Non-sexual intimacy — cuddling, massage — can be deeply connecting <span class="qi" data-evidence="vaginal-dryness">i</span>.</div>
@@ -175,7 +175,7 @@
       </div>
       <div style="height:8px"></div>
       <div class="intimacy-card">
-        <div class="ic-ic">🗣️</div>
+        <div class="ic-ic"><span class="ms" aria-hidden="true">record_voice_over</span></div>
         <div class="ic-body">
           <div class="ic-t">Communication is key</div>
           <div class="ic-d">Checking in verbally builds trust. Partners who communicate about cycle needs report higher relationship satisfaction <span class="qi" data-evidence="partner-support-outcomes">i</span>.</div>
@@ -207,7 +207,7 @@
 
     <!-- Wellness disclaimer -->
     <div class="wellness-note">
-      💛 <b>Wellness, not diagnosis.</b> Partner connection features are educational and designed to improve communication and support. Every relationship and cycle is unique. If you have concerns about your sexual health, mood, or relationship, consider speaking with a qualified healthcare provider or couples counselor.
+      <span class="ms" aria-hidden="true">favorite</span> <b>Wellness, not diagnosis.</b> Partner connection features are educational and designed to improve communication and support. Every relationship and cycle is unique. If you have concerns about your sexual health, mood, or relationship, consider speaking with a qualified healthcare provider or couples counselor.
     </div>
 
   </div>

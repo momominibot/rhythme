@@ -60,14 +60,23 @@
     </section>
 
     <section class="deck">
-      <div class="card">
-        <div class="cihead"><h2>Today’s check-in</h2><button type="button" class="cichoose" id="ciChoose" aria-pressed="false">Choose what counts</button></div>
-        <p class="cistatus" id="ciStatus" role="status"></p>
-        <div class="minvite" id="morningInvite" hidden></div>
-        <div class="tiles ci" id="tiles"></div>
-        <div class="ciquick" id="ciQuick"></div>
-        <div class="sub" id="dailyText">Nothing logged yet.</div>
-        <p class="note" id="symLine"></p>
+      <div class="card" id="deckCard">
+        <div class="tabs decktabs" role="tablist" aria-label="Today, your channel and your inventory" id="deckTabs">
+          <button type="button" role="tab" class="on" data-deck="today" id="deckTabToday" aria-selected="true" aria-controls="deckToday"><span class="ms" aria-hidden="true">task_alt</span><span class="tl">Today</span></button>
+          <button type="button" role="tab" data-deck="channel" id="deckTabChannel" aria-selected="false" aria-controls="deckChannel" tabindex="-1"><span class="ms" aria-hidden="true">forum</span><span class="tl">Channel</span><span class="dbadge" id="deckChBadge" hidden></span></button>
+          <button type="button" role="tab" data-deck="inventory" id="deckTabInventory" aria-selected="false" aria-controls="deckInventory" tabindex="-1"><span class="ms" aria-hidden="true">inventory_2</span><span class="tl">Inventory</span></button>
+        </div>
+        <div class="deckpane" id="deckToday" role="tabpanel" aria-labelledby="deckTabToday">
+          <div class="cihead"><h2>Today’s check-in</h2><button type="button" class="cichoose" id="ciChoose" aria-pressed="false">Choose what counts</button></div>
+          <p class="cistatus" id="ciStatus" role="status"></p>
+          <div class="minvite" id="morningInvite" hidden></div>
+          <div class="tiles ci" id="tiles"></div>
+          <div class="ciquick" id="ciQuick"></div>
+          <div class="sub" id="dailyText">Nothing logged yet.</div>
+          <p class="note" id="symLine"></p>
+        </div>
+        <div class="deckpane" id="deckChannel" role="tabpanel" aria-labelledby="deckTabChannel" hidden></div>
+        <div class="deckpane" id="deckInventory" role="tabpanel" aria-labelledby="deckTabInventory" hidden></div>
       </div>
       <div class="card" id="flagCard" style="display:none">
         <h2>To discuss with your clinician</h2>
@@ -94,7 +103,7 @@
   </section>
   <nav class="nav" aria-label="Main">
     <a href="room.html" data-tab="home" class="on" aria-current="page"><span class="ms">home</span>Home</a>
-    <a href="room.html#cycle" data-tab="cycle" id="navCycle"><span class="ms">calendar_month</span><span class="navlabel">Cycle</span></a>
+    <a href="room.html#cycle" data-tab="cycle" id="navCycle"><span class="ms">monitoring</span><span class="navlabel">Cycle</span></a>
     <a href="room.html#food" data-tab="food"><span class="ms">restaurant</span>Food</a>
     <a href="room.html#mind" data-tab="mind"><span class="ms">self_improvement</span>Mind</a>
     <a href="room.html#you" data-tab="you"><span class="ms">person</span>You</a>
@@ -128,7 +137,20 @@
   <div class="welcome consent" id="consent" hidden role="dialog" aria-modal="true" aria-labelledby="cTitle">
     <div class="w-stars" aria-hidden="true"></div>
     <div class="c-scroll">
-      <div class="c-head"><div class="c-moon" aria-hidden="true"><img src="assets/room/dream/orb-luna.webp" alt="" data-mascot="full"></div><div><div class="w-brand"><img class="rh-logo" src="assets/brand/logo-mark.webp" alt="" width="16" height="16">RHYTHME</div><h2 id="cTitle">Before your room opens</h2><p>What Rhythme keeps, where it goes, and the choices that stay yours.</p></div></div>
+      <div class="c-head"><div class="c-moon" aria-hidden="true"><img src="assets/room/dream/orb-luna.webp" alt="" data-mascot="full"></div><div><div class="w-brand"><img class="rh-logo" src="assets/brand/logo-mark.webp" alt="" width="16" height="16">RHYTHME</div><h2 id="cTitle">Before your room opens</h2><p>A cosy diary for your cycle, body and mind.</p></div></div>
+      <div class="c-caps" aria-label="What Rhythme does">
+        <div><i><img src="assets/room/notice/notice-cycle.webp" alt="" width="40" height="40"></i><span>Cycle &amp; periods</span></div>
+        <div><i><img src="assets/room/notice/notice-sleep.webp" alt="" width="40" height="40"></i><span>Sleep &amp; mood</span></div>
+        <div><i><img src="assets/room/notice/notice-meals.webp" alt="" width="40" height="40"></i><span>Meals &amp; photos</span></div>
+        <div><i><img src="assets/room/notice/notice-calm.webp" alt="" width="40" height="40"></i><span>Calm minutes</span></div>
+        <div><i><img src="assets/room/notice/notice-notes.webp" alt="" width="40" height="40"></i><span>Notes for your doctor</span></div>
+        <div><i><img src="assets/room/notice/notice-room.webp" alt="" width="40" height="40"></i><span>A cosy room &amp; pets</span></div>
+      </div>
+      <div class="c-promise">
+        <p><i><img src="assets/room/notice/notice-lock.webp" alt="" width="26" height="26"></i>Your diary stays on this phone. Never sold, no ads.</p>
+        <p><i><img src="assets/room/notice/notice-friend.webp" alt="" width="26" height="26"></i>A friend, not a doctor. In an emergency, call your local emergency number.</p>
+      </div>
+      <details class="c-full"><summary>Read the full notice</summary>
       <ul class="c-list">
         <li><span class="ms">edit_note</span><div><b>What you log</b><span>Periods, symptoms, pain, mood, sleep, meals and food photos, weight, calm minutes, and your getting-to-know-you answers, which can include pregnancy, hormones, medicines and health history.</span></div></li>
         <li><span class="ms">smartphone</span><div><b>Kept on this phone unless you choose backup</b><span>Your diary stays in this browser, so clearing the browser or losing the phone can lose it. You can export a copy any time from You. Cloud backup is a separate choice below: a copy kept in your account in a secure database hosted in Singapore, which other Rhythme users cannot see; authorised Rhythme administrators and the companies that run the database can reach it only to run, secure or support the service.</span></div></li>
@@ -136,19 +158,19 @@
         <li><span class="ms">lock</span><div><b>What we will not do</b><span>We do not sell your data or use it for ads, and Rhythme does not keep what Luna reads for you.</span></div></li>
         <li><span class="ms">dns</span><div><b>Ordinary service records</b><span>Our web host keeps standard connection logs and fonts load from Google. Using a Rhythme Plus code records that use with a scrambled network address, to stop misuse. There is no advertising, and no analytics unless you turn on “Help improve logging” below; then only group counts and averages across at least 20 adults are produced.</span></div></li>
         <li><span class="ms">tune</span><div><b>You stay in control</b><span>Every choice below can be turned off any time from You, as easily as it was turned on, and each change is kept on record with the notice version you read. Export your diary, or delete everything on this phone, any time from You.</span></div></li>
-        <li><span class="ms">medical_information</span><div><b>A friend, not a doctor</b><span>Predictions and Luna can be wrong. Rhythme does not diagnose, treat, or work as contraception. In an emergency in Singapore, call 995.</span></div></li>
-        <li><span class="ms">cake</span><div><b>For adults</b><span>Rhythme is for people 18 and over. We keep only your confirmation of that, never your date of birth.</span></div></li>
+        <li><span class="ms">medical_information</span><div><b>A friend, not a doctor</b><span>Predictions and Luna can be wrong. Rhythme does not diagnose, treat, or work as contraception. In an emergency, call your local emergency number.</span></div></li>
+        <li><span class="ms">cake</span><div><b>For adults</b><span>Rhythme is for people 18 and over. For that we keep only your confirmation. Your birthday is optional: a month and a day, with the year only if you add it, kept on this phone and used only for the birthday card.</span></div></li>
       </ul>
+      </details>
       <div class="flag info" id="cMinor" hidden><span class="ms">info</span><div><b>Your earlier answers said you were under 18</b><span>Rhythme is now for adults only. Tick the confirmation below only if it is true today; otherwise choose “I am under 18”.</span></div></div>
-      <div class="c-choices">
-        <span class="c-lbl">Your choices (all optional, all off until you turn them on)</span>
+      <details class="c-choices" id="cExtras">
+        <summary class="c-lbl">Optional extras, all off until you turn them on</summary>
         <div id="cChoices"></div>
-      </div>
-      <label class="c-opt c-req"><input type="checkbox" id="cHealth"><span><b>Health tracking on this phone</b><small>Required: this is the diary itself. Periods, symptoms, sleep, meals, calm minutes and your answers stay in this browser on this phone unless you choose backup above.</small></span></label>
-      <label class="c-opt c-req"><input type="checkbox" id="cAge"><span><b>I confirm I am 18 or older</b><small>Required. We keep only this confirmation, not your date of birth.</small></span></label>
+      </details>
+      <label class="c-opt c-req"><input type="checkbox" id="cAge"><span><b>I confirm I am 18 or older</b><small>Required. For the age check we keep only this confirmation.</small></span></label>
       <button class="btn primary" id="cAgree" type="button" disabled><span class="ms">favorite</span>I agree, open my room</button>
       <button class="btn ghost" id="cUnder" type="button">I am under 18</button>
-      <p class="c-small">By tapping, you agree to the <a href="privacy.html">privacy notes</a> and <a href="terms.html">terms</a>. Optional features stay off unless you turn them on. <span id="cFine">No diary entries have been saved yet.</span> Notice version 4, 20 October 2026. If what we collect or where it goes changes, we will ask you again.</p>
+      <p class="c-small">By tapping, you agree to the <a href="privacy.html">privacy notice</a> and <a href="terms.html">terms</a>. <span id="cFine">No diary entries have been saved yet.</span> Notice version 5, 21 October 2026.</p>
     </div>
   </div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -159,16 +181,20 @@
 <script src="ovu-sound.js"></script>
 <script src="ovu-consent.js"></script>
 <script src="ovu-food.js"></script>
+<script src="ovu-fasting.js"></script>
 <script src="ovu-agents.js"></script>
 <script src="ovu-rhythm.js"></script>
+<script src="ovu-scores.js"></script>
 <script src="ovu-orb.js"></script>
 <script src="ovu-insight.js"></script>
 <script src="ovu-rewards.js"></script>
+<script src="ovu-water.js"></script>
 <script src="ovu-remind.js"></script>
 <script src="ovu-mindful.js"></script>
 <script src="ovu-moments.js"></script>
 <script src="ovu-morning.js"></script>
 <script src="ovu-exercise.js"></script>
+<script src="ovu-pulse.js"></script>
 <script src="ovu-pets.js"></script>
 <script src="ovu-mascot.js"></script>
 <script src="ovu-breathtap.js"></script>
@@ -176,8 +202,10 @@
 <script src="ovu-nova.js"></script>
 <script src="ovu-sun.js"></script>
 <script src="ovu-evidence.js"></script>
+<script src="ovu-recipes.js"></script>
 <script src="ovu-herbs.js"></script>
 <script src="ovu-podcast.js"></script>
+<script src="ovu-pageview.js"></script>
 <script src="ovu-health.js"></script>
 <script src="ovu-healthnative.js"></script>
 <script src="ovu-auth.js"></script>
@@ -202,14 +230,25 @@
 <script src="ovu-zones.js"></script>
 <script src="ovu-care.js"></script>
 <script src="ovu-farm.js"></script>
+<script src="ovu-tidy.js"></script>
+<script src="ovu-ranch.js"></script>
 <script src="ovu-barn.js"></script>
 <script src="ovu-tones.js"></script>
+<script src="ovu-soak.js"></script>
 <script src="ovu-harbour.js"></script>
 <script src="ovu-lane.js"></script>
+<script src="ovu-lanescene.js"></script>
+<script src="ovu-boutique.js"></script>
+<script src="ovu-keepers.js"></script>
+<script src="ovu-gym.js"></script>
 <script src="ovu-kitchen.js"></script>
+<script src="ovu-villagers.js"></script>
+<script src="ovu-gamesave.js"></script>
 <script src="ovu-seats.js"></script>
 <script src="ovu-plaza.js"></script>
 <script src="ovu-friends.js"></script>
+<script src="ovu-today.js"></script>
+<script src="ovu-birthday.js"></script>
 <script src="ovu-music.js"></script>
 </body>
 </html>

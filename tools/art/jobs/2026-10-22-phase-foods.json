@@ -1,0 +1,105 @@
+{
+ "note": "Food card pictures for the ten phase foods that only had an emoji (Jamie, 22 Oct: 'all these need to generate images'). Ovuluna food style, reference assets/food/eggs.webp. One run, no retries, stop on first failure.",
+ "jobs": [
+  {
+   "id": "food-ginger",
+   "out": "ginger.png",
+   "size": "1024x1024",
+   "seed": 2210,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "A knobbly fresh ginger root with one cut end showing pale yellow flesh. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "food-chamomile-tea",
+   "out": "chamomile-tea.png",
+   "size": "1024x1024",
+   "seed": 2211,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "A small round teacup of pale golden chamomile tea with two little white chamomile flowers beside it. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "food-bone-broth",
+   "out": "bone-broth.png",
+   "size": "1024x1024",
+   "seed": 2212,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "A small cream bowl of clear golden broth with a few herbs floating on top. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "food-beetroot",
+   "out": "beetroot.png",
+   "size": "1024x1024",
+   "seed": 2213,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "One whole deep magenta beetroot with short leafy stems. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "food-citrus",
+   "out": "citrus.png",
+   "size": "1024x1024",
+   "seed": 2214,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "An orange cut in half showing its juicy segments, with a small whole orange beside it. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "food-quinoa",
+   "out": "quinoa.png",
+   "size": "1024x1024",
+   "seed": 2215,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "A small cream bowl heaped with fluffy cooked quinoa grains. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "food-cinnamon",
+   "out": "cinnamon.png",
+   "size": "1024x1024",
+   "seed": 2216,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "Three rolled cinnamon sticks tied with a thin ribbon. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "food-sesame-seeds",
+   "out": "sesame-seeds.png",
+   "size": "1024x1024",
+   "seed": 2217,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "A small cream dish of white and black sesame seeds. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "food-green-tea",
+   "out": "green-tea.png",
+   "size": "1024x1024",
+   "seed": 2218,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "A small round cup of light green tea with a single fresh tea leaf beside it. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands. Match the style of the reference picture exactly."
+  },
+  {
+   "id": "food-mushrooms",
+   "out": "mushrooms.png",
+   "size": "1024x1024",
+   "seed": 2219,
+   "ref": [
+    "assets/food/eggs.webp"
+   ],
+   "prompt": "Three small brown shiitake mushrooms grouped together. Soft watercolour illustration on a plain warm off-white paper background, gentle pencil outline, kawaii: a small happy face with two dot eyes, a tiny smile and rosy cheeks, pastel colours, centred, one object only, lots of empty space around it, no text, no letters, no labels, no people, no hands. Match the style of the reference picture exactly."
+  }
+ ]
+}
