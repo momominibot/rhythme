@@ -186,3 +186,30 @@ surfaces; resolving any two-failed-review hold before that work resumes.
 - Whether the social sweep cron runs successfully (its job exists; its run log was not read).
 - jevauto was run as the triage asked; its four candidates (API-first, event microservices, browser storage, third-party
   analytics) describe greenfield architectures and were rejected as not applicable to the existing pipeline.
+
+## 6. Phase 0 as built (21 Oct, branch claude/data-capture-phase0)
+Migration `supabase/migrations/20261021100000_staff_data_contract_v3.sql`, test `tools/db/test_team_pipeline.py` (68 checks on a
+throwaway postgres@17 with `tools/db/local_stub.sql`, which emulates Supabase's default grants so RLS is what the tests prove),
+and small changes to admin.js, ovu-consent.js and ovu-sync.js. Reviewed by Codex gpt-6-astra in eleven rounds (ten FIX with 13, 10, 7, 5, 1, 1, 1, 2, 3 and 2 ranked items, then MERGE-AFTER-MIGRATION at 69c1137, every one verified against
+the source before any change and fixed in the following commit; full texts under docs/design/reviews/). A
+self-cancelling dry run of round one on the live project passed every probe and left nothing behind; the final text gets the
+same dry run before the PR is opened. Nothing is applied to production and no schedule is installed.
+
+Decisions taken in round two that the legal read should see:
+- **"From now" is an observation-date boundary.** The notice promises no date, so this is a product decision: an entry
+  counts only when it is dated on or after the day the choice was made and was recorded after it. A later import of older
+  observations does not qualify unless the person chose all history.
+- **One consent authority.** `analysis_consent_set` is the only writer of the improve-logging choice. The phone's consent
+  mirror (`consent_record`) returns the server's own event for that purpose and writes nothing.
+- **Adulthood is attested, not labelled.** A concrete age range attests on its own; the plain `adult` label the phone sends
+  without a range counts only with the server's age_18 event. The attestation is persisted on the consent row.
+- **Shares are held on either side.** A percentage is held back when the people in its numerator or in its complement
+  number fewer than the floor, since either side would tell on them.
+- **Holds reach a running report.** Invalidation takes the worker lock, so a withdrawal or deletion that lands during a
+  report waits for it to publish and then holds it. The cost: a withdrawal RPC can wait for a running report (seconds).
+- **The receipt seed reads user_id and timestamps only** (no content) to count cloud copies before the trigger existed.
+- **Every result published under the previous contract is held by the upgrade** and recomputed by the next run.
+
+Deferred to phase 1 (the schedule migration): a durable two-statement reservation for the scheduled attempt (today one
+transaction reserves and executes, so a cancellation can roll back the due key; the unique index prevents duplicate retained
+attempts); an automatic rollback script (the manual order is written in the migration).
