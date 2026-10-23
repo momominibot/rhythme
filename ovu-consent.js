@@ -158,7 +158,7 @@
   function receipt() {
     var st = state(), evs = events(), last = evs.length ? evs[evs.length - 1] : null, p = S.profile(), u = uid();
     var purposes = {}; PURPOSES.forEach(function (x) { if (!x.hidden) purposes[x.id] = !!(st[x.id] && st[x.id].on); });
-    var pending = u ? evs.filter(function (e) { return e.uid === u && !e.sent && !e.failed; }).length : 0, failed = u ? evs.filter(function (e) { return e.uid === u && e.failed; }).length : 0;
+    var pending = u ? evs.filter(function (e) { return e.uid === u && !e.sent && !e.failed && !e.superseded; }).length : 0, failed = u ? evs.filter(function (e) { return e.uid === u && e.failed; }).length : 0;
     return { noticeVersion: NOTICE_V, noticeHash: hashHex || null, at: last ? last.at : null, userId: u, recorded: !!(u && pending === 0 && failed === 0), pending: pending, failed: failed, device: device(), purposes: purposes, ageAttest: p.ageAttest || null, method: last ? last.method : null, events: evs.length };
   }
   /* what a request to Rhythme's own functions carries for a person without an account: the phone's word, recorded by the function */
@@ -180,9 +180,19 @@
      server refuses outright (a 4xx that is not a session or rate problem) is marked failed and skipped, never a cork. */
   function drain(u, h, n) {
     if (uid() !== u) return Promise.resolve(n);
-    var next = events().filter(function (e) { return e.uid === u && !e.sent && !e.failed; })[0];
+    /* the account's improve-logging choice is recorded by the server's own setter (ovu-auth.js setImprove); its mirror here is
+     * marked recorded only once the account's record, as this phone last read it, holds that same choice, and is never sent */
+    var A = root.OvuAuth, viaAccount = !!(A && A.setImprove);
+    if (viaAccount) { /* an older unsent improve-logging mirror is superseded by a newer choice: it is closed as superseded, never claimed as sent */
+      var imp = events().filter(function (e) { return e.uid === u && e.purpose === 'improve_logging'; }), newest = imp[imp.length - 1];
+      imp.forEach(function (e) { if (e !== newest && !e.sent && !e.failed && !e.superseded) mark(e.id, { superseded: true }); });
+    }
+    function confirmed(e) { var l = viaAccount && A.improveLocal ? A.improveLocal() : null; return !!(l && l.uid === u && l.syncedAt && l.on === (e.action === 'grant')); }
+    var next = events().filter(function (e) { return e.uid === u && !e.sent && !e.failed && !e.superseded && !(e.purpose === 'improve_logging' && viaAccount && !confirmed(e)); })[0];
     if (!next) return Promise.resolve(n);
     var notice = next.notice || NOTICE_V;
+    /* the account's improve-logging choice is recorded by the server's own setter (ovu-auth.js setImprove); the mirror of it is kept on this phone and never sent as a second record */
+    if (next.purpose === 'improve_logging' && viaAccount) { mark(next.id, { sent: true, serverId: null, via: 'account' }); return drain(u, h, n); }
     return rpc('consent_record', { p_purpose: next.purpose, p_action: next.action, p_notice: notice, p_hash: notice >= NOTICE_V ? (h || null) : null, p_method: next.method || 'you', p_device: device(), p_client_at: next.at, p_client_id: next.id }, u).then(function (row) {
       if (row === null || uid() !== u) return n;
       mark(next.id, { sent: true, serverId: row && row.id });
@@ -196,7 +206,7 @@
   function flush() {
     var u = uid(); if (!u) return Promise.resolve(0);
     if (flushing) { flushAgain = true; return flushing; }
-    if (!events().some(function (e) { return e.uid === u && !e.sent && !e.failed; })) return Promise.resolve(0);
+    if (!events().some(function (e) { return e.uid === u && !e.sent && !e.failed && !e.superseded; })) return Promise.resolve(0);
     flushing = noticeHash().then(function (h) { return drain(u, h, 0); }).then(function (n) {
       flushing = null;
       if (flushAgain) { flushAgain = false; return flush().then(function (m) { return n + (m > 0 ? m : 0); }); }

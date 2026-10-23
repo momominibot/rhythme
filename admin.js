@@ -101,12 +101,13 @@
     var elig = (ent.filter(function (f) { return f.metric === 'eligible_people'; })[0] || {});
     var alive = last ? (last.status === 'ok' ? 'ok' : (last.status === 'running' ? 'running' : 'failed')) : 'never';
     var team = Object.keys(AGENTS), reps = team.map(report), withResults = reps.filter(function (r) { return r.results > 0; }).length, eligible = reps.filter(function (r) { return r.state === 'measured'; }).length;
-    var nim = !hasFindings() ? 'No finished run yet. Press Run now and I will gather the team.' : (alive === 'failed' ? 'The last run failed, so the reports below are from the last finished run. ' : '') + (ov.open_proposals ? ov.open_proposals + ' proposal' + (ov.open_proposals > 1 ? 's are' : ' is') + ' waiting for an owner. ' : 'Nothing is waiting for you. ') + (withResults ? withResults + ' of the four have results from the last finished run.' : eligible ? 'The four met the floor at the last finished run but every result was held back.' : 'None of the four could report a result at the last finished run, so today is counts only: accounts, cloud copies, the plazas and the relay.');
+    var nim = !hasFindings() ? 'No finished run yet. Press Run now and I will gather the team.' : (alive === 'failed' ? 'The last run failed, so the reports below are from the last finished run. ' : '') + (ov.open_proposals ? ov.open_proposals + ' proposal' + (ov.open_proposals > 1 ? 's are' : ' is') + ' waiting for an owner. ' : 'Nothing is waiting for you. ') + (withResults ? withResults + ' of the four have results from the last finished run.' : eligible ? (reps.some(function (r) { return r.held > 0; }) ? 'The four met the floor at the last finished run, but their results were held back under it or had no data.' : 'The four met the floor at the last finished run, but none of their measures had data in that window.') : 'None of the four could report a result at the last finished run, so today is counts only: accounts, cloud copies, the plazas and the relay.');
     var html = '<div class="card nimbus"><div class="nimrow">' + cloudSVG(NIMBUS, true) + bubble('Nimbus, the orchestrator', nim, last ? 'Last run ' + ago(last.started_at) + ', ' + last.kind : 'Runs are deterministic: no model is called and nothing is applied on its own.') + '</div>' +
       '<div class="team">' + team.map(function (k, i) { var a = AGENTS[k], r = reps[i]; return '<button type="button" class="mate" data-mate="' + k + '" title="' + esc(a.name) + '">' + cloudSVG(a) + '<b>' + esc(a.name) + '</b><small>' + esc(a.stream) + '</small><i class="st ' + esc(r.state) + '"></i></button>'; }).join('') + '</div></div>';
     html += '<div class="card"><h2>Status<span>' + (last ? 'last run ' + ago(last.started_at) : 'no run yet') + '</span></h2><div class="tiles">' +
       tile('Pipeline', alive === 'ok' ? 'Alive' : alive === 'running' ? 'Running' : alive === 'failed' ? 'Failed' : 'Not run', last ? (last.kind + ', ' + (last.finished_at ? 'finished ' + ago(last.finished_at) : 'in progress')) : 'Press Run now below') +
       tile('Needs you', String(ov.open_proposals || 0), (ov.open_proposals ? 'proposals waiting' : 'nothing waiting')) +
+      (ov.held_runs != null ? tile('Results', ov.held_runs ? 'Held' : (ov.latest_run ? 'Published' : 'None'), ov.held_runs ? 'recompute due: a withdrawal or deletion since the last run' : ov.latest_run ? 'from the last finished run' : 'no finished run yet') + tile('Daily run', ov.scheduled ? 'Scheduled' : 'Not scheduled', ov.scheduled ? 'one attempt a day, never retried' : 'runs only when staff press Run now') : '') +
       tile('Accounts', String(c.accounts == null ? '–' : c.accounts), (c.accounts_with_cloud_copy || 0) + ' with a cloud copy') +
       tile('Improvement opt-in', String(c.consent_active == null ? '–' : c.consent_active), eligText(c.consent_eligible, ov.floor)) +
       '</div>' + (blocked.length ? '<div class="note"><b>Model runs are blocked.</b> ' + esc(blocked[0].error) + ' An owner clears it on the Queue tab; nothing retries by itself.</div>' : '') + '</div>';
@@ -119,7 +120,7 @@
     html += '</div>';
     html += '<div class="card"><h2>Runs</h2>' + (runs.length ? '<table class="tbl"><tr><th>When</th><th>Kind</th><th>Status</th><th>Summary</th></tr>' + runs.map(function (r) { return '<tr><td>' + esc(when(r.started_at)) + '</td><td>' + esc(r.kind) + '</td><td><span class="chip ' + (r.status === 'ok' ? 'ok' : r.status === 'running' ? '' : 'high') + '">' + esc(r.status) + '</span></td><td>' + esc(r.error || (r.summary && r.summary.measured === false ? 'no eligible adults yet' : (r.summary && r.summary.measured ? (r.summary.under_floor || r.summary.eligible == null ? 'under the floor, ' : r.summary.eligible + ' eligible, ') + r.summary.window : ''))) + '</td></tr>'; }).join('') + '</table>' : '<p class="empty">No run yet.</p>') +
       '<div class="row" style="margin-top:10px"><button class="btn primary" id="runNow">Run now</button><span class="msg" id="runMsg"></span></div><p class="srv">A run is deterministic: the four agents measure what the consent rules allow and the orchestrator records what it would do. No model is called and nothing is applied on its own in this phase.</p></div>';
-    html += '<div class="card"><h2>Service<span>no diary content</span></h2><div class="tiles">' + tile('Relay calls today', String(c.relay_calls_today == null ? '–' : c.relay_calls_today), 'Luna and insight, resets daily') + tile('Withdrawn opt-ins', String(c.consent_withdrawn == null ? '–' : c.consent_withdrawn), 'kept on record, excluded from reads') + '</div></div>';
+    html += '<div class="card"><h2>Service<span>no diary content</span></h2><div class="tiles">' + tile('Relay counter increments today', String(c.relay_increments_today == null ? '–' : c.relay_increments_today), 'a relay call bumps an IP bucket and a global bucket') + tile('Withdrawn opt-ins', String(c.consent_withdrawn == null ? '–' : c.consent_withdrawn), 'kept on record, excluded from reads') + '</div></div>';
     panel(html);
     var b = doc.getElementById('runNow'); if (b) b.addEventListener('click', runNow);
     app.querySelectorAll('[data-mate]').forEach(function (m) { m.addEventListener('click', function () {
@@ -184,13 +185,13 @@
   function hasFindings() { var l = (ov && ov.latest) || {}; return Object.keys(l).some(function (k) { return (l[k] || []).length > 0; }); }
   function report(k) {
     var rows = ((ov && ov.latest) || {})[k] || [], ready = rows.filter(function (f) { return f.metric === 'eligible_people'; })[0], floor = (ov && ov.floor) || 20, c = (ov && ov.counts) || {};
-    var results = rows.filter(function (f) { return f.metric !== 'eligible_people' && !f.suppressed && f.value != null; });
+    var results = rows.filter(function (f) { return f.metric !== 'eligible_people' && !f.suppressed && f.value != null; }), held = rows.filter(function (f) { return f.metric !== 'eligible_people' && f.suppressed; }).length;
     if (!ov) return { state: 'loading', results: 0, text: 'Still getting my notes together.' };
     if (!ready) return { state: 'norun', results: 0, text: 'No finished run has a report from me yet. ' + (Number(c.consent_active) > 0 ? c.consent_active + ' account' + (c.consent_active > 1 ? 's have' : ' has') + ' the separate "help improve logging" choice on; a run decides who is eligible.' : 'No account has the separate "help improve logging" choice on yet.') };
     if (ready.state === 'not_enabled') return { state: 'not_enabled', results: 0, text: 'At the last finished run no eligible adult had the separate "help improve logging" choice on, so I read no diary rows. I am ready when they do.' };
     if (ready.state === 'insufficient') return { state: 'insufficient', results: 0, text: 'Fewer than ' + floor + ' eligible opted-in adults at the last finished run, so my results are held back under the floor.' };
     var m = results.slice(0, 3).map(function (f) { return f.metric.replace(/_/g, ' ') + ' ' + num(f.value) + ' over ' + f.window + (f.people ? ' from ' + f.people + ' people' : ''); });
-    return { state: 'measured', results: results.length, text: String(ready.value) + ' eligible opted-in adults at the last finished run. ' + (m.length ? 'I measured ' + m.join('; ') + '.' : 'Every result was held back under the floor.') };
+    return { state: 'measured', results: results.length, held: held, text: String(ready.value) + ' eligible opted-in adults at the last finished run. ' + (m.length ? 'I measured ' + m.join('; ') + '.' : held ? held + ' result' + (held === 1 ? ' was' : 's were') + ' held back under the floor; the rest had no data in this window.' : 'None of my measures had data in this window.') };
   }
   /* ---------- charts: small inline SVGs, no library; every chart says what it counts ---------- */
   function dayNum(k) { return Math.round(Date.parse(k + 'T00:00:00Z') / 86400000); }
@@ -247,7 +248,7 @@
       var state = ready ? ready.state : 'norun';
       var chip = state === 'measured' ? '<span class="chip ok">measuring</span>' : state === 'insufficient' ? '<span class="chip watch">under the floor</span>' : state === 'norun' ? '<span class="chip">no report yet</span>' : '<span class="chip">not enabled</span>';
       var metrics = rows.filter(function (f) { return f.metric !== 'eligible_people'; });
-      var bars = metrics.length ? '<div class="mrows">' + metrics.map(function (f) { return '<div class="metric"><span class="k">' + esc(f.metric.replace(/_/g, ' ')) + '<br><small>' + esc(f.window) + '</small></span><span class="v">' + (f.suppressed ? 'held back' : num(f.value)) + '<small>' + (f.suppressed ? 'under ' + esc(ov.floor) + ' people' : esc(f.people) + ' people') + '</small></span></div>'; }).join('') + '</div>' : '';
+      var bars = metrics.length ? '<div class="mrows">' + metrics.map(function (f) { return '<div class="metric"><span class="k">' + esc(f.metric.replace(/_/g, ' ')) + '<br><small>' + esc(f.window) + '</small></span><span class="v">' + (f.state === 'no_data' ? 'no data' : f.suppressed ? 'held back' : num(f.value) + (f.unit ? ' <small>' + esc(f.unit) + '</small>' : '')) + '<small>' + (f.state === 'no_data' ? 'nobody yet' : f.suppressed ? 'under ' + esc(ov.floor) + ' people' : esc(f.people) + ' people') + '</small></span></div>'; }).join('') + '</div>' : '';
       return '<div class="agent" id="mate-' + k + '"><div class="mhead">' + cloudSVG(a) + '<div><h3><i class="' + a.color + '"></i>' + esc(a.name) + ' ' + chip + '</h3><div class="sub">' + esc(a.stream) + '. ' + esc(a.hello) + '</div></div></div>' +
         bubble(a.name + ' says', r.text) +
         (ready && ready.prerequisite && !/nobody|no one|no-one/i.test(ready.prerequisite) ? '<div class="note">' + esc(ready.prerequisite) + '</div>' : '') + bars + /* the bubble already says who had the choice on; a server line that says nobody is left out */
@@ -372,7 +373,8 @@
     app.querySelectorAll('[data-pol]').forEach(function (el) {
       el.addEventListener('change', function () {
         var key = el.dataset.pol, v = el.type === 'checkbox' ? el.checked : Number(el.value), m = doc.getElementById('polMsg');
-        rpc('admin_policy_set', { p_key: key, p_value: v }).then(function (j) { m.textContent = j && j.error ? j.error : 'Saved.'; m.className = 'msg' + (j && j.error ? ' bad' : ''); return loadOverview(); }).then(function () { queueAgain(); }).catch(function (e) { m.textContent = e.message; m.className = 'msg bad'; });
+        if (key === 'k_floor' && !(Number.isInteger(v) && v >= 20 && v <= 1000)) { m.textContent = 'The floor is a whole number of people from 20 to 1000.'; m.className = 'msg bad'; return; }
+        rpc('admin_policy_set', { p_key: key, p_value: v }).then(function (j) { m.textContent = j && j.error ? j.error : 'Saved.'; m.className = 'msg' + (j && j.error ? ' bad' : ''); if (key === 'k_floor' && j && j.ok) dropResults(); return loadOverview(); }).then(function () { queueAgain(); }).catch(function (e) { m.textContent = e.message; m.className = 'msg bad'; });
       });
     });
   }
@@ -398,12 +400,24 @@
   }
 
   /* ---------- loading ---------- */
-  function loadOverview() { return rpc('admin_overview').then(function (j) { if (denied(j)) return bootStaffOnly(); ov = j; pill('on', 'live'); if (tab === 'today') renderToday(); if (tab === 'agents') renderAgents(); queueAgain(); }).catch(function (e) { pill('bad', 'offline'); }); }
+  var releaseKey = null; /* the published run and the hold count as last seen: when either changes, the cached feed is dropped at once and reloaded whole, so words from a run held since never stay on screen */
+  var feedGen = 0, feedNeedsFull = false, ovGen = 0, seenHold = 0; /* only the newest feed or overview request may write; a full feed reload stays owed until one succeeds; seenHold is the newest invalidation event already acted on, so old ones never loop */
+  function holdOverview() { if (!ov) return; ov = Object.assign({}, ov, { latest: {}, latest_run: null, held_runs: Math.max(1, ov.held_runs || 0), runs: (ov.runs || []).map(function (r) { return Object.assign({}, r, { summary: null }); }) }); if (tab === 'today') renderToday(); if (tab === 'agents') renderAgents(); } /* a hold seen anywhere clears the summaries on screen until a newer overview answers */ /* only the newest feed or overview request may write; a full feed reload stays owed until one succeeds */
+  function dropResults() { feedGen++; holdOverview(); feed = []; feedTop = 0; feedNeedsFull = true; if (tab === 'feed') renderFeed(); } /* a floor change the server confirmed: what is on screen was computed under the old floor, so it goes now, and any answer already on its way is ignored */
+  function loadOverview() { var gen = ++ovGen; return rpc('admin_overview').then(function (j) { if (gen !== ovGen) return; /* a newer overview was sent since: this answer may predate a hold */ if (denied(j)) return bootStaffOnly(); ov = j; pill('on', 'live'); var rk = String(j && j.latest_run) + '|' + String(j && j.held_runs); if (releaseKey === null || rk !== releaseKey) { feed = []; feedTop = 0; feedNeedsFull = true; if (tab === 'feed') renderFeed(); } /* the first overview counts as a change: anything the boot feed showed may predate a hold, so it is dropped and reloaded whole */ releaseKey = rk; if (feedNeedsFull) loadFeed(true); if (tab === 'today') renderToday(); if (tab === 'agents') renderAgents(); queueAgain(); }).catch(function (e) { pill('bad', 'offline'); }); }
   function loadFeed(all) {
-    var args = all || !feedTop ? { p_limit: 60 } : { p_limit: 60, p_after: feedTop };
+    all = all || feedNeedsFull;
+    var gen = ++feedGen, args = all || !feedTop ? { p_limit: 60 } : { p_limit: 60, p_after: feedTop };
     return rpc('admin_feed', args).then(function (rows) {
+      if (gen !== feedGen) return; /* a newer request was sent since: this answer may predate a hold */
       if (denied(rows)) return bootStaffOnly();
       rows = Array.isArray(rows) ? rows : [];
+      var hold = rows.reduce(function (m, e) { return e && e.kind === 'invalidated' && e.id > m ? e.id : m; }, 0);
+      if (hold > seenHold) { /* a hold not yet acted on, in a poll or a full reload: summaries anywhere on screen may now be held */
+        seenHold = hold; holdOverview(); loadOverview();
+        if (!all) { feed = []; feedTop = 0; feedNeedsFull = true; if (tab === 'feed') renderFeed(); return loadFeed(true); }
+      }
+      if (all) feedNeedsFull = false;
       if (all || !feedTop) { feed = rows; } else if (rows.length) { feed = rows.concat(feed).slice(0, 300); }
       if (feed.length) feedTop = feed[0].id;
       if (tab === 'feed') {
@@ -445,13 +459,14 @@
   function accountChanged() {
     if (who() === acct) return;
     acctGen++; me = null; stopTimers();
-    reports = null; reportsBad = false; reportsNote = null; reportsGen++; roomMsgs = null; roomMsgsBad = false; roomMsgsNote = null; roomMsgsBusy = false; roomMsgsGen++; proposals = null; admins = null; audit = null; ov = null; feed = []; feedTop = 0; findings = null; plaza = null; plazaBad = false;
+    reports = null; reportsBad = false; reportsNote = null; reportsGen++; roomMsgs = null; roomMsgsBad = false; roomMsgsNote = null; roomMsgsBusy = false; roomMsgsGen++; proposals = null; admins = null; audit = null; ov = null; feed = []; feedTop = 0; findings = null; plaza = null; plazaBad = false; releaseKey = null; feedGen++; feedNeedsFull = false; ovGen++; seenHold = 0;
     app.innerHTML = '';
     boot();
   }
   if (A && A.subscribe) A.subscribe(accountChanged);
   root.addEventListener('storage', function (e) { if (e.key === null || e.key === 'ovumind_auth_v1') accountChanged(); });
   doc.addEventListener('visibilitychange', function () { if (doc.hidden) return; accountChanged(); if (me) { loadFeed(false); loadOverview(); loadPlaza(); if (tab === 'queue') refreshQueue(); } });
+  if (root.__ADMIN_TEST__) root.__ADMIN_TEST__.api = { loadOverview: loadOverview, loadFeed: loadFeed, setTab: function (t) { tab = t; }, dropResults: dropResults, state: function () { return { feed: feed, feedTop: feedTop, needsFull: feedNeedsFull, releaseKey: releaseKey, latest: ov && ov.latest, held: ov && ov.held_runs }; } }; /* core tests only */
   /* finish a Google round trip (?code= in the URL) before deciding what to show */
   (A && A.init ? A.init() : Promise.resolve({})).then(function (r) { if (r && r.error && !A.session()) return gate('Sign-in did not finish: ' + r.error, true); boot(); }, function () { boot(); });
 })(window);
