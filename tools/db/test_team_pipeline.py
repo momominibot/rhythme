@@ -414,6 +414,19 @@ def main():
     held = c.execute("select invalidated_at is not null from staff.agent_runs where id = %s", [r_d['run_id']]).fetchone()[0]
     check('a deletion during a running report waits on the worker lock and then holds that report (two real sessions)', waited and outcome.get('ok') and held, {'waited': waited, 'outcome': outcome, 'held': held})
 
+    # 18. the people floor: raising it holds what was published under the lower floor; setting it equal or lower does not
+    def set_floor(v):
+        as_user(c, owner['id']); res = c.execute("select public.admin_policy_set('k_floor', %s::jsonb)", [json.dumps(v)]).fetchone()[0]; as_server(c); return res
+    r_f = run(c, owner); base = c.execute("select staff.k_floor()").fetchone()[0]
+    same = set_floor(base); ov_same = overview(c, owner)
+    raised = set_floor(base + 10); ov_up = overview(c, owner)
+    check('raising the people floor holds every published run and names the floor as the reason; setting it to the same value holds nothing', same.get('ok') and ov_same['latest_run'] == r_f['run_id'] and raised.get('ok') and ov_up['latest_run'] is None and ov_up['held_runs'] >= 1 and (ov_up['latest'] or {}) == {} and any('floor' in (x.get('invalidation_reason') or '') for x in ov_up['runs']), {'same': ov_same['latest_run'], 'up': ov_up['held_runs']})
+    r_f2 = run(c, owner); lowered = set_floor(base + 5); ov_dn = overview(c, owner)
+    check('lowering the floor (still at least 20) keeps the run published under the higher one', lowered.get('ok') and ov_dn['latest_run'] == r_f2['run_id'] and ov_dn['held_runs'] == 0, {'dn': ov_dn['latest_run'], 'r': r_f2.get('run_id')})
+    set_floor(base)
+    body = c.execute("select pg_get_functiondef('public.admin_overview()'::regprocedure)").fetchone()[0]
+    check('admin_overview reads the valid run, the hold count and the findings in one statement (one snapshot), never through a variable read earlier', 'with v as' in body and ' into valid' not in body and body.count('return (') == 1, body[:200])
+
     # 14. the suppression rules on their own: a fresh database with exactly one positive or one complement contributor
     c2 = fresh(); owner2 = staff_owner(c2); k2 = c2.execute("select staff.k_floor()").fetchone()[0]
     crowd = [person(c2) for _ in range(k2 + 1)]

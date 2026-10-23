@@ -369,3 +369,41 @@ Ship order remains migration first, schema-cache refresh, eight-argument RPC ver
 FIX
 
 Fix: a feed poll that brings an invalidated event drops the cached feed and cursor, asks for a new overview and a full reload, and keeps the reload owed if either fails; only the newest overview request may write (ovGen), so an older answer cannot roll the release key or held summaries back (test-core dashboardHoldPaths; each guard mutated alone fails its check).
+
+
+# Round nine (commit e988893, verdict FIX, three P1; fixed in the following commit)
+
+**Both round-eight fixes resolve their exact reported sequences at `e988893`. Three findings remain in the wider sweep.**
+
+1. **P1: Feed invalidation leaves held summaries on Today and Agents.**  
+   [admin.js:345](/Users/michiyomimi/Doubao/chats/2026-10-16/new-chat-12/ovumind/.claude/worktrees/farm-barn-cave/admin.js:345) clears `feed`, but preserves `ov.latest` and `ov.runs`.
+
+   Reproduced with the real loading and rendering functions: published overview → incremental invalidation → overview/full-feed HTTP 500. Feed becomes empty, but Today and Agents still show `21 eligible`, including after rerendering.
+
+   Full-feed responses also bypass invalidation handling because of `!all`. A full response containing an invalidation and a redacted row for the displayed run leaves its overview summaries intact and requests no overview.
+
+   **Fix:** reconcile hold evidence across every aggregate cache and request generation, including full responses. Clear affected overview content immediately and retain the hold through failures. Track already-processed evidence so historical invalidation events cannot cause reload loops.
+
+2. **P1: The overview RPC can return findings from a run invalidated during that same request.**  
+   [Migration:471](/Users/michiyomimi/Doubao/chats/2026-10-16/new-chat-12/ovumind/.claude/worktrees/farm-barn-cave/supabase/migrations/20261021100000_staff_data_contract_v3.sql:471) selects `valid` before later statements assemble the response. If invalidation commits afterward, the final findings query still uses `run_id = valid` without checking validity again. `runs` can show that run invalidated while `latest` contains its findings; `held_runs` can remain zero because it counts only runs strictly newer than `valid`.
+
+   This is a source-confirmed race under default READ COMMITTED, not a reproduced database race. PostgreSQL’s volatile functions acquire fresh snapshots per query, and PostgREST defaults to READ COMMITTED. [PostgreSQL documentation](https://www.postgresql.org/docs/current/xfunc-volatility.html), [PostgREST documentation](https://docs.postgrest.org/en/stable/references/transactions.html)
+
+   **Fix:** select the valid run, hold state and findings within one snapshot-consistent SQL statement after the authorization/audit step. Add a concurrent invalidation test. This predates the supplied diff.
+
+3. **P1: Raising the people floor leaves results below the new floor published.**  
+   [Policy setter:459](/Users/michiyomimi/Doubao/chats/2026-10-16/new-chat-12/ovumind/.claude/worktrees/farm-barn-cave/supabase/migrations/20261019030000_team_dashboard.sql:459) updates policy without invalidating previous runs. Raising the floor from 20 to 30 returns the new floor alongside unchanged, unsuppressed 21-person findings. The release key remains unchanged, so Feed also retains its summaries.
+
+   Source inspection establishes the server path; VM rendering confirms the resulting exposure on Today, Agents and Feed.
+
+   **Fix:** invalidate affected publications under the worker lock when increasing the floor, or prohibit floor changes during phase 0. This is inherited behavior discovered in the requested policy sweep.
+
+Boot, polls, visibility, Run now, decide, block-clear and policy reloads all use the guarded overview loader. No additional distinct client bypass was found. Queue has no reachable phase-0 proposal producer in this repository.
+
+Verified **1,816/1,816 core checks**, **81 pages with zero static problems**, both guard-removal mutations, and focused rendering probes. PostgreSQL **64/64** remains reported, not rerun. No files changed.
+
+Ship order remains migration first, schema-cache refresh, eight-argument RPC verification, then client merge.
+
+FIX
+
+Fix: (1) any feed answer, full or incremental, that carries an invalidation event newer than the last one acted on clears the overview summaries on Today and Agents at once and asks for a new overview; a poll also drops the feed and owes a full reload (seenHold stops old events looping). (2) admin_overview now reads the valid run, hold count, runs and findings in one SQL statement, so one snapshot. (3) admin_policy_set takes the worker lock for the floor and invalidates published runs when the floor rises. Pipeline 67/67, core 1818/1818; each new rule mutated alone fails its check.

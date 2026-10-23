@@ -2725,7 +2725,26 @@ function scenes(todayIso) {
       b.ov[0].res({ latest_run: 'r1', held_runs: 0 }); /* the older answer lands last */
       return older.then(tick).then(function () {
         check('an older overview answer that lands after a newer held one is ignored, so the release key and held summaries never roll back', rkB === 'null|1' && b.T.state().releaseKey === 'null|1', JSON.stringify({ rkB: rkB, now: b.T.state().releaseKey }));
-        delete openHarness.dashboardHoldPaths;
+      });
+    });
+  }).then(function () {
+    var c = harness(), pub = { latest_run: 'r1', held_runs: 0, latest: { cycle: [{ metric: 'eligible_people', value: 21 }] }, runs: [{ id: 'r1', summary: { eligible: 21 } }] };
+    var o1 = c.T.loadOverview();
+    return tick().then(function () { c.ov.shift().res(pub); return o1; }).then(tick).then(function () {
+      var shown = (c.T.state().latest || {}).cycle;
+      c.feed.shift().res([{ id: 9, kind: 'invalidated', title: 'orchestrator: 1 published run held until the next run (withdrawal)', detail: { runs: 1 } }, oldRow]); /* the owed full reload itself carries the hold */
+      return tick().then(tick).then(function () {
+        var st = c.T.state(), asked = c.ov.length === 1;
+        c.ov.shift().rej(); /* the overview it asks for fails */
+        return tick().then(tick).then(function () {
+          var st2 = c.T.state();
+          check('a hold in any feed answer, full or not, clears the summaries on Today and Agents at once, asks for a new overview, and they stay cleared when it fails', !!shown && asked && Object.keys(st.latest || {}).length === 0 && st.held >= 1 && Object.keys(st2.latest || {}).length === 0, JSON.stringify({ shown: shown, asked: asked, st: st, st2: st2 }));
+          var again = c.T.loadFeed(true);
+          return tick().then(function () { c.feed.shift().res([{ id: 9, kind: 'invalidated', title: 'x', detail: { runs: 1 } }]); return again; }).then(tick).then(function () {
+            check('a hold already acted on does not ask again, so old invalidation events never loop', c.ov.length === 0, String(c.ov.length));
+            delete openHarness.dashboardHoldPaths;
+          });
+        });
       });
     });
   }).catch(function (e) { check('dashboard hold paths harness ran', false, String(e && e.stack || e)); });

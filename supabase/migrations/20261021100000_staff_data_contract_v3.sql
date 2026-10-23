@@ -465,12 +465,12 @@ grant execute on function staff.schedule_installed() to rhythme_staff_fn;
 
 -- ---------- 8. the overview: the latest valid run, and the hold when runs are invalidated ----------
 create or replace function public.admin_overview() returns jsonb language plpgsql security definer set search_path = '' as $$
-declare d jsonb; valid uuid; held integer;
+declare d jsonb;
 begin
   d := staff.require('admin_overview', '{}'::jsonb); if d is not null then return d; end if;
-  select id into valid from staff.agent_runs where status = 'ok' and invalidated_at is null order by started_at desc limit 1;
-  select count(*) into held from staff.agent_runs where status = 'ok' and invalidated_at is not null and started_at > coalesce((select started_at from staff.agent_runs where id = valid), '1970-01-01'::timestamptz);
-  return jsonb_build_object(
+  /* one statement, so one snapshot: the valid run, the hold count, the runs list and the findings can never disagree when a withdrawal commits mid-call */
+  return (with v as (select id, started_at from staff.agent_runs where status = 'ok' and invalidated_at is null order by started_at desc limit 1)
+  select jsonb_build_object(
     'counts', staff.svc_counts(),
     'floor', staff.k_floor(),
     'policy', (select coalesce(jsonb_object_agg(key, value), '{}'::jsonb) from staff.agent_policy),
@@ -479,12 +479,12 @@ begin
     'open_proposals', (select count(*) from staff.agent_proposals where status in ('open', 'held')),
     'live_actions', (select count(*) from staff.agent_actions where expires_at > now() and reverted_at is null),
     'blocked', (select coalesce(jsonb_agg(jsonb_build_object('id', id, 'at', at, 'source', source, 'error', left(error, 200))), '[]'::jsonb) from staff.provider_blocks where cleared_at is null),
-    'held_runs', held,
-    'latest_run', valid,
+    'held_runs', (select count(*) from staff.agent_runs where status = 'ok' and invalidated_at is not null and started_at > coalesce((select started_at from v), '1970-01-01'::timestamptz)),
+    'latest_run', (select id from v),
     'scheduled', staff.schedule_installed(),
     'latest', (select coalesce(jsonb_object_agg(agent, f), '{}'::jsonb) from (
       select agent, jsonb_agg(jsonb_build_object('metric', metric, 'window', "window", 'value', value, 'people', people, 'suppressed', suppressed, 'state', state, 'note', detail ->> 'note', 'unit', detail ->> 'unit', 'metric_version', detail -> 'metric_version', 'prerequisite', detail ->> 'prerequisite') order by metric) f
-      from staff.agent_findings where run_id = valid group by agent) x));
+      from staff.agent_findings where run_id = (select id from v) group by agent) x)));
 end $$;
 
 -- findings are read through the same rule as the overview: only runs that published and were not held since
@@ -511,6 +511,28 @@ begin
       case when r.invalidated_at is null then ev.detail else jsonb_build_object('held', true) end detail
     from staff.agent_events ev left join staff.agent_runs r on r.id = ev.run_id
     where (p_before is null or ev.id < p_before) and (p_after is null or ev.id > p_after) order by ev.id desc limit least(greatest(coalesce(p_limit, 60), 1), 200)) e);
+end $$;
+
+-- raising the people floor holds what was published under the lower one: a 21-person result must not stay up beside a floor of 30
+create or replace function public.admin_policy_set(p_key text, p_value jsonb) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare d jsonb; uid uuid := staff.caller(); old_floor numeric;
+begin
+  d := staff.require('admin_policy_set', jsonb_build_object('key', p_key, 'value', p_value), true); if d is not null then return d; end if;
+  if p_key not in ('k_floor', 'lever_days', 'model_on', 'autonomy_on') then return jsonb_build_object('error', 'that setting is not changeable here'); end if;
+  if p_key = 'k_floor' and (jsonb_typeof(p_value) <> 'number' or (p_value::text)::numeric < 20) then return jsonb_build_object('error', 'the floor cannot go below 20 people'); end if;
+  if p_key = 'lever_days' and (jsonb_typeof(p_value) <> 'number' or (p_value::text)::numeric < 1 or (p_value::text)::numeric > 30) then return jsonb_build_object('error', 'lever days must be between 1 and 30'); end if;
+  if p_key in ('model_on', 'autonomy_on') and jsonb_typeof(p_value) <> 'boolean' then return jsonb_build_object('error', 'that setting is on or off'); end if;
+  if p_key = 'k_floor' then
+    perform pg_advisory_xact_lock(hashtext('staff.run_begin')); /* the worker lock first, so a report being built cannot publish under the old floor after this */
+    select staff.k_floor() into old_floor;
+  end if;
+  update staff.agent_policy set value = p_value, updated_at = now(), updated_by = uid where key = p_key;
+  perform staff.event(null, 'staff', 'policy', 'staff set ' || p_key || ' to ' || p_value::text, jsonb_build_object('key', p_key, 'value', p_value));
+  if p_key = 'k_floor' and (p_value::text)::numeric > coalesce(old_floor, 20) then
+    perform staff.invalidate_runs('people floor raised to ' || (p_value::text) || '; the next run recomputes under it');
+  end if;
+  return jsonb_build_object('ok', true);
 end $$;
 
 -- ---------- 9. the upgrade boundary: nothing computed under the previous contract stays published ----------
