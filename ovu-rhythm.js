@@ -107,11 +107,34 @@
     return out;
   }
 
+  /* ---------- estimated fertile days (Jamie, 23 Oct: "since i have logged 3 months of regular menstrual it should detect my
+   * est fertile period") ----------
+   * A calendar estimate, the same rule the calendar's guide states: the six days ending on the estimated ovulation day
+   * (about 14 days before the expected period) and the day after. For this cycle (from its start and her average length)
+   * and the next one. Only when the stage allows a cycle estimate at all (not in pregnancy, after a birth before periods
+   * return, after a loss, on hormones, when predictions are paused, or after the menopause) and only from at least two
+   * logged cycles, never from remembered dates alone. Never evidence of ovulation and never contraception. */
+  function fertileWindows(cs, profile, asOf) {
+    var st = stage(profile || {}, cs); if (st !== 'normal' && st !== 'wide') return [];
+    if (!cs || !cs.lastStart || !cs.averageLength || !cs.predictedNext || cs.phase === null || (cs.lengths || []).length < 2) return [];
+    var L = cs.averageLength, out = [];
+    [{ which: 'this', start: cs.lastStart }, { which: 'next', start: cs.predictedNext }].forEach(function (c) {
+      var ov = addDays(c.start, L - 14); out.push({ which: c.which, from: addDays(ov, -5), to: addDays(ov, 1), ovulation: ov, wide: st === 'wide' });
+    });
+    asOf = asOf || null;
+    if (asOf) out.forEach(function (w) { w.now = w.from <= asOf && asOf <= w.to; w.past = w.to < asOf; });
+    return out;
+  }
+
   /* ---------- the panel's HTML ---------- */
   function chipTh() { return '<span class="chip-th" title="A threshold Rhythme chose, not a clinical cut-off">Rhythme threshold</span>'; }
   function chipE(ids) { return ids.map(function (id) { return '<a class="chip-e" href="evidence.html#' + id + '">' + id + '</a>'; }).join(''); }
   function badge(level) { return '<span class="lvl lvl-' + esc(level) + '">' + esc(LEVELS[level] || level) + '</span>'; }
-  function card(title, sub, level, text, chips) { return '<div class="rcard"><div class="rhead"><b>' + esc(title) + '</b>' + badge(level) + '</div><small>' + esc(sub) + '</small><p>' + esc(text) + '</p><div class="rchips">' + (chips || '') + '</div></div>'; }
+  /* one card per part: a soft icon, the title and its level on one line, what it looks at, what it found, its sources
+     (Jamie, 23 Oct: "this part aesthetic is too ugly": the old class shared a name with the records list's cards, whose
+     flex row squeezed every part into narrow columns) */
+  var CARD_ICON = { 'Cycle regularity': 'event_repeat', 'Cycle and bleeding length': 'straighten', 'Ovulation signs': 'egg', 'Symptoms and comfort': 'spa' };
+  function card(title, sub, level, text, chips) { return '<div class="rycard lvlc-' + esc(level) + '"><div class="ryhead"><span class="ryic ms" aria-hidden="true">' + (CARD_ICON[title] || 'favorite') + '</span><b>' + esc(title) + '</b>' + badge(level) + '</div><small class="rysub">' + esc(sub) + '</small><p>' + esc(text) + '</p><div class="rchips">' + (chips || '') + '</div></div>'; }
   function stageNote(st) {
     return ({ pregnant: 'Pregnant or possibly pregnant: cycle counting, period estimates and ovulation are paused. Symptoms and care stay on. Bleeding or strong pain in pregnancy needs urgent care now.',
       'postpartum-none': 'After a birth, before periods return: no cycle count and no absence to worry about here. Symptoms and bleeding observations stay on.',
@@ -153,5 +176,5 @@
     box.querySelectorAll('[data-band]').forEach(function (b) { b.addEventListener('click', function () { S.setProfile({ cycleAgeBand: b.dataset.band }); render(box); }); });
   }
   root.OvuRhythm = { BANDS: BANDS, LEVELS: LEVELS, WINDOW_MONTHS: WINDOW_MONTHS, GAP_DAYS: GAP_DAYS, MIN_INTERVALS: MIN_INTERVALS, SYM_DAYS: SYM_DAYS, MIN_ANSWERS: MIN_ANSWERS, addMonths: addMonths, bandFor: bandFor, bandNeedsAsking: bandNeedsAsking,
-    confirmedEpisodes: confirmedEpisodes, intervals: intervals, readiness: readiness, regularity: regularity, lengths: lengths, symptoms: symptoms, stage: stage, stageNote: stageNote, panel: panel, html: html, render: render };
+    confirmedEpisodes: confirmedEpisodes, fertileWindows: fertileWindows, intervals: intervals, readiness: readiness, regularity: regularity, lengths: lengths, symptoms: symptoms, stage: stage, stageNote: stageNote, panel: panel, html: html, render: render };
 })(typeof window !== 'undefined' ? window : this);

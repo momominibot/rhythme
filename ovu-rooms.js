@@ -35,7 +35,9 @@
   var REMINDER = 'Automatic reminder: if you or anyone here might be in danger, call your local emergency number now, or find a helpline at findahelpline.com.';
   var MODE = {
     review: 'Messages show after a person on the Rhythme team has read them, so they can take a while to appear.',
-    live: 'Messages show straight away. Nobody watches the rooms around the clock, so report anything worrying.'
+    live: 'Messages show straight away. Nobody watches the rooms around the clock, so report anything worrying.',
+    /* Chat and Wins are live, the other rooms reviewed (20261023160000_plaza_live_rooms.sql) */
+    mixed: 'Rooms marked Live show messages straight away; report anything worrying. In the others, a person on the Rhythme team reads each message first. Crisis words, medicine advice and pregnancy news wait for a person everywhere.'
   };
   /* the consent words for the purpose `plaza_chat` (design note section 3, after the Codex design review); a hash of
      them travels with the event, so a change of words needs a new notice */
@@ -179,9 +181,10 @@
     if (!r) return '';
     if (r.open === false) return 'Closed for now';
     var n = Math.max(0, Number(r.people) || 0), cap = Math.max(1, Number(r.capacity) || 12);
-    return n >= cap ? cap + ' of ' + cap + ' joined, full' : n === 0 ? 'Nobody joined yet' : n + ' joined';
+    return n >= cap ? cap + ' of ' + cap + ' joined, full' : n === 0 ? 'Nobody joined yet' : n < 3 ? 'A few joined' : n + ' joined';
   }
-  function hereNow(n) { n = Math.max(0, Number(n) || 0); return n === 0 ? 'Nobody here now' : n + ' here now'; }
+  /* one or two people read as "a few", so a quiet room's count never points at one person (23 Oct) */
+  function hereNow(n) { n = Math.max(0, Number(n) || 0); return n === 0 ? 'Nobody here now' : n < 3 ? 'A few here now' : n + ' here now'; }
   function ago(iso, now) {
     var t = Date.parse(iso), s = Math.max(0, Math.round(((now || Date.now()) - t) / 1000));
     if (!isFinite(t)) return '';
@@ -451,9 +454,9 @@
       h += '<ul class="rmlist">' + rooms.rooms.map(function (r) {
         var mine = rooms.room === r.id;
         return '<li><button type="button" class="rmrow' + (mine ? ' mine' : '') + '" data-rmroom="' + esc(r.id) + '"' + (rooms.read ? '' : ' disabled') + ' aria-label="' + esc(r.name + '. ' + r.blurb + '. ' + roomCount(r) + (mine ? '. You joined' : '')) + '">' +
-          '<span class="ms" aria-hidden="true">' + esc(kindIcon(r.kind)) + '</span><span class="rn"><b>' + esc(r.name) + (mine ? ' <i>joined</i>' : '') + '</b><small>' + esc(r.blurb) + '</small></span>' +
+          '<span class="ms" aria-hidden="true">' + esc(kindIcon(r.kind)) + '</span><span class="rn"><b>' + esc(r.name) + (r.live ? ' <em class="rmlive">Live</em>' : '') + (mine ? ' <i>joined</i>' : '') + '</b><small>' + esc(r.blurb) + '</small></span>' +
           '<span class="rc"><b>' + esc(roomCount(r)) + '</b><small data-ago="' + esc(r.last_at || '') + '">' + esc(lastText(r.last_at)) + '</small></span></button></li>';
-      }).join('') + '</ul><p class="rmhint">Everyone in the group can read the rooms; a count says who joined to talk. ' + esc(MODE[rooms.mode] || MODE.review) + '</p>';
+      }).join('') + '</ul><p class="rmhint">Everyone in the group can read the rooms; a count says who joined to talk. ' + esc(rooms.rooms.some(function (r) { return r.live; }) && rooms.mode !== 'live' ? MODE.mixed : (MODE[rooms.mode] || MODE.review)) + '</p>';
       el.innerHTML = h; return;
     }
     var r = roomById(view); if (!r) { dropFeed(); paintRooms(); return; }
@@ -606,7 +609,7 @@
         setRows(mergeFeed(feed.rows, { ids: feed.rows.map(function (m) { return m.id; }).concat([j.message.id]), messages: [j.message] }, [])); stick = true; paint();
       }
       if (here) refetch();
-      if (j.held) R.toast(j.held_why === 'review' ? 'Sent. It shows once someone on the Rhythme team has read it.' : 'Sent for a check. Only you can see it until someone on the Rhythme team has read it.', 'hourglass_top');
+      if (j.held) R.toast(j.held_why === 'review' ? 'Sent. This room shows messages once someone on the Rhythme team has read them.' : 'Sent for a check. Only you can see it until someone on the Rhythme team has read it.', 'hourglass_top');
     }, function (e) { if (!(e && e.cancelled)) { failed(e); if (still(ctx) && msg) msg.textContent = 'Could not reach the rooms. Your words are still here; try again.'; } }).catch(malformed).then(function () { if (btn) btn.disabled = false; });
   }
   /* the care card for her own words: the profile-aware card from the diary's rules stays on this phone; she may send it

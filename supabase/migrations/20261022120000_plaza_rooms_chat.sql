@@ -1,7 +1,9 @@
 -- Plaza rooms and room chat (docs/design/2026-10-22-plaza-rooms-and-live-channel.md). Written 22 Oct 2026, changed after
 -- the Codex design review the same day, and checked in a transaction on the live project that rolled itself back
--- (tools/db/plaza_rooms_dryrun.sql) and in two-session races on a local copy (tools/db/race_test.py --rooms); NOT
--- applied: applying it is Jamie's call.
+-- (tools/db/plaza_rooms_dryrun.sql) and in two-session races on a local copy (tools/db/race_test.py --rooms). APPLIED to
+-- the live project on 23 Oct 2026 (Jamie: "whichever apple app store approve and is easy for you to deploy, then go
+-- ahead"); all 32 function bodies matched this file's md5s after it ran. Chat and Wins went live the same night
+-- (20261023160000_plaza_live_rooms.sql).
 --
 -- * Groups by stage of life, from the research note (2026-10-22-plaza-groups-research.md): PCOS becomes PCOS and
 --   endometriosis, Menopause becomes Perimenopause and menopause, and After a loss and New mothers are added. Ids stay,

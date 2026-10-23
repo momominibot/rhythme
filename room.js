@@ -1043,10 +1043,29 @@
   var cal = { y: 0, m: 0, tab: 'period', sel: S.today(), lastFill: [] };
   /* the Cycle tab (Jamie, 22 Oct: "remove calendar and I need the cute dreamy scoring"): the scores and the rhythm check,
    * nothing else; the month grid lives in its own sheet for logging or fixing a past day */
+  /* Your cycle now: today's cycle day, the next period window and the estimated fertile days (OvuRhythm.fertileWindows),
+     at the top of the Cycle tab; a calendar estimate, said plainly, and nothing when the stage pauses estimates */
+  function fertileLine(ws, today) {
+    var cur = ws.filter(function (w) { return w.which === 'this'; })[0], nx = ws.filter(function (w) { return w.which === 'next'; })[0];
+    var span = function (w) { return prettyDate(w.from) + ' to ' + prettyDate(w.to); };
+    if (cur && cur.now) return 'Today is inside your estimated fertile days, ' + span(cur) + '.';
+    if (cur && !cur.past) return 'Estimated fertile days this cycle: ' + span(cur) + '.';
+    return 'This cycle’s estimated fertile days were ' + span(cur) + '. Next: ' + span(nx) + '.';
+  }
+  function cycleNowHTML() {
+    var R = window.OvuRhythm, cs = S.cycleStats(), today = S.today(); if (!cs.lastStart) return '';
+    var ws = R && R.fertileWindows ? R.fertileWindows(cs, S.profile(), today) : [];
+    var dayLine = 'Day ' + cs.cycleDay + (cs.phase ? ' · ' + cap(cs.phase) : '');
+    var next = cs.predictedFrom ? 'Next period expected ' + windowText(cs) + '.' : '';
+    var days = ws.length ? (function () { var cur = ws[0], nx = ws[1], show = cur.past ? nx : cur, pct = []; for (var d = show.from; d <= show.to; d = S.addDays(d, 1)) pct.push(d); return '<div class="cnfert" aria-hidden="true">' + pct.map(function (d) { return '<span class="' + (d === show.ovulation ? 'ov' : '') + (d === today ? ' today' : '') + '"><b>' + Number(d.slice(8)) + '</b><i>' + new Date(d + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'narrow' }) + '</i></span>'; }).join('') + '</div>'; })() : '';
+    return '<section class="cyclenow" id="cycleNow"><div class="cnhead"><span class="cnic ms" aria-hidden="true">water_drop</span><div><b>' + esc(dayLine) + '</b><small>' + esc(next) + '</small></div></div>' +
+      (ws.length ? '<p class="cnfline"><span class="ms" aria-hidden="true">spa</span>' + esc(fertileLine(ws, today)) + (ws[0].wide ? ' A loose estimate while your cycles are changing.' : '') + '</p>' + days + '<p class="help cnnote">A calendar estimate from your logged dates, not evidence of ovulation and not a way to prevent pregnancy. ' + infoBtn('cycle') + '</p>' + guideHTML('cycle') : '') + '</section>';
+  }
   function openScores() {
-    openSheet('scores', 'Your rhythm', 'Scores from what you have recorded', 'favorite', '<div id="rhythmPanel"></div><div class="row scpast"><button type="button" class="btn ghost" id="scPast"><span class="ms">edit_calendar</span>Log or fix a past day</button></div>');
+    openSheet('scores', 'Your rhythm', 'Scores from what you have recorded', 'favorite', cycleNowHTML() + '<div id="rhythmPanel"></div><div class="row scpast"><button type="button" class="btn ghost" id="scPast"><span class="ms">edit_calendar</span>Log or fix a past day</button></div>');
     var rp = $('#rhythmPanel'); if (rp && window.OvuRhythm) OvuRhythm.render(rp); if (rp && window.OvuScores) rp.insertAdjacentHTML('afterbegin', OvuScores.panelHTML(S.profile()));
     var sig = signalsHTML(); if (sig && rp) rp.insertAdjacentHTML('afterend', sig);
+    if (rp && window.OvuScores && OvuScores.animate) OvuScores.animate(rp);
     $('#scPast').addEventListener('click', function () { chime('tap'); openCalendar('period'); });
   }
   /* resting heart rate and temperature from a health app (ovu-signals.js), as a difference from her own usual;
@@ -1134,14 +1153,16 @@
     var cs = S.cycleStats(), predicted = {}, fertile = {};
     /* The predicted band is the observed window of likely start days, not one date plus a period length. */
     if (cs.predictedFrom && cs.predictedTo) { for (var pd = cs.predictedFrom; pd <= cs.predictedTo; pd = S.addDays(pd, 1)) predicted[pd] = true; }
-    if (cs.predictedNext) { var ov = S.addDays(cs.predictedNext, -14); for (var k = -5; k <= 1; k++) fertile[S.addDays(ov, k)] = true; }
+    /* this cycle's and the next cycle's estimated fertile days, from OvuRhythm (stage rules, two or more logged cycles);
+       days already past are drawn faintly instead of hidden (Jamie, 23 Oct: three regular months and no fertile days shown) */
+    (window.OvuRhythm && OvuRhythm.fertileWindows ? OvuRhythm.fertileWindows(cs, S.profile(), S.today()) : []).forEach(function (w) { for (var fd = w.from; fd <= w.to; fd = S.addDays(fd, 1)) fertile[fd] = true; });
     var html = ['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(function (d) { return '<div class="cal-dow">' + d + '</div>'; }).join('');
     for (var b = 0; b < startDow; b++) html += '<div class="cal-day empty"></div>';
     var today = S.today();
     for (var dd = 1; dd <= days; dd++) {
       var iso = cal.y + '-' + String(cal.m + 1).padStart(2, '0') + '-' + String(dd).padStart(2, '0');
       var cls = 'cal-day' + (iso === today ? ' today' : '') + (iso > today ? ' future' : '') + (iso === cal.sel ? ' sel' : '');
-      if (periods[iso]) cls += ' p-' + periods[iso]; else if (predicted[iso]) cls += ' predicted'; else if (fertile[iso] && iso >= today) cls += ' fertile';
+      if (periods[iso]) cls += ' p-' + periods[iso]; else if (predicted[iso]) cls += ' predicted'; else if (fertile[iso]) cls += ' fertile' + (iso < today ? ' past' : '');
       html += '<button type="button" class="' + cls + '" data-date="' + iso + '" aria-label="' + prettyDate(iso) + '">' + dd + (syms[iso] ? '<span class="sdot"></span>' : '') + '</button>';
     }
     $('#calGrid').innerHTML = html;
