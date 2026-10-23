@@ -203,7 +203,7 @@
     var L = R.layout(); ensureLayer();
     if (!atHome(L)) { Object.keys(els).forEach(function (id) { els[id].remove(); delete els[id]; }); return; }
     var st = sweep ? normalise(S.state().tidy) : current(S), pos = placeItems(L, W, st.items, worldProps(L));
-    Object.keys(els).forEach(function (id) { if (!st.items.some(function (it) { return it.id === id; })) { els[id].remove(); delete els[id]; } });
+    Object.keys(els).forEach(function (id) { if (!st.items.some(function (it) { return it.id === id; })) { if (els[id].classList.contains('swept')) return; /* written away and fading; its own timer removes it (the game save redraws the props right after the write) */ els[id].remove(); delete els[id]; } });
     st.items.forEach(function (it, i) {
       var p = pos[i], el = els[it.id];
       if (!p) { if (el) { el.remove(); delete els[it.id]; } return; }
@@ -259,7 +259,7 @@
     if (raf) { root.cancelAnimationFrame(raf); raf = 0; } last = 0;
     try { sw.el.remove(); } catch (e) { }
     if (layer) Array.prototype.slice.call(layer.querySelectorAll('.spark, .puff')).forEach(function (n) { n.remove(); });
-    var st = normalise(S.state().tidy); Object.keys(els).forEach(function (id) { if (!st.items.some(function (it) { return it.id === id; })) { els[id].remove(); delete els[id]; } }); /* a thing already written away finishes going; the rest stay as they are */
+    var st = normalise(S.state().tidy); Object.keys(els).forEach(function (id) { if (!st.items.some(function (it) { return it.id === id; })) { if (els[id].classList.contains('swept')) return; els[id].remove(); delete els[id]; } }); /* a thing already written away finishes its fade (its own timer removes it); the rest stay as they are */
     if (W.sortDepth) W.sortDepth();
   }
   /* the thing under the broom goes: written first (a copy, through the farm lock the game save shares, the store re-read

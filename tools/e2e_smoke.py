@@ -3466,6 +3466,11 @@ async def main():
             # c. Begin: she stands in her own clothes, the broom appears beside her at her scale, sweeps both things with puffs and sparkles, dissolves
             h0 = await pt.evaluate("()=>OvuRewards.ledger().hearts")
             await pt.click('#actStart'); await pt.wait_for_timeout(500); s0 = await pt.evaluate(TST)
+            sweptId = None
+            try: sweptId = await pt.wait_for_function("()=>{ var el = document.querySelector('#tidyLayer .tidyitem.swept'); return el ? el.dataset.id : null; }", timeout=20000); sweptId = await sweptId.json_value()
+            except Exception: pass
+            await pt.wait_for_timeout(300); fade = await pt.evaluate("(id)=>{ var el = document.querySelector('#tidyLayer .tidyitem[data-id=\"' + id + '\"]'); return el ? { op: parseFloat(getComputedStyle(el).opacity), anim: getComputedStyle(el).animationName, swept: el.classList.contains('swept') } : { gone: true }; }", sweptId or "")
+            check("a swept thing fades out over half a second: 300 ms after its write the same thing is still there, mid-fade, in its own exit animation (not removed by the game save's props redraw, not held opaque by its entrance animation)", sweptId is not None and fade.get("swept") and 0.02 < fade.get("op", 1) < 0.9 and fade.get("anim") == "tidyout", { "id": sweptId, "fade": fade })
             check("Begin starts the practice with its name on the bar, she stays standing in her own clothes (no pose), and the broom appears on the floor beside her at 50 to 70 percent of her height with her ground shadow", s0["practice"] and s0["title"] == "Tidy up your room" and s0["hud"] and s0["sw"] is not None and s0["broom"] and s0["onFloor"] and 0.5 * s0["ah"] <= s0["bh"] <= 0.7 * s0["ah"] and s0["bshadow"] and s0["src"] == "avatar-base.webp" and s0["acting"], s0)
             try: await pt.wait_for_function("()=>!OvuTidy.sweeping()", timeout=30000)
             except Exception: pass
@@ -3481,7 +3486,8 @@ async def main():
             try: await pp.wait_for_function("()=>{ var s = OvuTidy.sweeping(); return s && s.swept.length >= 1; }", timeout=20000)
             except Exception: pass
             await pp.evaluate("()=>document.querySelector('#hudStop').click()"); await pp.wait_for_timeout(300); p1 = await pp.evaluate(TST)
-            check("Stop mid-sweep ends the broom at once: no broom, spark or puff left, the thing it swept is gone and the others stay on the floor and in the save", p1["sw"] is None and not p1["broom"] and p1["sparksLeft"] == 0 and p1["puffsLeft"] == 0 and 1 <= p1["items"] <= 2 and p1["items"] == p1["state"] and not p1["practice"], p1)
+            await pp.wait_for_timeout(400); p1b = await pp.evaluate(TST)   # the thing it swept finishes its half-second fade after Stop; the broom, sparks and puffs go at once
+            check("Stop mid-sweep ends the broom at once: no broom, spark or puff left, the thing it swept finishes fading and the others stay on the floor and in the save", p1["sw"] is None and not p1["broom"] and p1["sparksLeft"] == 0 and p1["puffsLeft"] == 0 and not p1["practice"] and 1 <= p1b["items"] <= 2 and p1b["items"] == p1b["state"] and p1b["items"] == p1["state"], { "at300": p1, "at700": p1b })
             await pp.evaluate("()=>OvuTidy.fast(false)")   # at the real pace nothing is swept in the first seconds, so the interruption lands mid-sweep
             await begin_tidy(pp)
             try: await pp.wait_for_function("()=>{ var s = OvuTidy.sweeping(); return s && s.phase === 'move'; }", timeout=8000)
