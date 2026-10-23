@@ -73,30 +73,46 @@
   function whyText(j) { var w = j && j.why; if (w === 'text') return PROBLEMS[j.problem] || PROBLEMS.word; return WHY[w] || 'That did not go through. Please try again.'; }
 
   /* the same rules the server keeps (plaza.text_problem); the core suite checks both against one list of cases */
-  var LINK = /(https?:|www\.|[a-z0-9-]+\.[a-z]{2,}\/[a-z0-9]|[a-z0-9-]+\.(com|net|org|gov|edu|mil|int|io|ly|gg|app|dev|ai|info|xyz|link|site|online|shop|store|biz|health|care|clinic|life|live|world|today|blog|page|club|fun|art|space|tech|news|media|studio|agency|network|digital|cloud|center|group|email|website|web|wiki|pro|name|mobi|asia|travel)\b|[a-z0-9-]{3,}\.[a-z]{2}\b)/;
+  var LINK = /(https?:|www\.|[a-z0-9-]+\.[a-z]{2,}\/[a-z0-9])/;
+  /* every top-level domain of three or more letters (IANA list, 23 Oct 2026; the migration has the same string): a name
+     before one of these, in any case, is a web address; a two-letter (country) ending counts after three or more
+     letters, so a missed space ("it.in my back") stays a sentence (Codex diff review round 5, A10) */
+  var TLDS = ' aaa aarp abb abbott abbvie abc able abogado abudhabi academy accenture accountant accountants aco actor ads adult aeg aero aetna afl africa agakhan agency aig airbus airforce airtel akdn alibaba alipay allfinanz allstate ally alsace alstom amazon americanexpress americanfamily amex amfam amica amsterdam analytics android anquan anz aol apartments app apple aquarelle arab aramco archi army arpa art arte asda asia associates athleta attorney auction audi audible audio auspost author auto autos aws axa azure baby baidu banamex band bank bar barcelona barclaycard barclays barefoot bargains baseball basketball bauhaus bayern bbc bbt bbva bcg bcn beats beauty beer berlin best bestbuy bet bharti bible bid bike bing bingo bio biz black blackfriday blockbuster blog bloomberg blue bms bmw bnpparibas boats boehringer bofa bom bond boo book booking bosch bostik boston bot boutique box bradesco bridgestone broadway broker brother brussels build builders business buy buzz bzh cab cafe cal call calvinklein cam camera camp canon capetown capital capitalone car caravan cards care career careers cars casa case cash casino cat catering catholic cba cbn cbre center ceo cern cfa cfd chanel channel charity chase chat cheap chintai christmas chrome church cipriani circle cisco citadel citi citic city claims cleaning click clinic clinique clothing cloud club clubmed coach codes coffee college cologne com commbank community company compare computer comsec condos construction consulting contact contractors cooking cool coop corsica country coupon coupons courses cpa credit creditcard creditunion cricket crown crs cruise cruises cuisinella cymru cyou dad dance data date dating datsun day dclk dds deal dealer deals degree delivery dell deloitte delta democrat dental dentist desi design dev dhl diamonds diet digital direct directory discount discover dish diy dnp docs doctor dog domains dot download drive dtv dubai dupont durban dvag dvr earth eat eco edeka edu education email emerck energy engineer engineering enterprises epson equipment ericsson erni esq estate eurovision eus events exchange expert exposed express extraspace fage fail fairwinds faith family fan fans farm farmers fashion fast fedex feedback ferrari ferrero fidelity fido film final finance financial fire firestone firmdale fish fishing fit fitness flickr flights flir florist flowers fly foo food football ford forex forsale forum foundation fox free fresenius frl frogans frontier ftr fujitsu fun fund furniture futbol fyi gal gallery gallo gallup game games gap garden gay gbiz gdn gea gent genting george ggee gift gifts gives giving glass gle global globo gmail gmbh gmo gmx godaddy gold goldpoint golf goodyear goog google gop got gov grainger graphics gratis green gripe grocery group gucci guge guide guitars guru hair hamburg hangout haus hbo hdfc hdfcbank health healthcare help helsinki here hermes hiphop hisamitsu hitachi hiv hkt hockey holdings holiday homedepot homegoods homes homesense honda horse hospital host hosting hot hotels hotmail house how hsbc hughes hyatt hyundai ibm icbc ice icu ieee ifm ikano imamat imdb immo immobilien inc industries infiniti info ing ink institute insurance insure int international intuit investments ipiranga irish ismaili ist istanbul itau itv jaguar java jcb jeep jetzt jewelry jio jll jmp jnj jobs joburg jot joy jpmorgan jprs juegos kaufen kddi kerryhotels kerryproperties kfh kia kids kim kindle kitchen kiwi koeln komatsu kosher kpmg kpn krd kred kuokgroup kyoto lacaixa lamborghini lamer land landrover lanxess lasalle lat latino latrobe law lawyer lds lease leclerc lefrak legal lego lexus lgbt lidl life lifeinsurance lifestyle lighting like lilly limited limo lincoln link live living llc llp loan loans locker locus lol london lotte lotto love lpl lplfinancial ltd ltda lundbeck luxe luxury madrid maif maison makeup man management mango map market marketing markets marriott marshalls mattel mba mckinsey med media meet melbourne meme memorial men menu merck merckmsd miami microsoft mil mini mint mit mitsubishi mlb mls mma mobi mobile moda moe moi mom monash money monster mormon mortgage moscow moto motorcycles mov movie msd mtn mtr museum music nab nagoya name navy nba nec net netbank netflix network neustar new news next nextdirect nexus nfl ngo nhk nico nike nikon ninja nissan nissay nokia norton now nowruz nowtv nra nrw ntt nyc obi observer office okinawa olayan olayangroup ollo omega one ong onl online ooo open oracle orange org organic origins osaka otsuka ott ovh page panasonic paris pars partners parts party pay pccw pet pfizer pharmacy phd philips phone photo photography photos physio pics pictet pictures pid pin ping pink pioneer pizza place play playstation plumbing plus pnc pohl poker politie porn post praxi press prime pro prod productions prof progressive promo properties property protection pru prudential pub pwc qpon quebec quest racing radio read realestate realtor realty recipes red redumbrella rehab reise reisen reit reliance ren rent rentals repair report republican rest restaurant review reviews rexroth rich richardli ricoh ril rio rip rocks rodeo rogers room rsvp rugby ruhr run rwe ryukyu saarland safe safety sakura sale salon samsclub samsung sandvik sandvikcoromant sanofi sap sarl sas save saxo sbi sbs scb schaeffler schmidt scholarships school schule schwarz science scot search seat secure security seek select sener services seven sew sex sexy sfr shangrila sharp shell shia shiksha shoes shop shopping shouji show silk sina singles site ski skin sky skype sling smart smile sncf soccer social softbank software sohu solar solutions song sony soy spa space sport spot srl stada staples star statebank statefarm stc stcgroup stockholm storage store stream studio study style sucks supplies supply support surf surgery suzuki swatch swiss sydney systems tab taipei talk taobao target tatamotors tatar tattoo tax taxi tci tdk team tech technology tel temasek tennis teva thd theater theatre tiaa tickets tienda tips tires tirol tjmaxx tjx tkmaxx tmall today tokyo tools top toray toshiba total tours town toyota toys trade trading training travel travelers travelersinsurance trust trv tube tui tunes tushu tvs ubank ubs unicom university uno uol ups vacations vana vanguard vegas ventures verisign versicherung vet viajes video vig viking villas vin vip virgin visa vision viva vivo vlaanderen vodka volvo vote voting voto voyage wales walmart walter wang wanggou watch watches weather weatherchannel web webcam weber website wed wedding weibo weir whoswho wien wiki williamhill win windows wine winners wme woodside work works world wow wtc wtf xbox xerox xihuan xin xxx xyz yachts yahoo yamaxun yandex yodobashi yoga yokohama you youtube yun zappos zara zero zip zone zuerich ';
   var MSG_WORDS = { cunt: 'word', whore: 'word', slut: 'word', nudes: 'word', onlyfans: 'word', porn: 'word', nazi: 'word', hitler: 'word',
     telegram: 'contact', whatsapp: 'contact', kik: 'contact', wechat: 'contact', discord: 'contact', snapchat: 'contact' };
   function squash(s) { return String(s == null ? '' : s).replace(/\s+/g, ' ').replace(/^ | $/g, ''); }
   function straight(s) { return s.toLowerCase().replace(/[’‘]/g, "'"); }
-  /* any hostname, whatever its ending, as typed (a lower-case ending after a dot, three or more letters before it), and
-     the one help address the help card names, exactly: its own host, nothing before or after it (Codex round 4, A10, B3) */
-  var HOST = /(^|[^A-Za-z0-9._@-])[A-Za-z0-9][A-Za-z0-9-]{2,}(\.[A-Za-z0-9-]+)*\.[a-z]{2,24}(?![A-Za-z0-9-])/,
-    HELPLINE = /(^|[^a-z0-9.@_-])(https?:\/\/)?(www\.)?findahelpline\.com(\/[a-z0-9\/_-]*)?(?=$|[^a-z0-9@_-])/gi,
+  /* the one help address the help card names is set aside exactly: its own host, nothing before it and no further label
+     after it (findahelpline.com.evil.scot stays an address; Codex round 5, B3) */
+  var HELPLINE = /(^|[^a-z0-9.@_-])(https?:\/\/)?(www\.)?findahelpline\.com(\/[a-z0-9\/_-]*)?(?=$|[^a-z0-9@_.-]|\.(?:$|[^a-z0-9]))/gi,
     PHONE7 = /(^|[^0-9])[0-9]{3}[ .-][0-9]{4}($|[^0-9])/,
-    INTENT = /\b((call|text|ring|phone|whatsapp|sms|msg|message|reach|contact|email|e-mail|telegram|wechat|signal|line|add|find) me|my (phone number|number|no|phone|hp|handphone|mobile|cell|contact|whatsapp|telegram|wechat|line|insta|ig|email|e-mail|handle|id))\b/;
-  function isDate(run) { return /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(run) || /^[0-9]{1,2}[-.][0-9]{1,2}[-.][0-9]{2,4}$/.test(run) || /^[0-9]{4}[-.][0-9]{1,2}[-.][0-9]{1,2}$/.test(run); }
-  function digitRuns(low) { return (low.match(/\+?[0-9][0-9 ().-]*[0-9]/g) || []).filter(function (r) { return !isDate(r); }).map(function (r) { return r.replace(/[^0-9]/g, '').length; }); }
+    INTENT = /\b((call|text|ring|phone|whatsapp|sms|msg|message|reach|contact|email|e-mail|telegram|wechat|signal|line|add|find) me|my (phone number|number|no|phone|hp|handphone|mobile|cell|contact|whatsapp|telegram|wechat|line|insta|ig|email|e-mail|handle|id)|call|text|ring|dial|sms|whatsapp|phone)\b/,
+    /* a date (2026-10-22, 23.10.2026) is never part of a phone number, so dates go before digits are counted (round 5) */
+    DATES = /(?<![0-9.-])([0-9]{4}[-.](0?[1-9]|1[0-2])[-.](0?[1-9]|[12][0-9]|3[01])|(0?[1-9]|[12][0-9]|3[01])[-.](0?[1-9]|1[0-2])[-.]([0-9]{4}|[0-9]{2}))(?![0-9])/g;
+  function hostIn(t) {
+    return t.split(/[^A-Za-z0-9.-]+/).some(function (tok) {
+      var parts = tok.replace(/^[.-]+|[.-]+$/g, '').split('.');
+      for (var i = 1; i < parts.length; i++) {
+        var tld = parts[i].toLowerCase(), prev = parts[i - 1];
+        if (!/^[a-z]{2,24}$/.test(tld) || !/^[A-Za-z0-9-]+$/.test(prev)) continue;
+        if (tld.length === 2 ? prev.length >= 3 : (prev.length >= 2 && TLDS.indexOf(' ' + tld + ' ') > -1)) return true;
+      }
+      return false;
+    });
+  }
+  function digitRuns(low) { return (low.match(/\+?[0-9][0-9 ().-]*[0-9]/g) || []).map(function (r) { return r.replace(/[^0-9]/g, '').length; }); }
   function textProblem(s) {
     var t = squash(s); if (!t) return 'empty';
     if (Array.from(t).length > MAX) return 'long';
     var low = straight(t);
     /* contact details first, on all of her words, so no exception can hide one */
     if (/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/.test(low) || /(^|[^a-z0-9])@[a-z0-9_.]{2,}/.test(low)) return 'contact';
-    if (digitRuns(low).some(function (n) { return n >= 8; }) || PHONE7.test(low)) return 'contact';
-    var at = low.search(INTENT); if (at > -1 && digitRuns(low.slice(at)).some(function (n) { return n >= 5; })) return 'contact';
+    var nd = low.replace(DATES, ' ');
+    if (digitRuns(nd).some(function (n) { return n >= 8; }) || PHONE7.test(nd)) return 'contact';
+    var at = nd.search(INTENT); if (at > -1 && digitRuns(nd.slice(at)).some(function (n) { return n >= 5; })) return 'contact';
     if (/\b(dm|pm|message|add) me\b/.test(low) || /\bmy (number|handle|ig|insta) is\b/.test(low)) return 'contact';
     var bare = t.replace(HELPLINE, '$1 ');
-    if (LINK.test(straight(bare)) || HOST.test(bare)) return 'link';
+    if (LINK.test(straight(bare)) || hostIn(bare)) return 'link';
     var toks = low.split(/[^a-z0-9]+/);
     for (var k = 0; k < toks.length; k++) if (toks[k] && Object.prototype.hasOwnProperty.call(MSG_WORDS, toks[k])) return MSG_WORDS[toks[k]];
     return null;
@@ -183,7 +199,7 @@
     return Object.keys(by).map(function (k) { return by[k]; }).filter(function (m) { return m.mine || mute.indexOf(m.handle) < 0; })
       .sort(function (a, b) { return Number(a.id) - Number(b.id); }).slice(-SHOWN);
   }
-  var X = { FEED_MS: FEED_MS, ROOMS_MS: ROOMS_MS, GROUPS_MS: GROUPS_MS, TIMEOUT: TIMEOUT, MAX: MAX, DOORS: DOORS, KIND_ICON: KIND_ICON, HELP: HELP, NOTES: NOTES,
+  var X = { TLDS: TLDS, FEED_MS: FEED_MS, ROOMS_MS: ROOMS_MS, GROUPS_MS: GROUPS_MS, TIMEOUT: TIMEOUT, MAX: MAX, DOORS: DOORS, KIND_ICON: KIND_ICON, HELP: HELP, NOTES: NOTES,
     DOCTOR: DOCTOR, REMINDER: REMINDER, MODE: MODE, WORDS: WORDS, REASONS: REASONS, PROBLEMS: PROBLEMS, WHY: WHY, HOLD: HOLD, MSG_WORDS: MSG_WORDS,
     doorImg: doorImg, kindIcon: kindIcon, whyText: whyText, textProblem: textProblem, holdWhy: holdWhy, flat: flat, roomCount: roomCount, hereNow: hereNow,
     ago: ago, lastText: lastText, fullText: fullText, mergeFeed: mergeFeed };
@@ -259,12 +275,14 @@
     if (!feed) return;
     var now = Date.now(), keep = feed.rows.filter(function (m) { var t = Date.parse(m.at); return !(t && now - t >= DAY); });
     if (keep.length === feed.rows.length) return;
-    setRows(keep); feed.seen = null;
+    setRows(keep); feed.seen = null; gens.feed++; busy.feed = false; /* a look on its way described the window before: dropped (round 5, 1) */
     if (menuOpen && !keep.some(function (x) { return String(x.id) === menuOpen.id; })) { closeMine(menuOpen.sh); menuOpen = null; }
     paint();
   }
   /* Room chat as the newest event says: an answer naming an older event than one already seen changes nothing */
   function chatNews(u, ev) { return ev != null && (!chatKnown || chatKnown.uid !== u || Number(ev) > chatKnown.event); }
+  /* an answer is out of date when a newer event is known, or this very event is known with the other state */
+  function chatOld(u, ev, talk) { return ev != null && !!chatKnown && chatKnown.uid === u && (Number(ev) < chatKnown.event || (Number(ev) === chatKnown.event && chatKnown.talk !== !!talk)); }
   function chatSeen(u, ev, talk) { if (ev != null && (!chatKnown || chatKnown.uid !== u || Number(ev) >= chatKnown.event)) chatKnown = { uid: u, event: Number(ev), talk: !!talk }; }
 
   /* one request for one account, with one deadline; cancelled if another account is signed in before it leaves or when
@@ -318,7 +336,11 @@
       if (!j.ok) { rooms = null; dropFeed(); paint(); return; }
       if (!Array.isArray(j.rooms) || !j.rooms.every(okRoom)) { malformed(); return; }
       if (chatKnown && chatKnown.uid === u && (j.chat_event == null || Number(j.chat_event) < chatKnown.event)) { j.talk = chatKnown.talk && j.read; j.chat_event = chatKnown.event; }
-      else if (j.read) chatSeen(u, j.chat_event, j.talk);
+      else if (j.read) {
+        var offNow = !j.talk && chatNews(u, j.chat_event) && !!chatKnown && chatKnown.uid === u && chatKnown.talk;
+        chatSeen(u, j.chat_event, j.talk);
+        if (offNow) { chatGen++; if (feed) { setRows(feed.rows.filter(function (m) { return !m.mine; })); refetch(); } }
+      }
       rooms = j;
       if (view && (!j.read || !j.rooms.some(function (r) { return r.id === view; }))) dropFeed();
       paint();
@@ -619,7 +641,7 @@
         /* an Off since (here, in Plaza friends or on another phone) wins over this older yes: nothing is recorded or said,
            and the rooms list says where things stand (Codex round 4, B1) */
         var ev = j.chat_event != null ? j.chat_event : null;
-        if (chatGen !== cg || (ev != null && !chatNews(u, ev))) { closeMine(sh); gens.rooms++; busy.rooms = false; loadRooms(); return; }
+        if (chatGen !== cg || chatOld(u, ev, true)) { closeMine(sh); gens.rooms++; busy.rooms = false; loadRooms(); return; }
         if (ev != null) chatSeen(u, ev, true);
         try { if ((j.recorded || []).indexOf('plaza_chat') > -1 && root.OvuConsent && root.OvuConsent.grant) root.OvuConsent.grant('plaza_chat', 'jit', { sent: true }); } catch (e) { }
         if (rooms) { rooms.talk = true; if (ev != null) rooms.chat_event = ev; }
@@ -638,7 +660,7 @@
     return rpc('plaza_chat_off', { p_notice: noticeV(), p_device: device() || null }, u).then(function (j) {
       if (uid() !== u) return;
       if (!j || !j.ok) { refetch(); return; }
-      if (j.chat_event != null && !chatNews(u, j.chat_event)) { gens.rooms++; busy.rooms = false; loadRooms(); return; } /* an On since is newer */
+      if (chatOld(u, j.chat_event, false)) { gens.rooms++; busy.rooms = false; loadRooms(); return; } /* an On since is newer */
       chatSeen(u, j.chat_event, false);
       try { if (root.OvuConsent && root.OvuConsent.withdraw) root.OvuConsent.withdraw('plaza_chat', 'you', { sent: true }); } catch (e) { }
       chatGen++;

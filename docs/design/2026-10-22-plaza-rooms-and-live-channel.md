@@ -298,3 +298,26 @@ New checks: 12 text cases and 8 hold cases in the shared fixture (phone, dry run
 review-only check in the races and core, and nine browser checks (the late yes now uses words that open the hold card, B1, B2,
 the Plaza friends redraw, B6, B8, B5, B7). Each browser check fails against the round-four commit (305e9f4).
 
+## 16. Codex diff review, round 5 (23 Oct): MERGE, and the P2 and P3 findings answered before the merge
+
+Review: `docs/design/reviews/2026-10-23-plaza-rooms-codex-diff-r5.md`. No P0 or P1 remains: review only closes A7, and the
+reviewer judged that lifting the check inside the test runs does not weaken the shipped boundary. Three P2s were still
+open and six new P2/P3 findings came in. The text rules among them are in the migration Jamie will be asked to approve, so
+all nine were fixed before the merge rather than after.
+
+| Round 5 item | What changed |
+|---|---|
+| A10 any hostname | Web addresses are now recognised by the IANA list of real endings (1,038 of three letters or more, 23 Oct 2026; the phone and the migration hold the same string, and core checks they match), in any case: `NHSINFORM.SCOT` and `go.help` are refused, `ok.thanks`, `fine.thanks` and `tired.then` are not. A two-letter ending still needs three letters before it, so "it.in my back" stays a sentence |
+| B3 help address | The exception ends at the help host: a further label after `.com` (`findahelpline.com.evil.scot`) keeps it an address; a full stop that ends the sentence still clears it |
+| B4 contact grammar | A bare "call", "text", "ring", "dial" or "phone" followed by five digits or more counts (`Call 5551234`); "call me crazy" still does not |
+| 1 expiry during a look | A message expiring on the phone drops the look on its way (its fingerprint described the old window), so the rooms are never marked broken |
+| 2 Off seen by a poll | When the rooms list shows a newer Room chat Off than the phone knew, replies on their way are dropped and her messages leave, as for a local Off |
+| 3 equal events | An On or Off answer naming the very event a poll already saw, in the same state, counts as success; only an older event, or the same one in the other state, is out of date |
+| 4 date ranges | Dates (2026-10-22, 23.10.2026) are set aside before digits are counted, so "2026-10-22 - 2026-10-23" is not a phone number |
+| 5 expired Show | A decision on a message past its 24 hours is refused ("nobody can see it any more") |
+| 6 proposals | A cancelled request from another staff account no longer empties the signed-in account's proposals |
+
+Checks: 7 more text cases in the shared fixture; `expired_decision_refused` in the dry run (80 of 80 locally); a core
+check that the phone and migration endings match; three browser checks (findings 1, 2, 3), each shown failing on
+d365540. Finding 6 has no browser check (a P3 needing a two-account staff race); the change is one guard.
+

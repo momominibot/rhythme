@@ -87,7 +87,7 @@ declare
     'report_own_refused', 'report_held_refused', 'report', 'report_again_not_counted', 'three_reports_hide', 'report_staff_view', 'staff_hide_closes_reports',
     'other_group_refused', 'room_ends_with_visit', 'chat_off_deletes', 'withdraw_social_ends_chat', 'retention', 'open_report_limit', 'chat_flag_off',
     'quiet_full_no_suggest', 'topic_full_suggests_everyone', 'hourly_cleanup_scheduled', 'account_delete', 'stale_decision_refused',
-    'hidden_card_keeps_place'];
+    'hidden_card_keeps_place', 'expired_decision_refused'];
 begin
   -- a synthetic owner for the staff calls (rolled back with everything else)
   insert into auth.users (id, email, aud, role) values (o, 'dryrun-owner-' || o || '@example.invalid', 'authenticated', 'authenticated');
@@ -307,7 +307,8 @@ begin
     and plaza.text_problem('t.me/alice') = 'link' and plaza.text_problem('t.co/hello') = 'link' and plaza.text_problem('example.health') = 'link'
     and plaza.text_problem('I need some self care today') is null and plaza.text_problem('half/half and 1/2 a day') is null
     and plaza.text_problem('medlineplus.gov has it') = 'link' and plaza.text_problem('see hse.ie') = 'link' and plaza.text_problem('ok.thanks for that') is null
-    and plaza.text_problem('nhsinform.scot has a guide') = 'link' and plaza.text_problem('Email support@findahelpline.com') = 'contact' and plaza.text_problem('try findahelpline.company') = 'link' and plaza.text_problem('see findahelpline.com.') is null and plaza.text_problem('https://findahelpline.com/countries lists them') is null and plaza.text_problem('Call me on 555 1234') = 'contact' and plaza.text_problem('my number is 91 234') = 'contact' and plaza.text_problem('she did not text me back') is null and plaza.text_problem('my phone is broken again') is null and plaza.text_problem('Day 23.10.2026 was rough') is null and plaza.text_problem('my no 1 tip is rest') is null and plaza.text_problem('Dr.Tan said 3.5kg is fine') is null);
+    and plaza.text_problem('nhsinform.scot has a guide') = 'link' and plaza.text_problem('Email support@findahelpline.com') = 'contact' and plaza.text_problem('try findahelpline.company') = 'link' and plaza.text_problem('see findahelpline.com.') is null and plaza.text_problem('https://findahelpline.com/countries lists them') is null and plaza.text_problem('Call me on 555 1234') = 'contact' and plaza.text_problem('my number is 91 234') = 'contact' and plaza.text_problem('she did not text me back') is null and plaza.text_problem('my phone is broken again') is null and plaza.text_problem('Day 23.10.2026 was rough') is null and plaza.text_problem('my no 1 tip is rest') is null and plaza.text_problem('Dr.Tan said 3.5kg is fine') is null
+    and plaza.text_problem('NHSINFORM.SCOT has a guide') = 'link' and plaza.text_problem('go.help') = 'link' and plaza.text_problem('findahelpline.com.evil.scot') = 'link' and plaza.text_problem('Call 5551234') = 'contact' and plaza.text_problem('My appointments are 2026-10-22 - 2026-10-23') is null and plaza.text_problem('fine.thanks for that') is null and plaza.text_problem('Seen 23.10.2026 and 24.10.2026') is null);
   out := out || jsonb_build_object('hold_cases',
     plaza.hold_why('I keep thinking about suicide', false) = 'care' and plaza.hold_why('some days I want to die', false) = 'care'
     and plaza.hold_why('I don’t want to be here any more', false) = 'care' and plaza.hold_why('I used to self-harm', false) = 'care'
@@ -441,6 +442,17 @@ begin
     out := out || jsonb_build_object('stale_decision_refused', (r2 ->> 'ok')::boolean and not (r3 ->> 'ok')::boolean and (r3 ->> 'stale')::boolean
       and (select status from public.plaza_messages where id = m6) = 'hidden');
     delete from public.plaza_room_presence where user_id = x6; delete from public.plaza_presence where user_id = x6;
+  end;
+
+  -- a decision on a message past its 24 hours is refused: nobody could see it any more (Codex diff review round 5, 5)
+  declare x7 uuid := gen_random_uuid(); m7 bigint; begin
+    perform pg_temp.person(x7, 'Ivy', 'everyone', true);
+    insert into public.plaza_messages (room, server, author, handle, name, look, body, status, held_why, at)
+      select 'everyone-chat', 'everyone', x7, s.handle, s.name, s.look, 'from a day ago', 'held', 'review', clock_timestamp() - interval '25 hours'
+      from public.social_profiles s where s.user_id = x7 returning id into m7;
+    r := pg_temp.call(o, format('select public.admin_plaza_decide(%s, %L, %s)', m7, 'show', (select rev from public.plaza_messages where id = m7)));
+    out := out || jsonb_build_object('expired_decision_refused', not (r ->> 'ok')::boolean and (select status from public.plaza_messages where id = m7) = 'held');
+    delete from public.plaza_messages where id = m7; delete from public.plaza_presence where user_id = x7;
   end;
 
   -- another group's room is closed to her; reading needs her own group

@@ -3138,6 +3138,41 @@ async def main():
             r_errors[n_err:] = [e for e in r_errors[n_err:] if "ERR_FAILED" not in e]  # the requests cut on purpose, nothing else
             RM["msgs"]["everyone-doctor"] = [x for x in RM["msgs"]["everyone-doctor"] if x["body"] != "A note from yesterday."]
             check("rooms: a message past its 24 hours leaves the phone even while the rooms cannot be reached, and the others stay", seen_old and not ex["old"] and ex["left"] >= 1, {"seen": seen_old, "after": ex})
+            # a look already on its way when a message expires on the phone is dropped, not taken as a broken answer that
+            # hides the rooms (Codex round 5, 1)
+            await pr2.evaluate("()=>OvuRooms.poll()"); await pr2.wait_for_timeout(500)
+            RM["next"] += 1; RM["msgs"]["everyone-doctor"].append({"id": RM["next"], "rev": RM["next"], "at": (datetime.datetime.now() - datetime.timedelta(hours=23, minutes=59, seconds=30)).isoformat(), "body": "Another note from yesterday.", "care": False, "mine": False, "held": False, "handle": "h-zoe", "name": "Zoe", "look": "cozy"})
+            await pr2.evaluate("()=>OvuRooms.poll()")
+            try: await pr2.wait_for_function("()=>/Another note from yesterday/.test(document.querySelector('#chRooms').textContent)", timeout=6000)
+            except Exception: pass
+            await pr2.wait_for_timeout(300)
+            RM["slow_feed"] = 1.2; await pr2.evaluate("()=>{OvuRooms.poll(); return true}"); await pr2.wait_for_timeout(200)  # an unchanged window: the answer will be `same`
+            RM["msgs"]["everyone-doctor"] = [x for x in RM["msgs"]["everyone-doctor"] if x["body"] != "Another note from yesterday."]  # the server's 24 hours pass too
+            await pr2.evaluate("()=>{window.__realNow = Date.now; Date.now = function(){ return window.__realNow.call(Date) + 120000 }; document.dispatchEvent(new Event('visibilitychange')); return true}")
+            await pr2.wait_for_timeout(2700)
+            pe = await pr2.evaluate("()=>({broken: OvuRooms.state().broken, old: /Another note from yesterday/.test(document.querySelector('#chRooms').textContent), left: document.querySelectorAll('#chRooms .rmm').length})")
+            await pr2.evaluate("()=>{Date.now = window.__realNow; return true}"); RM["slow_feed"] = 0; await pr2.wait_for_timeout(300)
+            check("rooms: a look on its way when a message expires on the phone does not break the rooms, and the expired message stays gone", pe["broken"] is False and not pe["old"] and pe["left"] >= 1, pe)
+            # the Room chat yes lands after a poll already saw that same yes: the waiting message still goes (Codex round 5, 3)
+            await pr2.click("#chRooms [data-rmact=back]"); await pr2.wait_for_selector("#chRooms [data-rmroom=everyone-chat]"); await pr2.click("#chRooms [data-rmroom=everyone-chat]")
+            try: await pr2.wait_for_selector("#chRooms #rmText", timeout=6000)
+            except Exception: pass
+            if RM["talk"]: await pr2.evaluate("()=>OvuRooms.chatOff()"); await pr2.wait_for_timeout(400)
+            await pr2.fill("#rmText", "Hello from the first try."); await pr2.click("#chRooms [data-rmact=send]"); await pr2.wait_for_selector("#rmChatOn")
+            await pr2.check("#rmChatOk"); RM["slow_on_after"] = 1.5; n_say5 = len(rcall("plaza_say"))
+            await pr2.click("#rmChatOn"); await pr2.wait_for_timeout(300)
+            await pr2.evaluate("()=>{OvuRooms.poll(); return true}"); await pr2.wait_for_timeout(1900); RM["slow_on_after"] = 0
+            ft = await pr2.evaluate("()=>({talk: (OvuRooms.state().rooms||{}).talk, mine: [...document.querySelectorAll('#chRooms .rmm.mine')].map(e=>e.textContent).join('|')})")
+            check("rooms: a Room chat yes that a poll saw first still sends the waiting message", RM["talk"] is True and ft["talk"] is True and len(rcall("plaza_say")) == n_say5 + 1 and "Hello from the first try" in ft["mine"], {"says": len(rcall("plaza_say")) - n_say5, "ft": ft})
+            # Room chat turned off on another phone, seen by the next poll: a Send on its way says nothing and adds nothing (round 5, 2)
+            await pr2.wait_for_timeout(3100)
+            RM["slow"] = 1.2; n_say6 = len(rcall("plaza_say")); await pr2.evaluate("()=>{document.querySelector('#toast').textContent=''; return true}")  # the last check's Sent stays in the toast
+            await pr2.fill("#rmText", "Slow before a remote off."); await pr2.click("#chRooms [data-rmact=send]"); await pr2.wait_for_timeout(200)
+            RM["talk"] = False; RM["chat_event"] = (RM["chat_event"] or 100) + 1
+            for k in RM["msgs"]: RM["msgs"][k] = [x for x in RM["msgs"][k] if x["handle"] != "h-me"]
+            await pr2.evaluate("()=>{OvuRooms.poll(); return true}"); await pr2.wait_for_timeout(1700); RM["slow"] = 0
+            ro = await pr2.evaluate("()=>({talk: (OvuRooms.state().rooms||{}).talk, mine: [...document.querySelectorAll('#chRooms .rmm.mine')].map(e=>e.textContent).join('|'), toast: document.querySelector('#toast').textContent})")
+            check("rooms: Room chat off on another phone, once a poll sees it, drops a Send on its way: no message and no Sent", len(rcall("plaza_say")) == n_say6 + 1 and ro["talk"] is False and "Slow before a remote off" not in ro["mine"] and "Sent" not in ro["toast"], ro)
             # another tab signs in B: everything of hers goes from this tab at once
             await pr2.evaluate("()=>{document.querySelector('#rmText') && (document.querySelector('#rmText').value='draft');}")
             SESS_RB = dict(SESS); SESS_RB["access_token"] = "smoke-token-b"; SESS_RB["user"] = dict(SESS["user"]); SESS_RB["user"]["id"] = "00000000-0000-4000-8000-00000000000b"

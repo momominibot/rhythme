@@ -1,7 +1,8 @@
 You are reviewing a DIFF for Rhythme (women's health life-sim PWA, vanilla JS, Supabase), round 5. Read-only; do not edit files.
 Repository: this working directory, branch claude/plaza-groups-1fc459.
   The whole change:            git diff origin/main...HEAD
-  What changed since round 4:  git show HEAD   (the round-4 fixes)
+  What changed since round 4:  git show 869a3ba   (the round-4 fixes; the merge after it, d365540, only brings in
+                               PR 86 from main and a service-worker version)
 Earlier reviews: docs/design/reviews/2026-10-22-plaza-rooms-codex-diff-r1.md, ...-r2.md, ...-r3.md, ...-r4.md (23 Oct).
 How round 4 was answered: design note docs/design/2026-10-22-plaza-rooms-and-live-channel.md section 15.
 

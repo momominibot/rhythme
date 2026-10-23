@@ -5055,6 +5055,8 @@ var summarised = false;
   /* no live mode in this migration: word rules cannot catch every way of telling someone to stop a medicine, so every
      message waits for a person (Codex diff review round 4, A7); a withdrawal reaches the rooms at once (B2) */
   var consentSrc = fs.readFileSync(path.join(root, 'ovu-consent.js'), 'utf8');
+  var tldSql = /create or replace function plaza\.tlds\(\) returns text[\s\S]*?select '([^']*)'::text/.exec(mig);
+  check('the phone and the server know the same web-address endings (IANA list, ' + X.TLDS.trim().split(' ').length + ' of three letters or more)', !!tldSql && tldSql[1] === X.TLDS && X.TLDS.split(' ').length > 1000 && / scot | help | com | health /.test(X.TLDS) && !/ thanks /.test(X.TLDS));
   check('the migration holds the rooms in review mode with a check (live needs its own migration), and a consent withdrawal reaches the rooms at once', /constraint plaza_flags_review_only check \(key <> 'mode' or value = 'review'\)/.test(mig)
     && /root\.OvuRoom\.emit\('consent', purposeId, ev\.action\)/.test(consentSrc) && /R\.on\('consent'/.test(src));
 })();

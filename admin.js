@@ -412,7 +412,7 @@
       }
     }).catch(function () { });
   }
-  function loadProposals() { return rpc('admin_proposals').then(function (j) { proposals = Array.isArray(j) ? j : []; }).catch(function () { proposals = []; }); }
+  function loadProposals() { return rpc('admin_proposals').then(function (j) { proposals = Array.isArray(j) ? j : []; }).catch(function (e) { if (e && e.cancelled) return; proposals = []; }); } /* another account's late failure leaves this one's list alone (round 5, 6) */
   function loadStaff() { if (me.role !== 'owner') return Promise.resolve(); return Promise.all([rpc('admin_list').then(function (j) { admins = Array.isArray(j) ? j : []; }), rpc('admin_audit_tail', { p_limit: 100 }).then(function (j) { audit = Array.isArray(j) ? j : []; })]).catch(function () { }); }
   function render() {
     if (tab === 'today') renderToday();

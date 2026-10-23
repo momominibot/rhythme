@@ -192,6 +192,34 @@
   {
    "text": "Dr.Tan said 3.5kg is fine",
    "problem": null
+  },
+  {
+   "text": "NHSINFORM.SCOT has a guide",
+   "problem": "link"
+  },
+  {
+   "text": "go.help",
+   "problem": "link"
+  },
+  {
+   "text": "findahelpline.com.evil.scot",
+   "problem": "link"
+  },
+  {
+   "text": "Call 5551234",
+   "problem": "contact"
+  },
+  {
+   "text": "My appointments are 2026-10-22 - 2026-10-23",
+   "problem": null
+  },
+  {
+   "text": "fine.thanks for that",
+   "problem": null
+  },
+  {
+   "text": "Seen 23.10.2026 and 24.10.2026",
+   "problem": null
   }
  ],
  "hold": [

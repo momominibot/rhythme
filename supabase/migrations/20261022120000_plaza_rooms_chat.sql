@@ -290,38 +290,63 @@ language sql immutable security definer set search_path = '' as $$
   select ' ' || btrim(regexp_replace(regexp_replace(lower(translate(coalesce(p_body, ''), '’‘', '''''')), '[^a-z0-9'']+', ' ', 'g'), '\s+', ' ', 'g')) || ' '
 $$;
 
--- a run of digits that reads as a date (2026-10-22, 23.10.2026, 2026.10.23), which is never a phone number
-create or replace function plaza.is_date(p_run text) returns boolean
+-- every top-level domain of three or more letters (IANA list, 23 Oct 2026; ovu-rooms.js TLDS is the same string)
+create or replace function plaza.tlds() returns text
 language sql immutable security definer set search_path = '' as $$
-  select p_run ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' or p_run ~ '^[0-9]{1,2}[-.][0-9]{1,2}[-.][0-9]{2,4}$' or p_run ~ '^[0-9]{4}[-.][0-9]{1,2}[-.][0-9]{1,2}$'
+  select ' aaa aarp abb abbott abbvie abc able abogado abudhabi academy accenture accountant accountants aco actor ads adult aeg aero aetna afl africa agakhan agency aig airbus airforce airtel akdn alibaba alipay allfinanz allstate ally alsace alstom amazon americanexpress americanfamily amex amfam amica amsterdam analytics android anquan anz aol apartments app apple aquarelle arab aramco archi army arpa art arte asda asia associates athleta attorney auction audi audible audio auspost author auto autos aws axa azure baby baidu banamex band bank bar barcelona barclaycard barclays barefoot bargains baseball basketball bauhaus bayern bbc bbt bbva bcg bcn beats beauty beer berlin best bestbuy bet bharti bible bid bike bing bingo bio biz black blackfriday blockbuster blog bloomberg blue bms bmw bnpparibas boats boehringer bofa bom bond boo book booking bosch bostik boston bot boutique box bradesco bridgestone broadway broker brother brussels build builders business buy buzz bzh cab cafe cal call calvinklein cam camera camp canon capetown capital capitalone car caravan cards care career careers cars casa case cash casino cat catering catholic cba cbn cbre center ceo cern cfa cfd chanel channel charity chase chat cheap chintai christmas chrome church cipriani circle cisco citadel citi citic city claims cleaning click clinic clinique clothing cloud club clubmed coach codes coffee college cologne com commbank community company compare computer comsec condos construction consulting contact contractors cooking cool coop corsica country coupon coupons courses cpa credit creditcard creditunion cricket crown crs cruise cruises cuisinella cymru cyou dad dance data date dating datsun day dclk dds deal dealer deals degree delivery dell deloitte delta democrat dental dentist desi design dev dhl diamonds diet digital direct directory discount discover dish diy dnp docs doctor dog domains dot download drive dtv dubai dupont durban dvag dvr earth eat eco edeka edu education email emerck energy engineer engineering enterprises epson equipment ericsson erni esq estate eurovision eus events exchange expert exposed express extraspace fage fail fairwinds faith family fan fans farm farmers fashion fast fedex feedback ferrari ferrero fidelity fido film final finance financial fire firestone firmdale fish fishing fit fitness flickr flights flir florist flowers fly foo food football ford forex forsale forum foundation fox free fresenius frl frogans frontier ftr fujitsu fun fund furniture futbol fyi gal gallery gallo gallup game games gap garden gay gbiz gdn gea gent genting george ggee gift gifts gives giving glass gle global globo gmail gmbh gmo gmx godaddy gold goldpoint golf goodyear goog google gop got gov grainger graphics gratis green gripe grocery group gucci guge guide guitars guru hair hamburg hangout haus hbo hdfc hdfcbank health healthcare help helsinki here hermes hiphop hisamitsu hitachi hiv hkt hockey holdings holiday homedepot homegoods homes homesense honda horse hospital host hosting hot hotels hotmail house how hsbc hughes hyatt hyundai ibm icbc ice icu ieee ifm ikano imamat imdb immo immobilien inc industries infiniti info ing ink institute insurance insure int international intuit investments ipiranga irish ismaili ist istanbul itau itv jaguar java jcb jeep jetzt jewelry jio jll jmp jnj jobs joburg jot joy jpmorgan jprs juegos kaufen kddi kerryhotels kerryproperties kfh kia kids kim kindle kitchen kiwi koeln komatsu kosher kpmg kpn krd kred kuokgroup kyoto lacaixa lamborghini lamer land landrover lanxess lasalle lat latino latrobe law lawyer lds lease leclerc lefrak legal lego lexus lgbt lidl life lifeinsurance lifestyle lighting like lilly limited limo lincoln link live living llc llp loan loans locker locus lol london lotte lotto love lpl lplfinancial ltd ltda lundbeck luxe luxury madrid maif maison makeup man management mango map market marketing markets marriott marshalls mattel mba mckinsey med media meet melbourne meme memorial men menu merck merckmsd miami microsoft mil mini mint mit mitsubishi mlb mls mma mobi mobile moda moe moi mom monash money monster mormon mortgage moscow moto motorcycles mov movie msd mtn mtr museum music nab nagoya name navy nba nec net netbank netflix network neustar new news next nextdirect nexus nfl ngo nhk nico nike nikon ninja nissan nissay nokia norton now nowruz nowtv nra nrw ntt nyc obi observer office okinawa olayan olayangroup ollo omega one ong onl online ooo open oracle orange org organic origins osaka otsuka ott ovh page panasonic paris pars partners parts party pay pccw pet pfizer pharmacy phd philips phone photo photography photos physio pics pictet pictures pid pin ping pink pioneer pizza place play playstation plumbing plus pnc pohl poker politie porn post praxi press prime pro prod productions prof progressive promo properties property protection pru prudential pub pwc qpon quebec quest racing radio read realestate realtor realty recipes red redumbrella rehab reise reisen reit reliance ren rent rentals repair report republican rest restaurant review reviews rexroth rich richardli ricoh ril rio rip rocks rodeo rogers room rsvp rugby ruhr run rwe ryukyu saarland safe safety sakura sale salon samsclub samsung sandvik sandvikcoromant sanofi sap sarl sas save saxo sbi sbs scb schaeffler schmidt scholarships school schule schwarz science scot search seat secure security seek select sener services seven sew sex sexy sfr shangrila sharp shell shia shiksha shoes shop shopping shouji show silk sina singles site ski skin sky skype sling smart smile sncf soccer social softbank software sohu solar solutions song sony soy spa space sport spot srl stada staples star statebank statefarm stc stcgroup stockholm storage store stream studio study style sucks supplies supply support surf surgery suzuki swatch swiss sydney systems tab taipei talk taobao target tatamotors tatar tattoo tax taxi tci tdk team tech technology tel temasek tennis teva thd theater theatre tiaa tickets tienda tips tires tirol tjmaxx tjx tkmaxx tmall today tokyo tools top toray toshiba total tours town toyota toys trade trading training travel travelers travelersinsurance trust trv tube tui tunes tushu tvs ubank ubs unicom university uno uol ups vacations vana vanguard vegas ventures verisign versicherung vet viajes video vig viking villas vin vip virgin visa vision viva vivo vlaanderen vodka volvo vote voting voto voyage wales walmart walter wang wanggou watch watches weather weatherchannel web webcam weber website wed wedding weibo weir whoswho wien wiki williamhill win windows wine winners wme woodside work works world wow wtc wtf xbox xerox xihuan xin xxx xyz yachts yahoo yamaxun yandex yodobashi yoga yokohama you youtube yun zappos zara zero zip zone zuerich '::text
 $$;
+-- dates (2026-10-22, 23.10.2026) set aside before digits are counted: a date is never part of a phone number
+create or replace function plaza.undate(p_text text) returns text
+language sql immutable security definer set search_path = '' as $$
+  select regexp_replace(coalesce(p_text, ''), '(?<![0-9.-])([0-9]{4}[-.](0?[1-9]|1[0-2])[-.](0?[1-9]|[12][0-9]|3[01])|(0?[1-9]|[12][0-9]|3[01])[-.](0?[1-9]|1[0-2])[-.]([0-9]{4}|[0-9]{2}))(?![0-9])', ' ', 'g')
+$$;
+-- a web address anywhere in her words, in any case: a name of two or more before a listed ending, or three or more
+-- before a two-letter one (so a missed space, "it.in my back", stays a sentence; Codex diff review round 5, A10)
+create or replace function plaza.has_host(p_text text) returns boolean
+language plpgsql immutable security definer set search_path = '' as $$
+declare tok text; parts text[]; i integer; tld text; prev text;
+begin
+  foreach tok in array regexp_split_to_array(coalesce(p_text, ''), '[^A-Za-z0-9.-]+') loop
+    parts := string_to_array(regexp_replace(tok, '^[.-]+|[.-]+$', '', 'g'), '.');
+    for i in 2 .. coalesce(array_length(parts, 1), 0) loop
+      tld := lower(parts[i]); prev := parts[i - 1];
+      if tld ~ '^[a-z]{2,24}$' and prev ~ '^[A-Za-z0-9-]+$'
+         and ((char_length(tld) = 2 and char_length(prev) >= 3)
+              or (char_length(tld) >= 3 and char_length(prev) >= 2 and position(' ' || tld || ' ' in plaza.tlds()) > 0)) then
+        return true;
+      end if;
+    end loop;
+  end loop;
+  return false;
+end $$;
 
 -- what a message may not carry, or null; the phone runs the same rules first (ovu-rooms.js textProblem)
 create or replace function plaza.text_problem(p_body text) returns text
 language plpgsql stable security definer set search_path = '' as $$
-declare t text := btrim(regexp_replace(coalesce(p_body, ''), '\s+', ' ', 'g')); low text; bare text; tail text; tok text; run text; k text;
+declare t text := btrim(regexp_replace(coalesce(p_body, ''), '\s+', ' ', 'g')); low text; nd text; bare text; tail text; tok text; run text; k text;
 begin
   if t = '' then return 'empty'; end if;
   if char_length(t) > 280 then return 'long'; end if;
   low := lower(translate(t, '’‘', ''''''));
   -- contact details first, on all of her words, so no exception can hide one (Codex diff review round 4, B3 and B4)
   if low ~ '[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}' or low ~ '(^|[^a-z0-9])@[a-z0-9_.]{2,}' then return 'contact'; end if;
-  for run in select m[1] from regexp_matches(low, '(\+?[0-9][0-9 ().-]*[0-9])', 'g') as m loop
-    if char_length(regexp_replace(run, '[^0-9]', '', 'g')) >= 8 and not plaza.is_date(run) then return 'contact'; end if;
+  nd := plaza.undate(low);
+  for run in select m[1] from regexp_matches(nd, '(\+?[0-9][0-9 ().-]*[0-9])', 'g') as m loop
+    if char_length(regexp_replace(run, '[^0-9]', '', 'g')) >= 8 then return 'contact'; end if;
   end loop;
-  if low ~ '(^|[^0-9])[0-9]{3}[ .-][0-9]{4}($|[^0-9])' then return 'contact'; end if;
-  tail := (regexp_match(low, '(\y(?:(?:call|text|ring|phone|whatsapp|sms|msg|message|reach|contact|email|e-mail|telegram|wechat|signal|line|add|find) me|my (?:phone number|number|no|phone|hp|handphone|mobile|cell|contact|whatsapp|telegram|wechat|line|insta|ig|email|e-mail|handle|id))\y.*)$'))[1];
+  if nd ~ '(^|[^0-9])[0-9]{3}[ .-][0-9]{4}($|[^0-9])' then return 'contact'; end if;
+  -- contact grammar ("call me on", "my number is", or a bare "call", "text", "ring") followed by five digits or more
+  tail := (regexp_match(nd, '(\y(?:(?:call|text|ring|phone|whatsapp|sms|msg|message|reach|contact|email|e-mail|telegram|wechat|signal|line|add|find) me|my (?:phone number|number|no|phone|hp|handphone|mobile|cell|contact|whatsapp|telegram|wechat|line|insta|ig|email|e-mail|handle|id)|call|text|ring|dial|sms|whatsapp|phone)\y.*)$'))[1];
   if tail is not null then
     for run in select m[1] from regexp_matches(tail, '(\+?[0-9][0-9 ().-]*[0-9])', 'g') as m loop
-      if char_length(regexp_replace(run, '[^0-9]', '', 'g')) >= 5 and not plaza.is_date(run) then return 'contact'; end if;
+      if char_length(regexp_replace(run, '[^0-9]', '', 'g')) >= 5 then return 'contact'; end if;
     end loop;
   end if;
   if low ~ '\y(dm|pm|message|add) me\y' or low ~ '\ymy (number|handle|ig|insta) is\y' then return 'contact'; end if;
-  -- then links: the help card's one address, exactly (its own host, nothing before or after), is set aside; any other
-  -- hostname counts, whatever its ending, as typed (a lower-case ending, three or more letters before the dot; A10)
-  bare := regexp_replace(t, '(^|[^a-z0-9.@_-])(https?://)?(www\.)?findahelpline\.com(/[a-z0-9/_-]*)?(?=$|[^a-z0-9@_-])', '\1 ', 'gi');
-  if lower(translate(bare, '’‘', '''''')) ~ '(https?:|www\.|[a-z0-9-]+\.[a-z]{2,}/[a-z0-9]|[a-z0-9-]+\.(com|net|org|gov|edu|mil|int|io|ly|gg|app|dev|ai|info|xyz|link|site|online|shop|store|biz|health|care|clinic|life|live|world|today|blog|page|club|fun|art|space|tech|news|media|studio|agency|network|digital|cloud|center|group|email|website|web|wiki|pro|name|mobi|asia|travel)\y|[a-z0-9-]{3,}\.[a-z]{2}\y)'
-     or bare ~ '(^|[^A-Za-z0-9._@-])[A-Za-z0-9][A-Za-z0-9-]{2,}(\.[A-Za-z0-9-]+)*\.[a-z]{2,24}(?![A-Za-z0-9-])' then return 'link'; end if;
+  -- then links: the help card's one address is set aside exactly (its own host, nothing before it, no further label
+  -- after it: findahelpline.com.evil.scot stays an address; round 5, B3); any other web address counts
+  bare := regexp_replace(t, '(^|[^a-z0-9.@_-])(https?://)?(www\.)?findahelpline\.com(/[a-z0-9/_-]*)?(?=$|[^a-z0-9@_.-]|\.($|[^a-z0-9]))', '\1 ', 'gi');
+  if lower(translate(bare, '’‘', '''''')) ~ '(https?:|www\.|[a-z0-9-]+\.[a-z]{2,}/[a-z0-9])' or plaza.has_host(bare) then return 'link'; end if;
   foreach tok in array regexp_split_to_array(low, '[^a-z0-9]+') loop
     if tok <> '' then
       select w.kind into k from public.plaza_words w where w.word = tok;
@@ -651,6 +676,9 @@ begin
   if m.status <> 'held' or p_rev is null or m.rev <> p_rev then
     return jsonb_build_object('ok', false, 'stale', true, 'error', 'Someone decided or changed this message since the queue was shown. The queue has been refreshed.');
   end if;
+  if m.at <= clock_timestamp() - interval '24 hours' then -- nobody could read it now; the hourly clean-up deletes it (round 5, 5)
+    return jsonb_build_object('ok', false, 'error', 'That message is past its 24 hours, so nobody can see it any more. It is deleted within the hour.');
+  end if;
   update public.plaza_messages set status = case when p_decision = 'show' then 'shown' else 'hidden' end, decided_at = now(), decided_by = p_actor,
     rev = nextval('public.plaza_messages_rev_seq') where id = p_id;
   if p_decision = 'hide' then
@@ -696,7 +724,7 @@ end $$;
 
 -- ---------- grants ----------
 revoke all on function plaza.guard_chat_grant(), plaza.chat_on(), plaza.live(), plaza.read_problem(uuid), plaza.can_read(uuid), plaza.here(uuid, text, uuid), plaza.room_count(text),
-  plaza.flat(text), plaza.is_date(text), plaza.text_problem(text), plaza.hold_why(text, boolean), plaza.say_rate(uuid), plaza.sweep(), plaza.row(public.plaza_messages, uuid),
+  plaza.flat(text), plaza.tlds(), plaza.undate(text), plaza.has_host(text), plaza.text_problem(text), plaza.hold_why(text, boolean), plaza.say_rate(uuid), plaza.sweep(), plaza.row(public.plaza_messages, uuid),
   plaza.shows(public.plaza_messages, uuid), plaza.on_consent() from public, anon, authenticated;
 revoke all on function staff.plaza_queue(text), staff.plaza_decide(bigint, text, uuid, bigint) from public, anon, authenticated;
 grant execute on function staff.plaza_queue(text), staff.plaza_decide(bigint, text, uuid, bigint) to rhythme_staff_fn;
