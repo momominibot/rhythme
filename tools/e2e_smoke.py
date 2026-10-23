@@ -618,6 +618,53 @@ async def check_body_signals(browser):
     check("bringing in only workouts adds the ride to Movement (45 min, no strength day) and nothing else", got == ["cycle:45:false", "walk:40:false"], got)
     check("body signals: no page errors", not errs, errs[:3]); await ctx.close()
 
+async def check_cycle_tab(browser):
+    """The Cycle tab (23 Oct): Your cycle now with the estimated fertile days, a so-far cycle wellness with motion, rhythm
+    cards that stack, and the cute time picker on the bedside clock."""
+    d = json.loads(json.dumps(DB)); ev = [e for e in d["events"] if e["type"] != "period"]; t = datetime.date.today()
+    for c in range(4):
+        st = t - datetime.timedelta(days=12 + 28 * c)
+        for k in range(5): ev.append({"id": "cp%d_%d" % (c, k), "type": "period", "date": (st + datetime.timedelta(days=k)).isoformat(), "createdAt": NOW, "updatedAt": NOW, "source": "room", "data": {"flow": "medium"}})
+    d["events"] = ev
+    ctx = await browser.new_context(viewport={"width": 390, "height": 844})
+    await ctx.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(d))); await ctx.add_init_script(SESSION_SEED)
+    await ctx.route("**/functions/v1/**", lambda r: r.abort())
+    pg = await ctx.new_page(); errs = []
+    pg.on("pageerror", lambda e: errs.append(str(e)[:200]))
+    await pg.goto(BASE + "room.html", wait_until="domcontentloaded")
+    try: await pg.wait_for_function("()=>window.OvuRoom && !OvuRoom.busy()", timeout=15000)
+    except Exception: pass
+    await pg.click("nav a[data-tab=cycle]")
+    try: await pg.wait_for_selector("#cycleNow", timeout=8000)
+    except Exception: pass
+    await pg.evaluate("()=>document.fonts.ready.then(()=>1)"); await pg.wait_for_timeout(1500)
+    c1 = await pg.evaluate("""()=>{const n=document.querySelector('#cycleNow'), sh=document.querySelector('#sheetBody'), rc=document.querySelector('.rycard');
+      return {now: n ? n.innerText : '', tiles: n ? n.querySelectorAll('.cnfert span').length : 0, ov: n ? n.querySelectorAll('.cnfert span.ov').length : 0,
+        ring: (document.querySelector('.sc-cycle .scnum')||{}).innerText || '', arcs: document.querySelectorAll('.sc-cycle .scarc').length, sparks: document.querySelectorAll('.sc-cycle .scspark').length,
+        cards: document.querySelectorAll('.rycard').length, flex: rc ? getComputedStyle(rc).display : null, old: document.querySelectorAll('#rhythmPanel .rcard').length, fits: sh.scrollWidth <= sh.clientWidth + 1}}""")
+    check("the Cycle tab opens with your cycle now: day, next period and the estimated fertile days as seven tiles with the likely ovulation day marked, said to be an estimate",
+          "Day 13" in c1["now"] and "fertile days" in c1["now"] and c1["tiles"] == 7 and c1["ov"] == 1 and "not a way to prevent pregnancy" in c1["now"] and c1["fits"], c1)
+    check("cycle wellness shows a so-far score once three cycles are logged, its ring drawn with sparkles", "SO FAR" in c1["ring"].upper() and "100" in c1["ring"] and c1["arcs"] == 2 and c1["sparks"] == 4, c1)
+    check("the rhythm check's parts are stacked cards, never squeezed into the records list's flex row", c1["cards"] >= 3 and c1["flex"] == "block" and c1["old"] == 0, c1)
+    await pg.evaluate("()=>document.querySelector('#scPast').click()"); await pg.wait_for_timeout(700)
+    cal = await pg.evaluate("()=>({fertile: document.querySelectorAll('.cal-day.fertile').length})")
+    check("the past-days calendar shows this cycle's fertile days, past ones faintly", cal["fertile"] >= 7, cal)
+    await pg.evaluate("()=>OvuRoom.closeSheet && OvuRoom.closeSheet()"); await pg.keyboard.press("Escape"); await pg.wait_for_timeout(400)
+    await pg.evaluate("()=>{ const h=[...document.querySelectorAll('.hotspot')].find(x=>/clock/i.test(x.getAttribute('aria-label')||x.dataset.id||'')); h && h.click(); }")
+    try: await pg.wait_for_selector("#clockTabs [data-tab=sleep]", timeout=10000)
+    except Exception: pass
+    await pg.evaluate("()=>{ const b=document.querySelector('#clockTabs [data-tab=sleep]'); b && b.click(); }")
+    try: await pg.wait_for_selector("#slWake.tpnative", state="attached", timeout=6000)
+    except Exception: pass
+    t0 = await pg.evaluate("()=>{const i=document.querySelector('#slWake'); return {enhanced: !!(i && i.__tpBtn), pill: i && i.__tpBtn ? i.__tpBtn.innerText : ''}}")
+    await pg.evaluate("()=>document.querySelector('#slWake').__tpBtn.click()"); await pg.wait_for_timeout(300)
+    await pg.evaluate("()=>{ const p=document.querySelector('.tppanel'); p.querySelector('[data-tph=\"6\"]').click(); document.querySelector('.tppanel [data-tpm=\"45\"]').click(); document.querySelector('.tppanel [data-tpp=\"am\"]').click(); document.querySelector('.tppanel [data-tpx=\"done\"]').click(); }")
+    await pg.wait_for_timeout(300)
+    t1 = await pg.evaluate("()=>({v: document.querySelector('#slWake').value, pill: document.querySelector('#slWake').__tpBtn.innerText, panel: !!document.querySelector('.tppanel'), sheet: OvuRoom.sheetId()})")
+    check("the bedside clock's wake time is a cute pill, not the browser's box; hours, minutes and am chosen in its panel fill the real field (06:45) and the pill reads 6:45 am",
+          t0["enhanced"] and "Tap to choose" in t0["pill"] and t1["v"] == "06:45" and "6:45 am" in t1["pill"] and not t1["panel"] and t1["sheet"] == "sleep", [t0, t1])
+    check("cycle tab and picker: no page errors", not errs, errs[:3]); await ctx.close()
+
 async def check_body_log(browser):
     """The symptom day's body log (23 Oct): Ovaria's discharge photos, sex and sex drive, a pregnancy test with its urgent
     signs, and a basal temperature that joins the day's temperature."""
@@ -646,6 +693,7 @@ async def check_body_log(browser):
     b3 = await pg.evaluate("()=>({msg: document.querySelector('#calMsg').innerText, t: OvuStore.list('temperature').map(e=>e.data.basal)})")
     check("a basal temperature out of range is refused with a plain line, and nothing changes", "between 35 and 38.5" in b3["msg"] and b3["t"] == [36.6], b3)
     check("body log: no page errors", not errs, errs[:3]); await ctx.close()
+
 
 async def main():
     server = serve()
@@ -4206,7 +4254,7 @@ async def main():
             await pc.evaluate("""()=>{var S=OvuStore; S.setProfile({ageRange:'30-34'}); ['2026-07-02','2026-07-30','2026-08-27','2026-09-24'].forEach(function(s){ for(var i=0;i<4;i++) S.add('period', S.addDays(s,i), {flow:i<2?'medium':'light', clots:false, impact:false}, 'room'); });}""")
             await pc.keyboard.press("Escape"); await pc.wait_for_timeout(300)
             await pc.click('.nav a[data-tab=cycle]'); await pc.wait_for_timeout(700)
-            r2 = await pc.evaluate("()=>({tab: OvuRoom.sheetId() === 'scores' ? 'rhythm' : OvuRoom.sheetId(), panel: document.querySelector('#rhythmPanel').textContent, dots: document.querySelectorAll('.ready .dot.on').length, levels: [...document.querySelectorAll('.rcard .lvl')].map(l=>l.textContent)})")
+            r2 = await pc.evaluate("()=>({tab: OvuRoom.sheetId() === 'scores' ? 'rhythm' : OvuRoom.sheetId(), panel: document.querySelector('#rhythmPanel').textContent, dots: document.querySelectorAll('.ready .dot.on').length, levels: [...document.querySelectorAll('.rycard .lvl')].map(l=>l.textContent)})")
             check("cycle: the tab opens the scores again; four starts give 3 of 3, Within the reference range for regularity and lengths, Not assessed for ovulation; levels never add up", r2["tab"] == "rhythm" and r2["dots"] == 3 and "3 of 3" in r2["panel"] and r2["levels"][0] == "Within the reference range in these records" and r2["levels"][1] == "Within the reference range in these records" and r2["levels"][2] == "Not assessed" and "FIGO" in r2["panel"], {"tab": r2["tab"], "dots": r2["dots"], "levels": r2["levels"]})
             # after the menopause the tab reads Body and the view keeps symptoms, drops the count and names bleeding as a check
             await pc.evaluate("()=>OvuStore.setProfile({lifeStage:'post', ageRange:'50+'})"); await pc.wait_for_timeout(400)
@@ -4435,6 +4483,7 @@ async def main():
             await ctxV.close()
             await check_legacy_pages(browser)  # the older pages and the Settings sheet (22 Oct)
             await check_body_signals(browser)  # steps, workouts, resting heart rate and temperature (23 Oct)
+            await check_cycle_tab(browser)  # Your cycle now, so-far score, rhythm cards, the time picker (23 Oct)
             await check_health_connect(browser)  # Apple Health and Health Connect from the phone app; no export file (23 Oct)
             await check_body_log(browser)  # discharge, sex and sex drive, pregnancy test, basal temperature (23 Oct)
             await gym_checks(browser, gate)  # Tideline Gym workouts, in a context of their own with a fake clock
