@@ -6188,4 +6188,166 @@ var summarised = false;
   check('the sweep ends on practiceStop, activity, layout, clear and import, sleep and a replaced floor; pauses by the frame clamp while hidden; writes through the farm lock, after a re-read, before any puff', /R\.on\('practiceStop', end\)/.test(tj) && /R\.on\('activity', function \(kind, id\) \{ end\(\);/.test(tj) && /R\.on\('layout', function \(\) \{ end\(\); draw\(\); \}\)/.test(tj) && /reason === 'clear' \|\| reason === 'import'/.test(tj) && /if \(sweep && R\.asleep && R\.asleep\(\)\) \{ end\(\); return; \}/.test(tj) && /FMl\.locked\(S, go\)/.test(tj) && /S\.reload\(\)/.test(tj) && /Math\.min\(0\.1, \(t - last\) \/ 1000\)/.test(tj) && tj.indexOf('puffAt(target.x') > tj.indexOf("(S.commit || S.setState)({ tidy: r.state })"));
 })();
 
+(function dashboardTeamReview() {
+  console.log('review worker (23 Oct): the dashboard says plainly why the team was or was not asked, never shows a failed proposals load as empty, and drops replies meant for another account');
+  var el = function () { return { innerHTML: '', textContent: '', className: '', style: {}, dataset: {}, classList: { add: function () { }, remove: function () { }, toggle: function () { } }, setAttribute: function () { }, addEventListener: function () { }, querySelector: function () { return null; }, querySelectorAll: function () { return []; }, insertAdjacentHTML: function () { }, appendChild: function () { } }; };
+  var w = { console: console, setTimeout: setTimeout, clearTimeout: clearTimeout, setInterval: function () { return 0; }, clearInterval: function () { }, Promise: Promise, JSON: JSON, Date: Date, Math: Math, String: String, Number: Number, Array: Array, Object: Object, encodeURIComponent: encodeURIComponent, location: { search: '', hash: '', href: 'x' }, history: { replaceState: function () { } } };
+  w.addEventListener = function () { };
+  w.window = w; w.document = { getElementById: function () { return el(); }, createElement: el, querySelector: function () { return null; }, querySelectorAll: function () { return []; }, addEventListener: function () { }, body: el(), documentElement: el(), hidden: false };
+  w.OVU_CONFIG = { supabaseUrl: 'https://t.invalid', supabaseKey: 'k' };
+  var uid = 'A', subs = [], tokens = [];
+  w.OvuAuth = { token: function () { tokens.push(uid); return 't-' + uid; }, init: function () { return new Promise(function () { }); }, session: function () { return { user: { id: uid } }; }, userId: function () { return uid; }, email: function () { return uid + '@example.invalid'; }, subscribe: function (fn) { subs.push(fn); } };
+  w.__ADMIN_TEST__ = {};
+  var pending = [], fail = {};
+  w.fetch = function (u, o) {
+    var name = String(u).split('/rpc/')[1];
+    if (fail[name]) return Promise.resolve({ ok: false, status: 500, text: function () { return Promise.resolve('{"message":"down"}'); } });
+    return new Promise(function (res) { pending.push({ name: name, res: function (j) { res({ ok: true, status: 200, text: function () { return Promise.resolve(JSON.stringify(j)); } }); } }); });
+  };
+  vm.runInContext(fs.readFileSync(path.join(root, 'admin.js'), 'utf8'), vm.createContext(w), { filename: 'admin.js' });
+  var T = w.__ADMIN_TEST__.api; T.setTab('none');
+  var tick = function () { return new Promise(function (r) { setTimeout(r, 0); }); };
+  var line = function (r) { T.setReview(r); return T.teamLine(); };
+  check('the status line says the review waits for the privacy clearance when it is on but not cleared', /privacy clearance/.test(line({ review_on: true, transfer_cleared: false })), line({ review_on: true, transfer_cleared: false }));
+  check('a queued review says it waits for the worker on the Mac', /waiting for the worker on the Mac/.test(line({ review_on: true, transfer_cleared: true, open: { state: 'queued', requested_at: new Date().toISOString() } })));
+  var stale = line({ review_on: true, transfer_cleared: true, open: { state: 'claimed', heartbeats: [{ agent: 'cycle', state: 'reading', age_s: 95 }] } });
+  check('a claimed review names the reading agent and calls a 95 s old heartbeat longer than expected', /is reading the numbers/.test(stale) && /longer than expected/.test(stale), stale);
+  check('a provider block wins over every other state and says nothing retries by itself', /Codex reported a usage limit/.test(line({ review_on: true, transfer_cleared: true, block: { code: 'provider_limit' }, open: { state: 'queued' } })) && /Nothing retries by itself/.test(line({ block: { code: 'provider_limit' } })));
+  check('a last review older than the newest run says the newer results are not reviewed', /newer results are not reviewed/.test(line({ review_on: true, transfer_cleared: true, latest_run: 'r2', last: { state: 'done', run: 'r1', finished_at: new Date().toISOString() } })));
+  check('refresh replies read as plain words for queued, busy and every reason it was not asked', /queued for the worker/.test(T.refreshText({ state: 'queued' })) && /still reviewing an earlier run/.test(T.refreshText({ state: 'busy' })) && /privacy clearance/.test(T.refreshText({ state: 'skipped', code: 'transfer_not_cleared' })) && /switched off/.test(T.refreshText({ state: 'skipped', code: 'review_off' })) && /held/.test(T.refreshText({ state: 'skipped', code: 'run_held' })));
+  openHarness.dashboardTeamReview = true;
+  fail.admin_proposals = true;
+  T.loadProposals().then(function () {
+    check('a failed proposals load is shown as unavailable, never as an empty queue', T.proposals() === 'unavailable', JSON.stringify(T.proposals()));
+    delete fail.admin_proposals;
+    var late = T.loadProposals();
+    return tick().then(function () {
+      T.dropResults(); /* a floor change lands while the answer is on its way */
+      pending.shift().res([{ id: 1, kind: 'prompt_copy', target: 'bed_tap', status: 'open', rationale: 'from the old floor' }]);
+      return late;
+    }).then(function () {
+      check('a proposals answer sent before the results were dropped is not filed', T.proposals() === null, JSON.stringify(T.proposals()));
+      var slow = T.loadReview();
+      return tick().then(function () {
+        uid = 'B'; subs.forEach(function (f) { f(); }); /* another account signs in on this page */
+        pending.shift().res({ review_on: true, transfer_cleared: true, open: { state: 'queued' } });
+        return slow;
+      }).then(tick).then(function () {
+        check('after an account switch the old account\'s late review status is not shown', T.review() === null, JSON.stringify(T.review()));
+        var before = subs.length; subs.forEach(function (f) { f(); }); /* a token refresh for the same account */
+        check('a session save for the same account does not reboot the page', T.review() === null && subs.length === before);
+        delete openHarness.dashboardTeamReview;
+      });
+    });
+  }).catch(function (e) { check('dashboard team review harness ran', false, String(e && e.stack || e)); });
+})();
+(function dashboardScreenState() {
+  console.log('review worker round 1 (23 Oct): what is on screen, not only in memory: held words, account switches, failed loads, one refresh id, late boots');
+  var els = {};
+  function el(id) {
+    if (id && els[id]) return els[id];
+    var e = { id: id, innerHTML: '', textContent: '', className: '', disabled: false, style: {}, dataset: {}, classList: { add: function () { }, remove: function () { }, toggle: function () { } }, setAttribute: function () { }, removeAttribute: function () { }, addEventListener: function () { }, querySelector: function () { return null; }, querySelectorAll: function () { return []; }, insertAdjacentHTML: function () { }, appendChild: function () { }, closest: function () { return null; } };
+    if (id) els[id] = e;
+    return e;
+  }
+  var w = { console: console, setTimeout: setTimeout, clearTimeout: clearTimeout, setInterval: function () { return 0; }, clearInterval: function () { }, Promise: Promise, JSON: JSON, Date: Date, Math: Math, String: String, Number: Number, Array: Array, Object: Object, encodeURIComponent: encodeURIComponent, location: { search: '', hash: '', href: 'x' }, history: { replaceState: function () { } }, crypto: { randomUUID: function () { return 'id-' + Math.random().toString(16).slice(2); } } };
+  w.addEventListener = function () { };
+  w.window = w; w.document = { getElementById: function (id) { return el(id); }, createElement: function () { return el(null); }, querySelector: function () { return null; }, querySelectorAll: function () { return []; }, addEventListener: function () { }, body: el(null), documentElement: el(null), hidden: false };
+  w.OVU_CONFIG = { supabaseUrl: 'https://t.invalid', supabaseKey: 'k' };
+  var uid = 'A', subs = [];
+  w.OvuAuth = { token: function () { return 't-' + uid; }, init: function () { return new Promise(function () { }); }, session: function () { return { user: { id: uid } }; }, userId: function () { return uid; }, email: function () { return uid + '@example.invalid'; }, subscribe: function (fn) { subs.push(fn); } };
+  w.__ADMIN_TEST__ = {};
+  var pending = [], sent = [], fail = {};
+  w.fetch = function (u, o) {
+    var name = String(u).split('/rpc/')[1], body = JSON.parse(o.body || '{}'); sent.push({ name: name, body: body });
+    if (fail[name]) { fail[name]--; return Promise.reject(new Error('network down')); }
+    return new Promise(function (res) { pending.push({ name: name, res: function (j) { res({ ok: true, status: 200, text: function () { return Promise.resolve(JSON.stringify(j)); } }); }, err: function () { res({ ok: false, status: 500, text: function () { return Promise.resolve('{"message":"down"}'); } }); } }); });
+  };
+  vm.runInContext(fs.readFileSync(path.join(root, 'admin.js'), 'utf8'), vm.createContext(w), { filename: 'admin.js' });
+  var T = w.__ADMIN_TEST__.api;
+  var tick = function () { return new Promise(function (r) { setTimeout(r, 0); }); };
+  function answer(name, j) { return tick().then(tick).then(function () { var i = pending.findIndex(function (p) { return p.name === name; }); if (i < 0) throw new Error('no pending ' + name); var p = pending.splice(i, 1)[0]; p.res(j); return tick().then(tick); }); }
+  openHarness.dashboardScreenState = true;
+  T.setMe({ role: 'owner' }); T.setTab('queue');
+  var lp = T.loadProposals();
+  answer('admin_proposals', [{ id: 1, kind: 'prompt_copy', target: 'bed_tap', status: 'open', rationale: 'WORDS-FROM-A-RUN-SINCE-HELD', change: { copy: 'x' }, priority: 99, requires_human: true, at: new Date().toISOString() }]).then(function () { return lp; }).then(function () {
+    T.renderQueue();
+    var before = els.panel.innerHTML.indexOf('WORDS-FROM-A-RUN-SINCE-HELD') >= 0;
+    T.dropResults();
+    var after = els.panel.innerHTML.indexOf('WORDS-FROM-A-RUN-SINCE-HELD') >= 0;
+    check('a hold takes the proposal words off the Queue at once, before any reload answers', before && !after && /Loading/.test(els.panel.innerHTML), { before: before, after: after });
+    check('an unavailable proposals load never shows a count', (function () { fail.admin_proposals = 1; return true; })());
+    return T.loadProposals();
+  }).then(function () {
+    T.renderQueue();
+    check('the failed load says unavailable and the header shows no number', /could not be loaded/.test(els.panel.innerHTML) && !/Proposals<span>11</.test(els.panel.innerHTML), els.panel.innerHTML.slice(0, 200));
+    T.setTab('feed');
+    fail.admin_feed = 1;
+    return T.loadFeed(true);
+  }).then(tick).then(function () {
+    T.renderFeed();
+    check('a feed that never loaded says it could not be loaded, not that nothing has happened', /could not be loaded/.test(els.panel.innerHTML) && !/Nothing has happened/.test(els.panel.innerHTML), els.panel.innerHTML.slice(0, 200));
+    // one refresh id, kept across a redraw and reused after a lost answer
+    T.setTab('today');
+    fail.admin_refresh = 1;
+    T.runNow();
+    return tick().then(tick);
+  }).then(function () {
+    var first = sent.filter(function (x) { return x.name === 'admin_refresh'; })[0].body.p_request_id;
+    T.runNow();
+    return tick().then(tick).then(function () {
+      T.runNow(); /* pressed again while the second is still out */
+      return tick().then(tick);
+    }).then(function () {
+    var refs = sent.filter(function (x) { return x.name === 'admin_refresh'; }), second = refs[1] && refs[1].body.p_request_id;
+    check('after a lost answer the next press resends the same request id, and a press while one is out sends nothing', first && first === second && refs.length === 2 && /disabled/.test(els.panel.innerHTML + (els.runNow.disabled ? 'disabled' : '')), { first: first, second: second, count: refs.length });
+    // an account switch blanks the screen at once and a late answer from the first boot cannot take over
+    els.app.innerHTML = '<h1>A@example.invalid</h1> old screen';
+    uid = 'B'; subs.forEach(function (f) { f(); });
+    var blank = els.app.innerHTML.indexOf('A@example.invalid') < 0 && /Checking the account/.test(els.app.innerHTML);
+    check('switching accounts replaces the old account\'s screen before the new account is checked', blank, els.app.innerHTML.slice(0, 120));
+    return tick().then(tick).then(function () {
+      var oldMe = pending.filter(function (p) { return p.name === 'admin_me'; })[0];
+      T.boot(); /* a second boot (a sign-in finishing) overtakes the first */
+      return tick().then(tick).then(function () { oldMe.err(); pending.splice(pending.indexOf(oldMe), 1); return tick().then(tick); });
+    }).then(function () {
+      check('a late failure from an earlier boot does not replace the newer boot\'s screen with a sign-in error', !/Could not check your account/.test(els.app.innerHTML), els.app.innerHTML.slice(0, 160));
+      delete openHarness.dashboardScreenState;
+    });
+    });
+  }).catch(function (e) { check('dashboard screen-state harness ran', false, String(e && e.stack || e)); });
+})();
+(function dashboardBeforeMigration() {
+  console.log('review worker (23 Oct): merged before its migration is applied, the dashboard stays inert: Refresh runs the plain report once, no review line or switch');
+  var el = function () { return { innerHTML: '', textContent: '', className: '', disabled: false, style: {}, dataset: {}, classList: { add: function () { }, remove: function () { }, toggle: function () { } }, setAttribute: function () { }, removeAttribute: function () { }, addEventListener: function () { }, querySelector: function () { return null; }, querySelectorAll: function () { return []; }, insertAdjacentHTML: function () { }, appendChild: function () { } }; };
+  var w = { console: console, setTimeout: setTimeout, clearTimeout: clearTimeout, setInterval: function () { return 0; }, clearInterval: function () { }, Promise: Promise, JSON: JSON, Date: Date, Math: Math, String: String, Number: Number, Array: Array, Object: Object, encodeURIComponent: encodeURIComponent, location: { search: '', hash: '', href: 'x' }, history: { replaceState: function () { } }, crypto: { randomUUID: function () { return 'rid'; } } };
+  w.window = w; w.addEventListener = function () { }; w.document = { getElementById: function () { return el(); }, createElement: el, querySelector: function () { return null; }, querySelectorAll: function () { return []; }, addEventListener: function () { }, body: el(), documentElement: el(), hidden: false };
+  w.OVU_CONFIG = { supabaseUrl: 'https://t.invalid', supabaseKey: 'k' };
+  w.OvuAuth = { token: function () { return 't'; }, init: function () { return new Promise(function () { }); }, session: function () { return null; }, subscribe: function () { } };
+  w.__ADMIN_TEST__ = {};
+  var sent = [];
+  w.fetch = function (u, o) {
+    var name = String(u).split('/rpc/')[1]; sent.push(name);
+    if (name === 'admin_refresh' || name === 'admin_review_status') return Promise.resolve({ ok: false, status: 404, text: function () { return Promise.resolve('{"code":"PGRST202","message":"Could not find the function public.' + name + '"}'); } });
+    return Promise.resolve({ ok: true, status: 200, text: function () { return Promise.resolve(JSON.stringify(name === 'admin_run' ? { ok: true } : {})); } });
+  };
+  vm.runInContext(fs.readFileSync(path.join(root, 'admin.js'), 'utf8'), vm.createContext(w), { filename: 'admin.js' });
+  var T = w.__ADMIN_TEST__.api; T.setTab('none');
+  var tick = function () { return new Promise(function (r) { setTimeout(r, 0); }); };
+  openHarness.dashboardBeforeMigration = true;
+  T.loadReview().then(tick).then(function () {
+    check('a missing review status function shows no line and no error', T.teamLine() === '', T.teamLine());
+    T.runNow();
+    return tick().then(tick).then(tick).then(tick);
+  }).then(function () {
+    var runs = sent.filter(function (n) { return n === 'admin_run'; }).length, refs = sent.filter(function (n) { return n === 'admin_refresh'; }).length;
+    check('Refresh with the migration not applied runs the plain report exactly once (the status check already knew)', runs === 1 && refs === 0, sent);
+    T.runNow();
+    return tick().then(tick).then(tick);
+  }).then(function () {
+    var refs = sent.filter(function (n) { return n === 'admin_refresh'; }).length, runs = sent.filter(function (n) { return n === 'admin_run'; }).length;
+    check('later presses go straight to the plain report, never the missing refresh', refs === 0 && runs === 2, sent);
+    delete openHarness.dashboardBeforeMigration;
+  }).catch(function (e) { check('before-migration harness ran', false, String(e && e.stack || e)); });
+})();
 process.on('beforeExit', function () { if (summarised) return; summarised = true; Object.keys(openHarness).forEach(function (k) { check('async harness ' + k + ' finished', false, 'its promises never settled'); }); console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });

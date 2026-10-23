@@ -6,8 +6,14 @@
   'use strict';
   var CFG = root.OVU_CONFIG || {}, A = root.OvuAuth, doc = root.document;
   var app = doc.getElementById('app');
-  var plaza = null, plazaOk = 0, plazaBad = false, plazaBusy = false; /* admin_plaza: people in each group now, and the daily joins and peak (counts only) */
+  var plaza = null, plazaOk = 0, plazaBad = false, plazaBusy = false, plazaGen = 0; /* admin_plaza: people in each group now, and the daily joins and peak (counts only) */
   var me = null, tab = 'today', ov = null, feed = [], feedTop = 0, findings = null, proposals = null, admins = null, audit = null, timers = [];
+  var review = null, reviewGen = 0, propGen = 0; /* the team review status; each loader's own generation drops a reply older than the latest request */
+  var reviewAt = 0, reviewBad = false; /* when the status last answered (local clock), and whether the latest try failed */
+  var reviewMissing = false; /* the review worker migration is not applied yet: Refresh runs the plain report (admin_run) and no review line shows */
+  function missingFn(e) { return /PGRST202|Could not find the function|\b404\b/i.test(String((e && e.message) || '')); }
+  var refreshing = null, refreshMsg = ''; /* one Refresh at a time: {id, state: 'pending' | 'uncertain'}; an uncertain one is retried with the same id so the server replays it */
+  var feedLoaded = false, feedBad = false; /* a feed that failed to load is never shown as an empty feed */
   var reports = null, reportsAll = false, reportsBad = false, reportsMissing = false, reportsGen = 0, reportsNote = null; /* admin_social_reports: Plaza friends reports, cards only (no account ids, emails or groups) */
   var REASONS = { unkind: 'Unkind or upsetting', spam: 'Spam or selling', pretending: 'Pretending to be someone else', under18: 'Seems to be under 18', worried: 'Worried about her safety', other: 'Something else', advice: 'Unsafe health advice', news: 'Pregnancy or birth news in a quiet room' };
   /* why a room message waits for a person (supabase/migrations/20261022120000_plaza_rooms_chat.sql) */
@@ -101,11 +107,11 @@
     var elig = (ent.filter(function (f) { return f.metric === 'eligible_people'; })[0] || {});
     var alive = last ? (last.status === 'ok' ? 'ok' : (last.status === 'running' ? 'running' : 'failed')) : 'never';
     var team = Object.keys(AGENTS), reps = team.map(report), withResults = reps.filter(function (r) { return r.results > 0; }).length, eligible = reps.filter(function (r) { return r.state === 'measured'; }).length;
-    var nim = !hasFindings() ? 'No finished run yet. Press Run now and I will gather the team.' : (alive === 'failed' ? 'The last run failed, so the reports below are from the last finished run. ' : '') + (ov.open_proposals ? ov.open_proposals + ' proposal' + (ov.open_proposals > 1 ? 's are' : ' is') + ' waiting for an owner. ' : 'Nothing is waiting for you. ') + (withResults ? withResults + ' of the four have results from the last finished run.' : eligible ? (reps.some(function (r) { return r.held > 0; }) ? 'The four met the floor at the last finished run, but their results were held back under it or had no data.' : 'The four met the floor at the last finished run, but none of their measures had data in that window.') : 'None of the four could report a result at the last finished run, so today is counts only: accounts, cloud copies, the plazas and the relay.');
-    var html = '<div class="card nimbus"><div class="nimrow">' + cloudSVG(NIMBUS, true) + bubble('Nimbus, the orchestrator', nim, last ? 'Last run ' + ago(last.started_at) + ', ' + last.kind : 'Runs are deterministic: no model is called and nothing is applied on its own.') + '</div>' +
+    var nim = !hasFindings() ? 'No finished run yet. Press Refresh and I will gather the team.' : (alive === 'failed' ? 'The last run failed, so the reports below are from the last finished run. ' : '') + (ov.open_proposals ? ov.open_proposals + ' proposal' + (ov.open_proposals > 1 ? 's are' : ' is') + ' waiting for an owner. ' : 'Nothing is waiting for you. ') + (withResults ? withResults + ' of the four have results from the last finished run.' : eligible ? (reps.some(function (r) { return r.held > 0; }) ? 'The four met the floor at the last finished run, but their results were held back under it or had no data.' : 'The four met the floor at the last finished run, but none of their measures had data in that window.') : 'None of the four could report a result at the last finished run, so today is counts only: accounts, cloud copies, the plazas and the relay.');
+    var html = '<div class="card nimbus"><div class="nimrow">' + cloudSVG(NIMBUS, true) + bubble('Nimbus, the orchestrator', nim, last ? 'Last run ' + ago(last.started_at) + ', ' + last.kind : 'A refresh measures first. The team review runs only when it is switched on, and nothing is applied on its own.') + '</div>' +
       '<div class="team">' + team.map(function (k, i) { var a = AGENTS[k], r = reps[i]; return '<button type="button" class="mate" data-mate="' + k + '" title="' + esc(a.name) + '">' + cloudSVG(a) + '<b>' + esc(a.name) + '</b><small>' + esc(a.stream) + '</small><i class="st ' + esc(r.state) + '"></i></button>'; }).join('') + '</div></div>';
     html += '<div class="card"><h2>Status<span>' + (last ? 'last run ' + ago(last.started_at) : 'no run yet') + '</span></h2><div class="tiles">' +
-      tile('Pipeline', alive === 'ok' ? 'Alive' : alive === 'running' ? 'Running' : alive === 'failed' ? 'Failed' : 'Not run', last ? (last.kind + ', ' + (last.finished_at ? 'finished ' + ago(last.finished_at) : 'in progress')) : 'Press Run now below') +
+      tile('Pipeline', alive === 'ok' ? 'Alive' : alive === 'running' ? 'Running' : alive === 'failed' ? 'Failed' : 'Not run', last ? (last.kind + ', ' + (last.finished_at ? 'finished ' + ago(last.finished_at) : 'in progress')) : 'Press Refresh below') +
       tile('Needs you', String(ov.open_proposals || 0), (ov.open_proposals ? 'proposals waiting' : 'nothing waiting')) +
       (ov.held_runs != null ? tile('Results', ov.held_runs ? 'Held' : (ov.latest_run ? 'Published' : 'None'), ov.held_runs ? 'recompute due: a withdrawal or deletion since the last run' : ov.latest_run ? 'from the last finished run' : 'no finished run yet') + tile('Daily run', ov.scheduled ? 'Scheduled' : 'Not scheduled', ov.scheduled ? 'one attempt a day, never retried' : 'runs only when staff press Run now') : '') +
       tile('Accounts', String(c.accounts == null ? '–' : c.accounts), (c.accounts_with_cloud_copy || 0) + ' with a cloud copy') +
@@ -119,7 +125,7 @@
     else html += '<div class="note"><b>Measured.</b> ' + esc(elig.value) + ' eligible opted-in adults at the last finished run; each number carries its own people count.</div>';
     html += '</div>';
     html += '<div class="card"><h2>Runs</h2>' + (runs.length ? '<table class="tbl"><tr><th>When</th><th>Kind</th><th>Status</th><th>Summary</th></tr>' + runs.map(function (r) { return '<tr><td>' + esc(when(r.started_at)) + '</td><td>' + esc(r.kind) + '</td><td><span class="chip ' + (r.status === 'ok' ? 'ok' : r.status === 'running' ? '' : 'high') + '">' + esc(r.status) + '</span></td><td>' + esc(r.error || (r.summary && r.summary.measured === false ? 'no eligible adults yet' : (r.summary && r.summary.measured ? (r.summary.under_floor || r.summary.eligible == null ? 'under the floor, ' : r.summary.eligible + ' eligible, ') + r.summary.window : ''))) + '</td></tr>'; }).join('') + '</table>' : '<p class="empty">No run yet.</p>') +
-      '<div class="row" style="margin-top:10px"><button class="btn primary" id="runNow">Run now</button><span class="msg" id="runMsg"></span></div><p class="srv">A run is deterministic: the four agents measure what the consent rules allow and the orchestrator records what it would do. No model is called and nothing is applied on its own in this phase.</p></div>';
+      '<div class="row" style="margin-top:10px"><button class="btn primary" id="runNow"' + (refreshing && refreshing.state === 'pending' ? ' disabled' : '') + '>' + (refreshing && refreshing.state === 'pending' ? 'Refreshing…' : refreshing ? 'Try again' : 'Refresh') + '</button><span class="msg" id="runMsg">' + esc(refreshMsg) + '</span></div><div id="teamLine">' + teamLine() + '</div><p class="srv">A refresh measures what the consent rules allow. When the team review is switched on, it then asks the team, one by one through Codex on Jamie\'s Mac, to read only the released group numbers; their reports appear in the feed and any proposal waits here for an owner. Nothing is applied on its own.</p></div>';
     html += '<div class="card"><h2>Service<span>no diary content</span></h2><div class="tiles">' + tile('Relay counter increments today', String(c.relay_increments_today == null ? '–' : c.relay_increments_today), 'a relay call bumps an IP bucket and a global bucket') + tile('Withdrawn opt-ins', String(c.consent_withdrawn == null ? '–' : c.consent_withdrawn), 'kept on record, excluded from reads') + '</div></div>';
     panel(html);
     var b = doc.getElementById('runNow'); if (b) b.addEventListener('click', runNow);
@@ -157,12 +163,13 @@
   function deadline(p, ms) { return new Promise(function (res, rej) { var t = setTimeout(function () { rej(new Error('timeout')); }, ms); p.then(function (v) { clearTimeout(t); res(v); }, function (e) { clearTimeout(t); rej(e); }); }); }
   function loadPlaza() {
     if (plazaBusy) return Promise.resolve();
-    plazaBusy = true;
+    plazaBusy = true; var g = plazaGen;
     return deadline(rpc('admin_plaza', { p_days: 14 }), 10000).then(function (j) {
+      if (g !== plazaGen) return;
       if (denied(j) || !j || !j.now) { plazaBad = true; return; }
       if (plaza && plaza.at && j.at && Date.parse(j.at) < Date.parse(plaza.at)) return;
       plaza = j; plazaOk = Date.now(); plazaBad = false;
-    }).catch(function () { plazaBad = true; }).then(function () { plazaBusy = false; redrawPlaza(); });
+    }).catch(function () { if (g === plazaGen) plazaBad = true; }).then(function () { if (g !== plazaGen) return; plazaBusy = false; redrawPlaza(); });
   }
   function eligText(n, floor) { n = Number(n || 0); floor = Number(floor || 20); return (n === 0 ? '0' : n < floor ? 'fewer than ' + floor : String(n)) + ' eligible adults'; }
   /* ---------- the little clouds: one inline drawing each, so no image is needed ---------- */
@@ -223,12 +230,26 @@
     return '<div class="chart"><svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(opt.label || '') + '">' + grid + paths + xl + '</svg><div class="legend">' + series.map(function (s) { return '<span><i style="background:' + s.color + '"></i>' + esc(s.name) + '</span>'; }).join('') + '</div></div>';
   }
   function tile(l, v, s) { return '<div class="tile"><div class="l">' + esc(l) + '</div><div class="v' + (String(v).length > 9 ? ' small' : '') + '">' + esc(v) + '</div><div class="s">' + esc(s) + '</div></div>'; }
+  /* the request id lives here, not in the button: a redraw keeps it, and a press after a lost answer resends the same id */
+  function setRefresh(msg) { refreshMsg = msg; var b = doc.getElementById('runNow'), m = doc.getElementById('runMsg'); if (b) { b.disabled = !!(refreshing && refreshing.state === 'pending'); b.textContent = refreshing && refreshing.state === 'pending' ? 'Refreshing…' : refreshing ? 'Try again' : 'Refresh'; } if (m) m.textContent = msg; }
   function runNow() {
-    var b = doc.getElementById('runNow'), m = doc.getElementById('runMsg'); if (b) b.disabled = true; if (m) m.textContent = 'Running…';
-    rpc('admin_run', { p_days: 28 }).then(function (j) {
-      if (m) m.textContent = j && j.error ? j.error : 'Done.';
-      return Promise.all([loadOverview(), loadFeed(true)]);
-    }).catch(function (e) { if (m) m.textContent = e.message; }).then(function () { if (b) b.disabled = false; });
+    if (refreshing && refreshing.state === 'pending') return;
+    var g = acctGen, cur = refreshing = { id: refreshing ? refreshing.id : reqId(), state: 'pending' };
+    setRefresh('Running…');
+    (reviewMissing ? rpc('admin_run', { p_days: 28 }) : rpc('admin_refresh', { p_days: 28, p_request_id: cur.id }).catch(function (e) {
+      if (!missingFn(e)) throw e;
+      reviewMissing = true; redrawTeam(); /* the function does not exist, so nothing ran: the plain report is safe to run once */
+      return rpc('admin_run', { p_days: 28 });
+    })).then(function (j) {
+      if (g !== acctGen || refreshing !== cur) return;
+      refreshing = null;
+      setRefresh(j && j.error ? j.error : refreshText(j && j.review));
+      return Promise.all([loadOverview(), loadFeed(true), loadReview()]);
+    }, function (e) {
+      if (g !== acctGen || refreshing !== cur || (e && e.cancelled)) return;
+      cur.state = 'uncertain'; /* it may have run: the next press sends the same id, and the server replays its answer */
+      setRefresh('No answer (' + e.message + '). It may have run; Try again asks once more without running it twice.');
+    });
   }
 
   /* ---------- Feed ---------- */
@@ -237,7 +258,8 @@
     return '<li' + (fresh ? ' class="new"' : '') + ' data-id="' + esc(e.id) + '"><span class="bar ' + col + '"></span><div><div class="t">' + esc(e.title) + '</div><div class="m"><b>' + esc(a ? a.name : (e.agent === 'orchestrator' ? NIMBUS.name : e.agent)) + '</b> · ' + esc(e.kind) + ' · ' + esc(ago(e.at)) + '</div>' + (e.detail && Object.keys(e.detail).length ? '<details><summary>detail</summary><pre>' + esc(JSON.stringify(e.detail, null, 1)) + '</pre></details>' : '') + '</div></li>';
   }
   function renderFeed() {
-    panel('<div class="card"><h2>Live feed<span id="feedSub">' + (feed.length ? feed.length + ' events' : '') + '</span></h2>' + (feed.length ? '<ul class="feed" id="feedList">' + feed.map(function (e) { return feedItem(e, false); }).join('') + '</ul>' : '<p class="empty">Nothing has happened yet. Press Run now on Today.</p>') + '<p class="srv">New events arrive every 10 seconds while this page is open; each line is written by the agent or the orchestrator as it works.</p></div>');
+    var none = !feedLoaded ? (feedBad ? '<p class="msg bad">The feed could not be loaded. It tries again every 10 seconds.</p>' : '<p class="empty">Loading…</p>') : '<p class="empty">Nothing has happened yet. Press Refresh on Today.</p>';
+    panel('<div class="card"><h2>Live feed<span id="feedSub">' + (feed.length ? feed.length + ' events' : '') + '</span></h2>' + (feedBad && feed.length ? '<div class="note"><b>Not current.</b> The last check for new events did not come back.</div>' : '') + (feed.length ? '<ul class="feed" id="feedList">' + feed.map(function (e) { return feedItem(e, false); }).join('') + '</ul>' : none) + '<p class="srv">New events arrive every 10 seconds while this page is open; each line is written by the agent or the orchestrator as it works.</p></div>');
   }
 
   /* ---------- Agents ---------- */
@@ -250,10 +272,10 @@
       var metrics = rows.filter(function (f) { return f.metric !== 'eligible_people'; });
       var bars = metrics.length ? '<div class="mrows">' + metrics.map(function (f) { return '<div class="metric"><span class="k">' + esc(f.metric.replace(/_/g, ' ')) + '<br><small>' + esc(f.window) + '</small></span><span class="v">' + (f.state === 'no_data' ? 'no data' : f.suppressed ? 'held back' : num(f.value) + (f.unit ? ' <small>' + esc(f.unit) + '</small>' : '')) + '<small>' + (f.state === 'no_data' ? 'nobody yet' : f.suppressed ? 'under ' + esc(ov.floor) + ' people' : esc(f.people) + ' people') + '</small></span></div>'; }).join('') + '</div>' : '';
       return '<div class="agent" id="mate-' + k + '"><div class="mhead">' + cloudSVG(a) + '<div><h3><i class="' + a.color + '"></i>' + esc(a.name) + ' ' + chip + '</h3><div class="sub">' + esc(a.stream) + '. ' + esc(a.hello) + '</div></div></div>' +
-        bubble(a.name + ' says', r.text) +
+        bubble(a.name + ' says', r.text) + stageLine(k) +
         (ready && ready.prerequisite && !/nobody|no one|no-one/i.test(ready.prerequisite) ? '<div class="note">' + esc(ready.prerequisite) + '</div>' : '') + bars + /* the bubble already says who had the choice on; a server line that says nobody is left out */
         '<details class="owns"><summary>What ' + esc(a.name) + ' measures, and never</summary><div class="sub">Measures: ' + esc(a.owns) + '.<br>Never: ' + esc(a.excludes) + '.</div></details></div>';
-    }).join('') + '</div><div class="card nimbus"><div class="nimrow">' + cloudSVG(NIMBUS, true) + bubble('Nimbus, the orchestrator', NIMBUS.hello + ' I read every report after a run, rank proposals by a fixed priority, and may only ever pick an approved content id for a non-clinical surface, and only once an owner turns autonomy on.', 'I cannot change care guidance, prediction rules, reminders or anything clinical.') + '</div></div>');
+    }).join('') + '</div><div class="card nimbus"><div class="nimrow">' + cloudSVG(NIMBUS, true) + bubble('Nimbus, the orchestrator', NIMBUS.hello + ' When the team review is on, I read the four reports after a refresh and rank what they propose. I never add proposals and never apply anything.', 'I cannot change care guidance, prediction rules, reminders or anything clinical.') + stageLine('orchestrator') + '</div></div>');
   }
 
   /* ---------- Queue (proposals, policy) ---------- */
@@ -332,21 +354,22 @@
   }
   function renderQueue() {
     var owner = me.role === 'owner', pol = (ov && ov.policy) || {}, blocked = (ov && ov.blocked) || [];
-    var html = roomMsgsCard(owner) + reportsCard(owner) + '<div class="card"><h2>Proposals<span>' + ((proposals || []).length) + '</span></h2>';
-    if (!proposals) html += '<p class="empty">Loading…</p>';
-    else if (!proposals.length) html += '<p class="empty">No proposals. The agents raise one only when a measured finding suggests a lever, and this phase has nothing it may measure yet.</p>';
+    var html = roomMsgsCard(owner) + reportsCard(owner) + '<div class="card"><h2>Proposals<span>' + (Array.isArray(proposals) ? proposals.length : '') + '</span></h2>';
+    if (proposals === 'unavailable') html += '<p class="msg bad">Proposals could not be loaded. They are not empty; try again in a moment.</p>';
+    else if (!proposals) html += '<p class="empty">Loading…</p>';
+    else if (!proposals.length) html += '<p class="empty">No proposals. ' + (review && review.last && review.last.state === 'done' ? 'The team\'s last review proposed nothing.' : 'The team proposes only after a refresh with the team review switched on, and only from measured findings.') + '</p>';
     else html += proposals.map(function (p) {
-      return '<div class="prop"><div class="h"><b>' + esc(p.kind) + ' on ' + esc(p.target) + '</b><span class="chip ' + (p.status === 'open' ? 'watch' : p.status === 'applied' || p.status === 'approved' ? 'ok' : '') + '">' + esc(p.status) + '</span></div><div class="why">' + esc(p.rationale) + '</div><div class="meta">' + esc(AGENTS[p.agent] ? AGENTS[p.agent].name : p.agent) + ' · priority ' + esc(p.priority) + ' · ' + (p.requires_human ? 'needs a person' : 'within policy') + ' · ' + esc(ago(p.at)) + '</div>' +
-        (owner && (p.status === 'open' || p.status === 'held') ? '<div class="row acts"><button class="btn sm primary" data-decide="approve" data-id="' + p.id + '">Approve</button><button class="btn sm" data-decide="hold" data-id="' + p.id + '">Hold</button><button class="btn sm danger" data-decide="reject" data-id="' + p.id + '">Reject</button></div>' : '') + '</div>';
+      return '<div class="prop"><div class="h"><b>' + esc(p.kind) + ' on ' + esc(p.target) + '</b><span class="chip ' + (p.status === 'open' ? 'watch' : p.status === 'applied' || p.status === 'approved' ? 'ok' : '') + '">' + esc(p.status) + '</span></div><div class="why">' + esc(p.rationale) + '</div>' + (p.held ? '' : '<div class="meta">Change: <code>' + esc(JSON.stringify(p.change || {})) + '</code>' + (p.metric ? ' · from ' + esc(String(p.metric).replace(/_/g, ' ')) : '') + (p.run_id ? ' · run ' + esc(String(p.run_id).slice(0, 8)) : '') + '</div>') + '<div class="meta">' + esc(AGENTS[p.agent] ? AGENTS[p.agent].name : p.agent === 'orchestrator' ? NIMBUS.name : p.agent) + ' · priority ' + esc(p.priority) + ' · ' + (p.requires_human ? 'needs a person' : 'within policy') + ' · ' + esc(ago(p.at)) + '</div>' +
+        (owner && !p.held && (p.status === 'open' || p.status === 'held') ? '<div class="row acts"><button class="btn sm primary" data-decide="approve" data-id="' + p.id + '">Approve</button><button class="btn sm" data-decide="hold" data-id="' + p.id + '">Hold</button><button class="btn sm danger" data-decide="reject" data-id="' + p.id + '">Reject</button></div>' : '') + '</div>';
     }).join('');
     html += '</div>';
     html += '<div class="card"><h2>Policy<span>' + (owner ? 'owner' : 'read only') + '</span></h2><div class="policy">' +
       polRow('k_floor', 'People floor', 'Buckets under this many people are held back everywhere. It cannot go below 20.', pol.k_floor, 'number', owner) +
       polRow('autonomy_on', 'Autonomy', 'Lets the orchestrator apply approved content ids on its own. Off in this phase; there is nothing approved to apply.', pol.autonomy_on, 'bool', owner) +
-      polRow('model_on', 'Model step', 'The daily review may ask the model to draft proposals from released aggregates. Off in this phase.', pol.model_on, 'bool', owner) +
+      (reviewMissing || !('review_on' in pol) ? '' : polRow('review_on', 'Team review on refresh', 'When on, a refresh also asks the team to read the released group numbers through Codex on Jamie\'s Mac. It also needs the privacy clearance for sending numbers to Codex, which is not set from this page.', pol.review_on, 'bool', owner)) +
       polRow('lever_days', 'Lever days', 'How long an applied lever lives before it expires on its own.', pol.lever_days, 'number', owner) +
       '</div><p class="msg" id="polMsg"></p></div>';
-    html += '<div class="card"><h2>Provider blocks</h2>' + (blocked.length ? blocked.map(function (b) { return '<div class="prop"><div class="h"><b>' + esc(b.source) + '</b><span class="chip high">blocked</span></div><div class="why">' + esc(b.error) + '</div><div class="meta">' + esc(when(b.at)) + '</div>' + (owner ? '<div class="row acts"><button class="btn sm" data-clear="' + b.id + '">Clear, allow one try</button></div>' : '') + '</div>'; }).join('') : '<p class="empty">None. A first provider failure stops a run and blocks model runs until an owner clears it here; nothing retries by itself.</p>') + '</div>';
+    html += '<div class="card"><h2>Provider blocks</h2>' + (blocked.length ? blocked.map(function (b) { return '<div class="prop"><div class="h"><b>' + esc(b.source) + '</b><span class="chip high">blocked</span></div><div class="why">' + esc(blockText(b.code || b.error)) + '</div><div class="meta">' + esc(when(b.at)) + '</div>' + (owner ? '<div class="row acts"><button class="btn sm" data-clear="' + b.id + '">Clear the block</button></div>' : '') + '</div>'; }).join('') : '<p class="empty">None. A first provider failure stops the team review until an owner clears it here; nothing retries by itself.</p>') + '</div>';
     panel(html);
     app.querySelectorAll('[data-decide]').forEach(function (b) { b.addEventListener('click', function () { var id = Number(b.dataset.id), d = b.dataset.decide; b.disabled = true; rpc('admin_decide', { p_id: id, p_decision: d }).then(function () { return Promise.all([loadProposals(), loadOverview()]); }).then(render); }); });
     app.querySelectorAll('[data-sdecide]').forEach(function (b) {
@@ -396,43 +419,82 @@
       rpc('admin_invite', { p_email: e, p_role: r }).then(function (j) { if (j && j.error) { m.textContent = j.error; m.className = 'msg bad'; } else { admins = j; m.textContent = 'Invited.'; m.className = 'msg'; renderStaff(); } }).catch(function (err) { m.textContent = err.message; m.className = 'msg bad'; }).then(function () { var b = doc.getElementById('invBtn'); if (b) b.disabled = false; });
     });
     app.querySelectorAll('[data-revoke]').forEach(function (b) { b.addEventListener('click', function () { if (!root.confirm('Revoke this staff account?')) return; b.disabled = true; rpc('admin_revoke', { p_user: b.dataset.revoke }).then(function (j) { if (j && j.error) { root.alert(j.error); } else admins = j; renderStaff(); }); }); });
-    var pb = doc.getElementById('pruneBtn'); if (pb) pb.addEventListener('click', function () { pb.disabled = true; rpc('admin_prune', { p_days: 365 }).then(function (j) { doc.getElementById('pruneMsg').textContent = j && j.error ? j.error : ('Removed ' + j.audit_removed + ' audit rows and ' + j.events_removed + ' old events.'); return loadStaff(); }).then(renderStaff); });
+    var pb = doc.getElementById('pruneBtn'); if (pb) pb.addEventListener('click', function () { pb.disabled = true; rpc('admin_prune', { p_days: 365 }).then(function (j) { doc.getElementById('pruneMsg').textContent = j && j.error ? j.error : ('Removed ' + j.audit_removed + ' audit rows, ' + j.events_removed + ' old events and ' + (j.review_jobs_removed || 0) + ' finished reviews over 90 days old; their proposals and decisions stay.'); return loadStaff(); }).then(renderStaff); });
   }
 
   /* ---------- loading ---------- */
   var releaseKey = null; /* the published run and the hold count as last seen: when either changes, the cached feed is dropped at once and reloaded whole, so words from a run held since never stay on screen */
   var feedGen = 0, feedNeedsFull = false, ovGen = 0, seenHold = 0; /* only the newest feed or overview request may write; a full feed reload stays owed until one succeeds; seenHold is the newest invalidation event already acted on, so old ones never loop */
   function holdOverview() { if (!ov) return; ov = Object.assign({}, ov, { latest: {}, latest_run: null, held_runs: Math.max(1, ov.held_runs || 0), runs: (ov.runs || []).map(function (r) { return Object.assign({}, r, { summary: null }); }) }); if (tab === 'today') renderToday(); if (tab === 'agents') renderAgents(); } /* a hold seen anywhere clears the summaries on screen until a newer overview answers */ /* only the newest feed or overview request may write; a full feed reload stays owed until one succeeds */
-  function dropResults() { feedGen++; holdOverview(); feed = []; feedTop = 0; feedNeedsFull = true; if (tab === 'feed') renderFeed(); } /* a floor change the server confirmed: what is on screen was computed under the old floor, so it goes now, and any answer already on its way is ignored */
-  function loadOverview() { var gen = ++ovGen; return rpc('admin_overview').then(function (j) { if (gen !== ovGen) return; /* a newer overview was sent since: this answer may predate a hold */ if (denied(j)) return bootStaffOnly(); ov = j; pill('on', 'live'); var rk = String(j && j.latest_run) + '|' + String(j && j.held_runs); if (releaseKey === null || rk !== releaseKey) { feed = []; feedTop = 0; feedNeedsFull = true; if (tab === 'feed') renderFeed(); } /* the first overview counts as a change: anything the boot feed showed may predate a hold, so it is dropped and reloaded whole */ releaseKey = rk; if (feedNeedsFull) loadFeed(true); if (tab === 'today') renderToday(); if (tab === 'agents') renderAgents(); queueAgain(); }).catch(function (e) { pill('bad', 'offline'); }); }
+  function dropProposals() { propGen++; proposals = null; if (tab === 'queue' && me) renderQueue(); } /* held words leave the screen now, before any reload answers */
+  function dropResults() { feedGen++; dropProposals(); holdOverview(); feed = []; feedTop = 0; feedNeedsFull = true; if (tab === 'feed') renderFeed(); } /* a floor change the server confirmed: what is on screen was computed under the old floor, so it goes now, and any answer already on its way is ignored */
+  function loadOverview() { var gen = ++ovGen; return rpc('admin_overview').then(function (j) { if (gen !== ovGen) return; /* a newer overview was sent since: this answer may predate a hold */ if (denied(j)) return bootStaffOnly(); ov = j; pill('on', 'live'); var rk = String(j && j.latest_run) + '|' + String(j && j.held_runs); if (releaseKey === null || rk !== releaseKey) { feed = []; feedTop = 0; feedNeedsFull = true; dropProposals(); if (tab === 'feed') renderFeed(); if (tab === 'queue') loadProposals().then(function () { if (tab === 'queue') renderQueue(); }); } /* the first overview counts as a change: anything the boot feed showed may predate a hold, so it is dropped and reloaded whole */ releaseKey = rk; if (feedNeedsFull) loadFeed(true); if (tab === 'today') renderToday(); if (tab === 'agents') renderAgents(); queueAgain(); }).catch(function (e) { pill('bad', 'offline'); }); }
   function loadFeed(all) {
     all = all || feedNeedsFull;
     var gen = ++feedGen, args = all || !feedTop ? { p_limit: 60 } : { p_limit: 60, p_after: feedTop };
     return rpc('admin_feed', args).then(function (rows) {
       if (gen !== feedGen) return; /* a newer request was sent since: this answer may predate a hold */
       if (denied(rows)) return bootStaffOnly();
-      rows = Array.isArray(rows) ? rows : [];
+      if (!Array.isArray(rows)) throw new Error('unexpected feed answer'); /* an odd answer is a failed load, never an empty feed */
       var hold = rows.reduce(function (m, e) { return e && e.kind === 'invalidated' && e.id > m ? e.id : m; }, 0);
       if (hold > seenHold) { /* a hold not yet acted on, in a poll or a full reload: summaries anywhere on screen may now be held */
-        seenHold = hold; holdOverview(); loadOverview();
+        seenHold = hold; dropProposals(); holdOverview(); loadOverview();
         if (!all) { feed = []; feedTop = 0; feedNeedsFull = true; if (tab === 'feed') renderFeed(); return loadFeed(true); }
       }
+      if (rows.some(function (e) { return e && (e.kind === 'review' || e.kind === 'blocked'); })) { loadReview(); if (tab === 'queue' || proposals) loadProposals().then(function () { if (tab === 'queue') renderQueue(); }); }
       if (all) feedNeedsFull = false;
+      feedLoaded = true; feedBad = false;
       if (all || !feedTop) { feed = rows; } else if (rows.length) { feed = rows.concat(feed).slice(0, 300); }
       if (feed.length) feedTop = feed[0].id;
       if (tab === 'feed') {
         if (!all && rows.length && doc.getElementById('feedList')) { doc.getElementById('feedList').insertAdjacentHTML('afterbegin', rows.map(function (e) { return feedItem(e, true); }).join('')); var s = doc.getElementById('feedSub'); if (s) s.textContent = feed.length + ' events'; }
         else renderFeed();
       }
-    }).catch(function () { });
+    }).catch(function () { if (gen !== feedGen) return; var was = feedBad; feedBad = true; if (tab === 'feed' && !was) renderFeed(); });
   }
-  function loadProposals() { var g = acctGen; return rpc('admin_proposals').then(function (j) { if (g !== acctGen) return; proposals = Array.isArray(j) ? j : []; }).catch(function (e) { if ((e && e.cancelled) || g !== acctGen) return; proposals = []; }); } /* another account's late answer or failure leaves this one's list alone (rounds 5 and 6) */
+  function loadProposals() { var g = ++propGen, a = acctGen; return rpc('admin_proposals').then(function (j) { if (g !== propGen || a !== acctGen) return; proposals = Array.isArray(j) ? j : 'unavailable'; }).catch(function (e) { if ((e && e.cancelled) || g !== propGen || a !== acctGen) return; proposals = 'unavailable'; }); } /* the newest request of this account only; a failure is unavailable, never empty */
+  function redrawTeam() { var t = doc.getElementById('teamLine'); if (t) t.innerHTML = teamLine(); if (tab === 'agents') renderAgents(); }
+  function loadReview() {
+    if (reviewMissing) return Promise.resolve();
+    var g = ++reviewGen;
+    return rpc('admin_review_status').then(function (j) {
+      if (g !== reviewGen || denied(j)) return;
+      if (!j || typeof j !== 'object' || Array.isArray(j)) throw new Error('unexpected status answer');
+      review = j; reviewAt = Date.now(); reviewBad = false; redrawTeam();
+    }).catch(function (e) { if (g !== reviewGen) return; if (missingFn(e)) { reviewMissing = true; reviewBad = false; } else reviewBad = true; redrawTeam(); });
+  }
+  function reqId() { try { return root.crypto.randomUUID(); } catch (e) { return 'r' + Date.now() + Math.random().toString(16).slice(2); } }
+  var REVIEW_TEXT = { review_off: 'The team review is switched off (Queue tab, Policy), so the team was not asked.', transfer_not_cleared: 'The team review waits for the privacy clearance for sending numbers to Codex, so nothing was sent.', blocked: 'The team review is stopped by a provider block (Queue tab).', run_held: 'The run was held, so the team was not asked.', nothing_to_review: 'Nothing measured yet, so the team was not asked.', run_failed: 'The run failed, so the team was not asked.' };
+  function refreshText(r) { if (!r) return 'Done.'; if (r.state === 'queued') return 'Done. The team review is queued for the worker on the Mac.'; if (r.state === 'busy') return 'Done. The team is still reviewing an earlier run; this one was not queued.'; return 'Done. ' + (REVIEW_TEXT[r.code] || ''); }
+  function blockText(code) { var t = { timeout: 'A review stage took too long and was stopped.', provider_limit: 'Codex reported a usage limit.', provider_error: 'Codex reported an error.', bad_output: 'A review answer did not match the contract.', crash: 'The worker stopped unexpectedly.', uncertain: 'The worker stopped mid-call, so whether a call finished is unknown.', lease_lost: 'A review ran past its time.', transport: 'The worker lost its connection mid-review.' }[code]; return (t || String(code || 'A provider failure.')) + ' Nothing retries by itself. After an owner clears it on the Queue tab, the next Refresh queues one new review.'; }
+  function stageName(a) { return AGENTS[a] ? AGENTS[a].name : a === 'orchestrator' ? NIMBUS.name : a; }
+  function hbAge(h) { return Math.round(h.age_s + Math.max(0, Date.now() - reviewAt) / 1000); } /* the server's age plus the time since it answered */
+  function teamLine() {
+    if (reviewMissing) return '';
+    if (!review) return reviewBad ? '<p class="msg bad">The team review status could not be loaded. It tries again shortly.</p>' : '';
+    var o = review.open, l = review.last, txt, stale = reviewBad || Date.now() - reviewAt > 75000;
+    if (review.block) txt = 'Team review stopped: ' + blockText(review.block.code);
+    else if (o && o.state === 'queued') txt = 'Team review queued ' + ago(o.requested_at) + '; waiting for the worker on the Mac.';
+    else if (o) { var hb = (o.heartbeats || []).filter(function (h) { return h.agent !== 'worker' && h.state === 'reading'; })[0], age = hb ? hbAge(hb) : 0; txt = hb ? stageName(hb.agent) + ' is reading the numbers (last heard ' + age + ' s ago' + (age > 60 ? ', which is longer than expected' : '') + ').' : 'The worker has the review.'; }
+    else if (!review.review_on) txt = 'Team review is off.';
+    else if (!review.transfer_cleared) txt = 'Team review is on, and waits for the privacy clearance for sending numbers to Codex.';
+    else if (l) txt = 'Last team review: ' + l.state + (l.finished_at ? ' ' + ago(l.finished_at) : '') + (l.run_held ? ' (its run was held since)' : l.run !== review.latest_run ? ' (newer results are not reviewed)' : '') + '.';
+    else txt = 'No team review yet.';
+    if (stale) txt += ' This status is not current: it last answered ' + (reviewAt ? ago(new Date(reviewAt).toISOString()) : 'never') + '.';
+    return '<p class="note">' + esc(txt) + '</p>';
+  }
+  function stageLine(a) {
+    var o = review && review.open; if (!o) return '';
+    var hb = (o.heartbeats || []).filter(function (h) { return h.agent === a; })[0], st = (o.stages || []).filter(function (x) { return x.agent === a; })[0];
+    if (!hb && !st) return '';
+    return '<div class="note">' + esc(st && st.state === 'accepted' ? 'Report posted in this review.' : hb ? 'Reading the numbers now (last heard ' + hbAge(hb) + ' s ago' + (hbAge(hb) > 60 || reviewBad ? ', not current' : '') + ').' : '') + '</div>';
+  }
   function loadStaff() { if (me.role !== 'owner') return Promise.resolve(); return Promise.all([rpc('admin_list').then(function (j) { admins = Array.isArray(j) ? j : []; }), rpc('admin_audit_tail', { p_limit: 100 }).then(function (j) { audit = Array.isArray(j) ? j : []; })]).catch(function () { }); }
   function render() {
     if (tab === 'today') renderToday();
     else if (tab === 'feed') renderFeed();
     else if (tab === 'agents') renderAgents();
-    else if (tab === 'queue') { renderQueue(); if (!proposals) loadProposals().then(function () { queueAgain(); }); loadReports().then(function () { queueAgain(); }); loadRoomMsgs().then(function () { queueAgain(); }); }
+    else if (tab === 'queue') { renderQueue(); loadProposals().then(function () { queueAgain(); }); loadReports().then(function () { queueAgain(); }); loadRoomMsgs().then(function () { queueAgain(); }); } /* proposals reload on every open: a cached list may be stale */
     else if (tab === 'staff') { renderStaff(); loadStaff().then(function () { if (tab === 'staff') renderStaff(); }); }
   }
   function stopTimers() { timers.forEach(clearInterval); timers = []; }
@@ -447,10 +509,10 @@
       if (!j || !j.admin) return staffOnly();
       me = j; shell(); render();
       loadPlaza(); timers.push(setInterval(function () { if (!doc.hidden) loadPlaza(); }, 20000)); /* the groups card never holds up the rest */
-      return Promise.all([loadOverview(), loadFeed(true)]).then(function () {
+      return Promise.all([loadOverview(), loadFeed(true), loadReview()]).then(function () {
         if (g !== acctGen) return;
-        timers.push(setInterval(function () { if (!doc.hidden) loadFeed(false); }, 10000));
-        timers.push(setInterval(function () { if (!doc.hidden) loadOverview(); }, 30000));
+        timers.push(setInterval(function () { if (!doc.hidden) { loadFeed(false); if (review && review.open) loadReview(); } }, 10000));
+        timers.push(setInterval(function () { if (!doc.hidden) { loadOverview(); loadReview(); } }, 30000));
         timers.push(setInterval(function () { if (!doc.hidden && tab === 'queue') refreshQueue(); }, 20000));
       });
     }).catch(function (e) { if (g === acctGen && !(e && e.cancelled)) gate('Could not check your account: ' + e.message, true); });
@@ -459,14 +521,15 @@
   function accountChanged() {
     if (who() === acct) return;
     acctGen++; me = null; stopTimers();
-    reports = null; reportsBad = false; reportsNote = null; reportsGen++; roomMsgs = null; roomMsgsBad = false; roomMsgsNote = null; roomMsgsBusy = false; roomMsgsGen++; proposals = null; admins = null; audit = null; ov = null; feed = []; feedTop = 0; findings = null; plaza = null; plazaBad = false; releaseKey = null; feedGen++; feedNeedsFull = false; ovGen++; seenHold = 0;
-    app.innerHTML = '';
+    reports = null; reportsBad = false; reportsNote = null; reportsGen++; roomMsgs = null; roomMsgsBad = false; roomMsgsNote = null; roomMsgsBusy = false; roomMsgsGen++; proposals = null; propGen++; admins = null; audit = null; ov = null; feed = []; feedTop = 0; feedLoaded = false; feedBad = false; findings = null; plaza = null; plazaOk = 0; plazaBad = false; plazaBusy = false; plazaGen++; releaseKey = null; feedGen++; feedNeedsFull = false; ovGen++; seenHold = 0;
+    review = null; reviewAt = 0; reviewBad = false; reviewGen++; refreshing = null; refreshMsg = '';
+    app.innerHTML = '<div class="gate">' + LUNA + '<div class="card"><h2>Rhythme staff</h2><p class="empty">Checking the account…</p></div></div>'; /* nothing of the old account stays up while the new one is checked */
     boot();
   }
   if (A && A.subscribe) A.subscribe(accountChanged);
   root.addEventListener('storage', function (e) { if (e.key === null || e.key === 'ovumind_auth_v1') accountChanged(); });
-  doc.addEventListener('visibilitychange', function () { if (doc.hidden) return; accountChanged(); if (me) { loadFeed(false); loadOverview(); loadPlaza(); if (tab === 'queue') refreshQueue(); } });
-  if (root.__ADMIN_TEST__) root.__ADMIN_TEST__.api = { loadOverview: loadOverview, loadFeed: loadFeed, setTab: function (t) { tab = t; }, dropResults: dropResults, state: function () { return { feed: feed, feedTop: feedTop, needsFull: feedNeedsFull, releaseKey: releaseKey, latest: ov && ov.latest, held: ov && ov.held_runs }; } }; /* core tests only */
+  doc.addEventListener('visibilitychange', function () { if (doc.hidden) return; accountChanged(); if (me) { loadFeed(false); loadOverview(); loadPlaza(); loadReview(); if (tab === 'queue') refreshQueue(); } });
+  if (root.__ADMIN_TEST__) root.__ADMIN_TEST__.api = { loadOverview: loadOverview, loadFeed: loadFeed, setTab: function (t) { tab = t; }, dropResults: dropResults, accountChanged: accountChanged, setMe: function (m) { me = m; }, runNow: runNow, renderQueue: renderQueue, renderFeed: renderFeed, boot: boot, review: function () { return review; }, teamLine: function () { return teamLine(); }, setReview: function (r) { review = r; }, proposals: function () { return proposals; }, loadProposals: loadProposals, loadReview: loadReview, refreshText: refreshText, state: function () { return { feed: feed, feedTop: feedTop, needsFull: feedNeedsFull, releaseKey: releaseKey, latest: ov && ov.latest, held: ov && ov.held_runs }; } }; /* core tests only */
   /* finish a Google round trip (?code= in the URL) before deciding what to show */
   (A && A.init ? A.init() : Promise.resolve({})).then(function (r) { if (r && r.error && !A.session()) return gate('Sign-in did not finish: ' + r.error, true); boot(); }, function () { boot(); });
 })(window);
