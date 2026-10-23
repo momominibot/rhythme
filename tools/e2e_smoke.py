@@ -934,26 +934,13 @@ async def main():
             po['signin'] = await page.evaluate("()=>!!document.querySelector('#plazaSignIn') && !document.querySelector('#plazaList')")
             await page.evaluate("()=>OvuRoom.closeSheet()"); await page.wait_for_timeout(300)
             check("signed in (the room opens to nobody else now), the pill offers a group to choose and its sheet lists groups rather than a sign-in", po["shown"] and "Choose a group" in po["text"] and not po["signin"], po)
-            check("the plaza shows four sample neighbours with their pets, a noticeboard and a tea stall", pz["layout"] == "plaza" and pz["nbs"] == 4 and pz["pets"] == 4 and pz["board"] and pz["stall"], pz)
+            check("the plaza has no sample neighbours (Jamie, 23 Oct): with nobody in her group it is empty, with a noticeboard and a tea stall", pz["layout"] == "plaza" and pz["nbs"] == 0 and pz["pets"] == 0 and pz["board"] and pz["stall"], pz)
             await tap_hot("board")
             try: await page.wait_for_selector('#sheet[aria-hidden="false"] .notice.today', timeout=8000)
             except Exception: pass
             bd = await page.evaluate("()=>({prompt: document.querySelector('#sheet .notice.today p')?.textContent.length, samples: document.querySelectorAll('#sheet .notice:not(.today)').length})")
-            check("the noticeboard shows today's prompt and the sample notes", bd["prompt"] and bd["prompt"] > 10 and bd["samples"] >= 3, bd)
+            check("the noticeboard shows today's prompt and no sample notes", bd["prompt"] and bd["prompt"] > 10 and bd["samples"] == 0, bd)
             await page.click("#sheetClose"); await page.wait_for_timeout(300)
-            await page.click('#ownedProps .nbperson[data-nb=mei]')
-            try: await page.wait_for_selector('#nbVisit', timeout=5000)
-            except Exception: pass
-            await page.click('#nbVisit')
-            try: await page.wait_for_function("()=>document.querySelector('#scene').classList.contains('nbvisit') && !!document.querySelector('#nbBack')", timeout=10000)
-            except Exception: pass
-            vs = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, visit: document.querySelector('#scene').classList.contains('nbvisit'), back: !!document.querySelector('#nbBack'), nb: document.querySelectorAll('#ownedProps .nbperson').length, own: document.querySelectorAll('#ownedProps .prop.owned').length, inert: getComputedStyle(document.querySelector('.hotspot[data-id=bed]')).pointerEvents, minimapHidden: !!document.querySelector('#minimap.hidden')})")
-            check("visiting Mei opens her cottage read-only: she is there, your props are not, hotspots are inert, a Back button shows", vs["layout"] == "house" and vs["visit"] and vs["back"] and vs["nb"] == 1 and vs["own"] == 0 and vs["inert"] == "none" and vs["minimapHidden"], vs)
-            await page.click('#nbBack')
-            try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='plaza' && !document.querySelector('#scene').classList.contains('nbvisit')", timeout=10000)
-            except Exception: pass
-            bk = await page.evaluate("()=>({layout: document.querySelector('#scene').dataset.layout, visit: document.querySelector('#scene').classList.contains('nbvisit'), nbs: document.querySelectorAll('#ownedProps .nbperson').length})")
-            check("Back returns to the plaza and the neighbours", bk["layout"] == "plaza" and not bk["visit"] and bk["nbs"] == 4, bk)
             await page.evaluate("()=>OvuWalk.travel('home')")  # a test jump
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='room' && !document.querySelector('#scene').classList.contains('fading')", timeout=10000)
             except Exception: pass
@@ -3045,7 +3032,7 @@ async def main():
             except Exception: pass
             on = await p6.evaluate("()=>({real: [...document.querySelectorAll('.nbreal')].map(e=>e.textContent), samples: document.querySelectorAll('.nbperson:not(.nbreal)').length, label: (document.querySelector('.nbreal')||{getAttribute:()=>''}).getAttribute('aria-label')})")
             pp = fcall("social_people")
-            check("with a card, the two people in PCOS stand on the plaza by name and the samples step aside; the call names her group and visit", on["real"] == ["Nadia", "Priya"] and on["samples"] == 0 and "in your group" in on["label"] and pp and pp[-1] == {"p_server": "pcos", "p_visit": "v1"}, {"on": on, "people": pp[-1:]})
+            check("with a card, the two people in PCOS stand on the plaza by name and nobody else; the call names her group and visit", on["real"] == ["Nadia", "Priya"] and on["samples"] == 0 and "in your group" in on["label"] and pp and pp[-1] == {"p_server": "pcos", "p_visit": "v1"}, {"on": on, "people": pp[-1:]})
             await shot("plaza-people")
             # a failed fetch clears the plate (never yesterday's group) and holds every automatic request until she acts
             FR["people_fail"] = True
@@ -3060,7 +3047,7 @@ async def main():
             except Exception: pass
             back2 = await p6.evaluate("()=>({real: document.querySelectorAll('.nbreal').length, held: OvuFriends.state().held})")
             await p6.evaluate("()=>OvuRoom.closeSheet()"); await p6.wait_for_timeout(300)
-            check("a failed people check clears the plate at once; check-ins, timers and returning to the app ask nothing more; tapping the group pill tries again", fl["real"] == 0 and fl["samples"] == 4 and fl["held"] is True and quiet == 0 and back2["real"] == 2 and back2["held"] is False, {"fail": fl, "automatic calls while held": quiet, "after tap": back2})
+            check("a failed people check clears the plate at once; check-ins, timers and returning to the app ask nothing more; tapping the group pill tries again", fl["real"] == 0 and fl["samples"] == 0 and fl["held"] is True and quiet == 0 and back2["real"] == 2 and back2["held"] is False, {"fail": fl, "automatic calls while held": quiet, "after tap": back2})
             await p6.evaluate("()=>document.querySelector('.nbreal[data-nb=r0]').click()")
             await p6.wait_for_selector('#frSheet [data-fr=ask]')
             pc6 = await p6.evaluate("()=>document.querySelector('#frSheet').textContent")
@@ -3071,14 +3058,14 @@ async def main():
             check("tapping Nadia opens her card with the asking cue, Block and Report; Ask sends her handle, the group, the visit and the chosen hello, then shows Asked", "share a bench" in pc6 and "Block" in pc6 and "Report" in pc6 and ak and ak[0] == {"p_handle": "h-nadia", "p_server": "pcos", "p_visit": "v1", "p_hello": "wave"}, {"ask": ak, "text": pc6[:120]})
             await shot("person-card")
             await p6.evaluate("()=>{OvuRoom.closeSheet(); document.querySelector('nav a[data-tab=you]').click();}")
-            await p6.wait_for_selector('[data-yact=friends]')
-            yr = await p6.evaluate("()=>document.querySelector('[data-yact=friends]').textContent")
-            await p6.click('[data-yact=friends]'); await p6.wait_for_selector('#frSheet [data-fr=accept]')
+            await p6.wait_for_selector('#youName')
+            yr = await p6.evaluate("()=>({friends: !!document.querySelector('[data-yact=friends]'), shop: !!document.querySelector('[data-yact=shop]')})")
+            await p6.evaluate("()=>{OvuRoom.closeSheet(); OvuFriends.open();}"); await p6.wait_for_selector('#frSheet [data-fr=accept]')
             await p6.click('#frSheet [data-fr=accept]')
             try: await p6.wait_for_function("()=>!!document.querySelector('#frSheet [data-fr=note][data-h=h-priya]')", timeout=6000)
             except Exception: pass
             an = fcall("social_answer")
-            check("You has a Plaza friends row; Accept on Priya's ask makes her a friend with a Send a kind note button", "Plaza friends" in yr and an and an[0] == {"p_handle": "h-priya", "p_accept": True} and await p6.evaluate("()=>!!document.querySelector('#frSheet [data-fr=note][data-h=h-priya]')"), {"you": yr, "answer": an})
+            check("You no longer lists Plaza friends or Dream Street (Jamie, 23 Oct); Accept on Priya's ask makes her a friend with a Send a kind note button", not yr["friends"] and not yr["shop"] and an and an[0] == {"p_handle": "h-priya", "p_accept": True} and await p6.evaluate("()=>!!document.querySelector('#frSheet [data-fr=note][data-h=h-priya]')"), {"you": yr, "answer": an})
             await p6.click('#frSheet [data-fr=note][data-h=h-priya]'); await p6.wait_for_selector('#frSend')
             nb = await p6.evaluate("()=>({dis: document.querySelector('#frSend').disabled, cue: /Before you send, one slow breath/.test(document.querySelector('#frSheet').textContent), n: document.querySelectorAll('.frphrase').length})")
             await p6.click('.frphrase[data-phrase=tea]'); await p6.click('#frSend')
@@ -3102,7 +3089,7 @@ async def main():
             except Exception: pass
             await p6.evaluate("()=>OvuRoom.closeSheet()"); await p6.wait_for_timeout(300)
             of = await p6.evaluate("()=>({real: document.querySelectorAll('.nbreal').length, samples: document.querySelectorAll('.nbperson:not(.nbreal)').length})")
-            check("turning Plaza friends off takes two taps, calls the server once, and the plaza goes back to the samples", n_off == 0 and "Tap again" in armed and len(fcall("social_off")) == 1 and of["real"] == 0 and of["samples"] == 4, {"armed": armed, "plate": of})
+            check("turning Plaza friends off takes two taps, calls the server once, and the plaza is empty again", n_off == 0 and "Tap again" in armed and len(fcall("social_off")) == 1 and of["real"] == 0 and of["samples"] == 0, {"armed": armed, "plate": of})
             # a paused account still sees how to turn Plaza friends off
             FR["me"]["card"] = {"handle": "h-me2", "name": "Fern", "look": "base", "hidden": False, "paused_until": "2030-01-01T00:00:00Z"}; FR["me"]["on"] = True; FR["me"]["paused_until"] = "2030-01-01T00:00:00Z"
             await p6.evaluate("()=>OvuFriends.open()")
@@ -4365,17 +4352,19 @@ async def main():
               return { n: document.querySelectorAll('#ownedProps .villager').length, nat: [im.naturalWidth, im.naturalHeight], h: im.offsetHeight, herH: her.offsetHeight, herNat: [her.naturalWidth, her.naturalHeight], z: Number(el.style.zIndex), herZ: Number(document.querySelector('#avatar').style.zIndex),
                 chest: hit(r.left + r.width * 0.5, r.top + r.height * 0.42), corner: hit(r.left + r.width * 0.06, r.top + r.height * 0.04), tag: getComputedStyle(el).pointerEvents, imgPe: getComputedStyle(im).pointerEvents, solid: (OvuRoom.layout().solids || []).filter(function (b) { return b.id === 'villager-' + id; }).length,
                 feet: feet(el, im), herFeet: feet(document.querySelector('#avatar'), her), shadow: shadowW(el), herShadow: shadowW(document.querySelector('#avatar')) }; }"""
+            # one real person from her group standing in front of him (the plaza has no samples since 23 Oct)
+            await pv.evaluate("()=>{ OvuCommunity.setPeople(function(){ return [{id: 'r0', real: true, handle: 'h-r0', name: 'Ana', outfit: 'kebaya-blue', spot: {x: 42, y: 60, flip: false}}]; }, function(){}); OvuCommunity.redraw(); }"); await pv.wait_for_timeout(300)
             sh = await pv.evaluate(vfit, "shen")
-            mei = await pv.evaluate("()=>Number((document.querySelector('#ownedProps .nbperson[data-nb=mei]')||{style:{}}).style.zIndex)")
+            mei = await pv.evaluate("()=>Number((document.querySelector('#ownedProps .nbperson[data-nb=r0]')||{style:{}}).style.zIndex)")
             check("villagers: Shen stands in the plaza at her height (his picture within 1.5 px of hers, both on the 720 canvas), his floor block in the layout once", sh and sh["n"] == 1 and sh["nat"] == [318, 720] and sh["herNat"][1] == 720 and abs(sh["h"] - sh["herH"]) <= 1.5 and sh["solid"] == 1, sh)
             check("villagers: nobody floats: Shen's shoes and hers sit on their floor lines (within 1.5 px), each with a contact shadow of her footprint", abs(sh["feet"]) <= 1.5 and abs(sh["herFeet"]) <= 1.5 and sh["shadow"] > 0 and abs(sh["shadow"] - sh["herShadow"]) <= 1.5, {k: sh[k] for k in ("feet", "herFeet", "shadow", "herShadow")})
-            check("villagers: only his figure takes a tap: his chest is his, the empty corner of his canvas is not; Mei in front of him draws in front", sh and sh["chest"] and not sh["corner"] and sh["tag"] == "none" and sh["imgPe"] == "auto" and mei > sh["z"] and sh["z"] != sh["herZ"], {"shen": sh, "meiZ": mei})
-            nbc = await pv.evaluate("""()=>{ var el = document.querySelector('#ownedProps .nbperson[data-nb=mei]'), r = el.querySelector('img').getBoundingClientRect(), at = function (x, y) { var e = document.elementFromPoint(r.left + r.width * x, r.top + r.height * y); return e && e.closest && e.closest('.nbperson') ? e.closest('.nbperson').dataset.nb : null; }; return {chest: at(0.5, 0.45), corner: at(0.03, 0.03), tag: getComputedStyle(el.querySelector('.nbtag')).pointerEvents, clip: !!el.querySelector('img').style.clipPath}; }""")
-            check("villagers: a neighbour takes taps only on her figure too (Mei's chest is hers, her canvas corner and name tag are not), so taps reach Shen behind her", nbc["chest"] == "mei" and nbc["corner"] is None and nbc["tag"] == "none" and nbc["clip"], nbc)
+            check("villagers: only his figure takes a tap: his chest is his, the empty corner of his canvas is not; Ana in front of him draws in front", sh and sh["chest"] and not sh["corner"] and sh["tag"] == "none" and sh["imgPe"] == "auto" and mei > sh["z"] and sh["z"] != sh["herZ"], {"shen": sh, "meiZ": mei})
+            nbc = await pv.evaluate("""()=>{ var el = document.querySelector('#ownedProps .nbperson[data-nb=r0]'), r = el.querySelector('img').getBoundingClientRect(), at = function (x, y) { var e = document.elementFromPoint(r.left + r.width * x, r.top + r.height * y); return e && e.closest && e.closest('.nbperson') ? e.closest('.nbperson').dataset.nb : null; }; return {chest: at(0.5, 0.45), corner: at(0.03, 0.03), tag: getComputedStyle(el.querySelector('.nbtag')).pointerEvents, clip: !!el.querySelector('img').style.clipPath}; }""")
+            check("villagers: a neighbour takes taps only on her figure too (Ana's chest is hers, her canvas corner and name tag are not), so taps reach Shen behind her", nbc["chest"] == "r0" and nbc["corner"] is None and nbc["tag"] == "none" and nbc["clip"], nbc)
             # a props render and a friends redraw (which clears every .nb) leave exactly one Shen
             await pv.evaluate("()=>{ OvuRoom.renderProps(); OvuCommunity.redraw(); }"); await pv.wait_for_timeout(300)
-            one = await pv.evaluate("()=>({n: document.querySelectorAll('#ownedProps .villager').length, shenZ: Number(document.querySelector('#ownedProps .villager[data-id=shen]').style.zIndex), meiZ: Number(document.querySelector('#ownedProps .nbperson[data-nb=mei]').style.zIndex) || 0})")
-            check("villagers: a props render and a friends redraw leave exactly one Shen, and Mei (in front of him) is ranked in front again", one["n"] == 1 and one["meiZ"] > one["shenZ"], one)
+            one = await pv.evaluate("()=>({n: document.querySelectorAll('#ownedProps .villager').length, shenZ: Number(document.querySelector('#ownedProps .villager[data-id=shen]').style.zIndex), meiZ: Number(document.querySelector('#ownedProps .nbperson[data-nb=r0]').style.zIndex) || 0})")
+            check("villagers: a props render and a friends redraw leave exactly one Shen, and Ana (in front of him) is ranked in front again", one["n"] == 1 and one["meiZ"] > one["shenZ"], one)
             # tap his chest: she walks to his side and his sheet opens with a greeting
             box = await pv.evaluate("()=>{ var r = document.querySelector('#ownedProps .villager[data-id=shen] img').getBoundingClientRect(); return {x: r.left + r.width * 0.5, y: r.top + r.height * 0.42}; }")
             await pv.mouse.click(box["x"], box["y"])

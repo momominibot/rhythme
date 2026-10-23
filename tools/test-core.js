@@ -699,8 +699,8 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   vm.runInContext(fs.readFileSync(path.join(root, 'ovu-friends.js'), 'utf8'), w, { filename: 'ovu-friends.js' });
   ['ovu-farm.js', 'ovu-stamina.js', 'ovu-harbour.js', 'ovu-villagers.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w, { filename: f }); });
   var V = w.OvuVillagers, F = w.OvuFriends, LAY = { plaza: w.LAYOUTS.plaza, harbour: w.OvuHarbour.LAYOUT };
-  /* the people and pets who stand in each scene: the sample neighbours, the friends' eight places, the neighbours' pets */
-  var others = { plaza: C.NEIGHBOURS.map(function (n) { return { id: n.id, x: n.spot.x, y: n.spot.y, w: 11 }; }).concat(C.NEIGHBOURS.map(function (n) { return { id: n.id + '-pet', x: n.petSpot.x, y: n.petSpot.y, w: n.pet.w }; })).concat(F.SPOTS.map(function (p, i) { return { id: 'friend' + i, x: p.x, y: p.y, w: 11 }; })), harbour: [] };
+  /* the people who stand in each scene: the friends' eight places (the plaza has no sample neighbours since 23 Oct) */
+  var others = { plaza: F.SPOTS.map(function (p, i) { return { id: 'friend' + i, x: p.x, y: p.y, w: 11 }; }), harbour: [] };
   V.VILLAGERS.forEach(function (v) {
     var L = LAY[v.scene], box = V.blockOf(v), bad = [];
     var around = K.world(L, others[v.scene]), withMe = K.world(Object.assign({}, L, { solids: L.solids.concat([box]) }), others[v.scene]);
@@ -716,15 +716,15 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   });
   var wsrc = fs.readFileSync(path.join(root, 'ovu-walk.js'), 'utf8'), css = fs.readFileSync(path.join(root, 'room.css'), 'utf8');
   check('each villager is his own button (not a neighbour .nb a friends redraw clears), drawn at her width times his canvas factor, clipped to his traced outline, ranked with her by his feet and not a solid (his block is in the layout, added once)', /el\.style\.width = \(\(L\.avatarW \|\| 12\) \* \(v\.wk \|\| 1\)\)/.test(src) && /style\.clipPath = 'polygon\(' \+ v\.outline \+ '\)'/.test(src) && /el\.className = 'villager';/.test(src) && V.VILLAGERS.every(function (v) { return v.outline.split(',').length >= 20 && /^[0-9. %,]+$/.test(v.outline); }) && /\.villager\{[^}]*pointer-events:none/.test(css) && /\.villager img\{[^}]*pointer-events:auto/.test(css) && /#ownedProps \.villager, #plateOcc/.test(wsrc) && /!el\.classList\.contains\('villager'\)/.test(wsrc) && /if \(L\.solids && !L\.solids\.some\(function \(b\) \{ return b\.id === 'villager-' \+ v\.id; \}\)\) L\.solids\.push\(blockOf\(v\)\)/.test(src) && /closest\('\.hotspot,\.nb,\.prop\.owned[^']*,\.villager'/.test(fs.readFileSync(path.join(root, 'ovu-camera.js'), 'utf8')));
-  var looks = F.LOOKS.map(function (l) { return l[0]; }).concat(C.NEIGHBOURS.map(function (n) { return n.outfit; })), csrc = fs.readFileSync(path.join(root, 'ovu-community.js'), 'utf8');
-  check('every neighbour and friend look has its traced outline, and a neighbour\'s picture (on the plaza and on a visit) is clipped to it with only the picture taking a tap, so her empty canvas and name tag never hide Shen', looks.every(function (l) { return C.OUTLINE[l] && C.OUTLINE[l].split(',').length >= 20 && /^[0-9. %,]+$/.test(C.OUTLINE[l]); }) && (csrc.match(/clipTo\(el\.querySelector\('img'\), (n|visit)\.outfit\)/g) || []).length === 2 && /\.nbperson\{pointer-events:none;cursor:pointer\}\.nbperson img\{pointer-events:auto\}/.test(css));
+  var looks = F.LOOKS.map(function (l) { return l[0]; }), csrc = fs.readFileSync(path.join(root, 'ovu-community.js'), 'utf8');
+  check('every neighbour and friend look has its traced outline, and a neighbour\'s picture on the plaza is clipped to it with only the picture taking a tap, so her empty canvas and name tag never hide Shen', looks.every(function (l) { return C.OUTLINE[l] && C.OUTLINE[l].split(',').length >= 20 && /^[0-9. %,]+$/.test(C.OUTLINE[l]); }) && (csrc.match(/clipTo\(el\.querySelector\('img'\), n\.outfit\)/g) || []).length === 1 && /\.nbperson\{pointer-events:none;cursor:pointer\}\.nbperson img\{pointer-events:auto\}/.test(css));
   check('nobody floats: a villager stands like her, his canvas bottom on the floor line (translate -100%), with her soft contact shadow at his feet sized to her footprint on any canvas width, and no offset drop shadow', /\.villager\{position:absolute;transform:translate\(-50%,-100%\)[^}]*filter:drop-shadow\(0 1px 2px rgba\(70,40,100,\.2\)\)/.test(css) && /\.avatar::before,[^{]*\.villager::before\{/.test(css) && /\.villager\{--cs:\.62\}/.test(css) && /\.avatar\{position:absolute;[^}]*transform:translate\(-50%,-100%\)/.test(css) && /setProperty\('--cs', \(0\.62 \/ \(v\.wk \|\| 1\)\)/.test(src));
   check('a friends redraw (no props event) ranks the new neighbours with her and Shen; a cutout is ranked by its centre, not its left edge', /renderNeighbours\(\) \{[\s\S]*?if \(root\.OvuWalk && root\.OvuWalk\.sortDepth\) root\.OvuWalk\.sortDepth\(\);[^\n]*\n  \}/.test(csrc) && /cx: occ \? x \+ w \/ 2 : x/.test(wsrc) && /return \{ y: p\.y, x: p\.cx, w: p\.w \}/.test(wsrc));
-  /* the plaza's crowd: four neighbours, their pets, Shen and her (Codex, 22 Oct: Shen at 54.5 and her at 54.4 both had z 2) */
-  var crowd = C.NEIGHBOURS.map(function (n) { return { y: n.spot.y, x: n.spot.x, w: 11 }; }).concat(C.NEIGHBOURS.map(function (n) { return { y: n.petSpot.y, x: n.petSpot.x, w: n.pet.w }; })).concat([{ y: 52.6, x: 40, w: 12 }]);
+  /* the plaza's crowd: the eight friends' places, Shen and her (Codex, 22 Oct: Shen at 54.5 and her at 54.4 both had z 2) */
+  var crowd = F.SPOTS.map(function (p) { return { y: p.y, x: p.x, w: 11 }; }).concat([{ y: 52.6, x: 40, w: 12 }]);
   var zBehind = K.depthRank(crowd.concat([{ y: 52.5 }])), zFront = K.depthRank(crowd.concat([{ y: 52.7 }])), sh = crowd.length, her = crowd.length;
-  var meiZ = zFront[0], shenZ = zFront[sh - 1];
-  check('in the plaza crowd she and Shen never share a level: just behind him he is in front, just in front she is, and Mei (in front of him) stays in front', zBehind[sh - 1] > zBehind[her] && zFront[her] > zFront[sh - 1] && meiZ > shenZ && Math.max.apply(null, zFront) <= 9 && Math.min.apply(null, zFront) >= 2, JSON.stringify({ behind: zBehind, front: zFront }));
+  var meiZ = zFront[0], shenZ = zFront[sh - 1]; /* the first friend's place (42, 60) is in front of him */
+  check('in the plaza crowd she and Shen never share a level: just behind him he is in front, just in front she is, and a friend in front of him stays in front', zBehind[sh - 1] > zBehind[her] && zFront[her] > zFront[sh - 1] && meiZ > shenZ && Math.max.apply(null, zFront) <= 9 && Math.min.apply(null, zFront) >= 2, JSON.stringify({ behind: zBehind, front: zFront }));
   var apart = K.depthRank(new Array(12).fill(0).map(function (_, i) { return { y: 50 + i, x: (i % 2) * 60 + 10, w: 10 }; }));
   check('sprites that do not overlap across share levels, so twelve on two sides of the plate still each sit in front of the one behind on their side', apart.every(function (z, i) { return i < 2 || z > apart[i - 2]; }), apart.join());
   /* the talk data */
@@ -3060,18 +3060,16 @@ function scenes(todayIso) {
   var rw = w.OvuRewards.award(ev);
   check('a watering minute is worth 2 hearts as a one-minute calm entry (plus the usual streak rule)', rw.points === 2, JSON.stringify(rw));
 })();
-(function neighboursAreSamples() {
-  console.log('neighbours are samples behind one seam, with homes that exist and a daily prompt');
-  var w = scenes('2026-10-18'), C = w.OvuCommunity, L = w.LAYOUTS;
-  var ns = C.neighbours();
-  check('four sample neighbours with a name, an outfit sprite, a pet and a real home layout', ns.length === 4 && ns.every(function (n) { return n.sample && n.name && /^[a-z-]+$/.test(n.outfit) && n.pet && n.pet.img && L[n.home] && n.spot && n.line; }), JSON.stringify(ns.map(function (n) { return n.id; })));
-  check('neighbours stand on the plaza floor', ns.every(function (n) { return w.OvuWalk.inZones(L.plaza.zones, n.spot.x, n.spot.y); }));
-  check('neighbours() hands back a copy', (C.neighbours().pop(), C.neighbours().length === 4));
+(function plazaHasOnlyRealPeople() {
+  console.log('the plaza shows only real people (Jamie, 23 Oct: no sample neighbours; nobody there means an empty plaza)');
+  var w = scenes('2026-10-18'), C = w.OvuCommunity;
+  check('with nobody in her group the plaza has nobody standing, and no sample list is kept', C.neighbours().length === 0 && !('NEIGHBOURS' in C) && !('NOTES' in C));
   check('today’s prompt is the same all day and comes from the list', C.promptFor('2026-10-18') === C.promptFor('2026-10-18') && C.PROMPTS.indexOf(C.promptFor('2026-10-18')) > -1 && C.promptFor('2026-10-19') !== C.promptFor('2026-10-18'));
-  check('noticeboard sample notes are marked as samples', C.NOTES.length >= 3 && C.NOTES.every(function (n) { return n.sample; }));
+  var src = fs.readFileSync(path.join(root, 'ovu-community.js'), 'utf8');
+  check('no Mei, Nadia, Priya or Sofia anywhere in the plaza module', !/\b(Mei|Nadia|Priya|Sofia)\b/.test(src));
 })();
 (function communityFailedSavesKeepTheSheet() {
-  console.log('audit P1: hello and pinned notes leave no failed action in memory and retain her words');
+  console.log('audit P1: pinned notes leave no failed action in memory and retain her words');
   var w = fresh(), S = w.OvuStore, ls = w.localStorage, realSet = ls.setItem, nodes = {}, opens = 0, closes = 0, toasts = [];
   function node() { return { value: '', handlers: {}, addEventListener: function (k, f) { this.handlers[k] = f; } }; }
   w.document = { createElement: node, getElementById: function (id) { return nodes[id] || (nodes[id] = node()); }, querySelector: function () { return null; }, addEventListener: function () {} };
@@ -3080,16 +3078,7 @@ function scenes(todayIso) {
     openSheet: function () { opens++; nodes = {}; }, closeSheet: function () { closes++; }, chime: function () {}, toast: function (t) { toasts.push(t); } };
   vm.runInContext(fs.readFileSync(path.join(root, 'ovu-community.js'), 'utf8'), w, { filename: 'ovu-community.js' });
   var C = w.OvuCommunity;
-  S.setState({ community: { notes: [{ text: 'Original', date: S.today() }], hellos: { nadia: S.today() }, extra: 'keep' } });
-  C.openNeighbour('mei');
-  var snap = JSON.stringify(S.state().community), opened = opens;
-  ls.setItem = function (k, v) { if (k === 'ovumind_db_v1') throw new Error('QuotaExceededError'); return realSet.call(ls, k, v); };
-  var helloThrew = false; try { nodes.nbHello.handlers.click(); } catch (e) { helloThrew = true; } ls.setItem = realSet;
-  check('a refused hello leaves memory unchanged and keeps its sheet open for retry', !helloThrew && JSON.stringify(S.state().community) === snap && opens === opened && closes === 0 && /hello could not be saved/.test(toasts[toasts.length - 1]));
-  S.setProfile({ name: 'After failed hello' });
-  check('the refused hello cannot leak through a later unrelated save', JSON.stringify(JSON.parse(ls.getItem('ovumind_db_v1')).state.community) === snap);
-  nodes.nbHello.handlers.click();
-  check('retry saves just the intended hello and closes after success', S.state().community.hellos.mei === S.today() && S.state().community.hellos.nadia === S.today() && S.state().community.extra === 'keep' && closes === 1);
+  S.setState({ community: { notes: [{ text: 'Original', date: S.today() }], extra: 'keep' } });
   C.openBoard(); w.document.getElementById('noteText').value = 'Keep these words for retry';
   var textarea = nodes.noteText, pin = nodes.notePin, snap2 = JSON.stringify(S.state().community), opened2 = opens;
   ls.setItem = function (k, v) { if (k === 'ovumind_db_v1') throw new Error('QuotaExceededError'); return realSet.call(ls, k, v); };
@@ -3652,7 +3641,7 @@ function scenes(todayIso) {
   var withReal = C.neighbours();
   C.setPeople(function () { return []; }); var emptyReal = C.neighbours();
   C.setPeople(null);
-  check('real people take the samples’ place while any are shown; with none, the samples come back', withReal.length === 2 && withReal[0].real && emptyReal.length === 4 && emptyReal[0].sample && C.neighbours().length === 4);
+  check('real people stand in the plaza while any are shown; with none, the plaza is empty (no samples come back)', withReal.length === 2 && withReal[0].real && emptyReal.length === 0 && C.neighbours().length === 0);
 })();
 
 (function ledgerAccounting() {

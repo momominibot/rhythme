@@ -557,7 +557,7 @@
   R.setFallbackHotspot(function (id) { return HOME_ONLY.indexOf(id) > -1 ? { id: id, label: id, wp: null, away: true } : undefined; });
   HOME_ONLY.forEach(function (id) {
     R.hotspotHandlers[id] = function (hid, L) {
-      if (sceneOf(L) === 'home' && !(root.OvuCommunity && root.OvuCommunity.visiting())) return false; /* at home (or previewing a house to buy): the room handles it as before */
+      if (sceneOf(L) === 'home') return false; /* at home (or previewing a house to buy): the room handles it as before */
       if (id === 'window') return false; /* the sky is the same everywhere */
       return travel('home', { after: function () { root.setTimeout(function () { R.tap(R.hotspot(id)); }, 120); } });
     };
@@ -590,8 +590,8 @@
     if (root.MutationObserver && hud) new MutationObserver(function () { scene.classList.toggle('hudon', hud.classList.contains('on')); }).observe(hud, { attributes: true, attributeFilter: ['class'] });
   }
   function lightMini(L) {
-    if (!mini) return; var s = sceneOf(L), visit = !!R.visiting();
-    mini.classList.toggle('hidden', visit && s === 'home' && !!(root.OvuCommunity && root.OvuCommunity.visiting()));
+    if (!mini) return; var s = sceneOf(L);
+    mini.classList.remove('hidden');
     var name = root.OvuMap && root.OvuMap.hereName ? root.OvuMap.hereName() : s === 'home' ? 'Home' : String((L && L.name) || '').replace(/^(?:your|the)\s+/i, ''), t = doc.getElementById('mapHere'), b = doc.getElementById('mapBtn');
     if (t) t.textContent = name; if (b) b.setAttribute('aria-label', 'Map. You are ' + (name === 'Home' ? 'at home' : 'in ' + name) + '.');
     scene.classList.toggle('outdoors', s !== 'home'); scene.classList.toggle('visiting', visit);
