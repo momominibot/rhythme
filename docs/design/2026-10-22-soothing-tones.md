@@ -82,7 +82,10 @@ a secondary summary of the primary text, kept as a design guide, not a measureme
 - `StereoPannerNode` pans with "a low-cost equal-power panning algorithm", pan -1 to 1.
   https://developer.mozilla.org/en-US/docs/Web/API/StereoPannerNode
 - Loudness is measured K-weighted as in ITU-R BS.1770 (two filters, then -0.691 + 10 log10 of the mean square); the
-  harness reports an ungated LUFS-like figure for the steady part of each render.
+  harness reports an ungated LUFS-like figure for the steady part of each render. The two filters are built for the
+  actual sample rate from the analogue prototypes the reference meters use (a +4 dB shelf at 1681.97 Hz, a high-pass at
+  38.135 Hz, tan pre-warping); at 48 kHz they reproduce the published tables to the last digit, which the self-test
+  checks (an RBJ cookbook shelf with the same parameters was 0.49 dB off near the corner: Codex, round one).
 
 ### 2.5 Claims that stay out
 
@@ -140,20 +143,32 @@ the sum of all voice amplitudes, after the equal-power pans, is 1 in the louder 
 - **Breath**: one sine LFO at 0.1 Hz on a swell gain (0.92 +/- 0.08, under a decibel), free-running.
 - **Envelope**: start from exactly 0 and rise with `setTargetAtTime` (time constant 2.5 s: half way at 1.7 s, 95 per
   cent at 7.5 s, gentler than the old 2.5 s line, which was half way at 1.25 s). Stop: five seconds of exponential
-  approach to nothing, then a 50 ms ramp to exactly zero, every sine stopped on the audio clock 0.1 s after, the master
-  closed 0.2 s later so the room's tail cannot escape, and the nodes released two seconds on as housekeeping. A
-  wall-clock timer that may run late while the page is hidden never decides when sound ends.
+  approach to nothing, then a 50 ms ramp to exactly zero, every sine stopped on the audio clock 0.1 s after, and the
+  graph's own `close` gain shut 0.2 s later so the room's tail cannot escape. Housekeeping (disconnecting the nodes)
+  runs on a wall-clock timer two seconds on, but only once the audio clock is past that final zero: a timer that fires
+  early (the page was hidden, or the context was suspended and stood still) re-arms itself instead of cutting a fade.
+- **One graph per sound**: every sound is a graph {nodes, vol, close, env} held from its first node until its release.
+  `vol` carries nothing but the app's volume, `close` the closing ramp, `env` the arrival and the leaving (a bed's
+  fade-in is its own ramp, never a ramp on `vol`, so a later slider move cannot be undone by a fade-in still scheduled).
+  Every node joins the graph's list the moment it is made, so a start that throws half way releases all of it, clears
+  any timer and tells listeners; a resume that throws stops a start before it builds anything, and a resume the
+  browser refuses later undoes that start's graph unless a newer start owns the stage.
 - **Stereo**: small equal-power pans on the twins (section 3.1) spread the shimmer across the ears in headphones; on a
-  phone speaker the channels sum, which the harness checks as a mono-average peak.
+  phone speaker the channels sum, which the harness checks as a mono-average peak. A centred voice skips the panner,
+  which copies its mono signal to both channels at full gain, so the normalisation counts it as 1 in each channel, not
+  the panner's 0.707 (Codex, round one: the first draft counted every centred sine at 0.707 and the real per-channel
+  sum was 1.34).
 - **Peak budget**: the sines sum to one in the louder channel; the filter never passes one; the swell tops at one;
   dry 0.78 plus the room's loudest sine at 0.2 is 0.98, a fifth of a decibel in hand for the room's
   memory while a voice leaves; so the master gain bounds the loudest sample. When a pitch replaces
   another, the old voice leaves with a 0.12 s time constant while the new arrives with 2.5 s, so their sum falls before
   it rises and never exceeds one.
-- **Ceiling and volume**: unchanged. `gainFor(appVolume)` (0.35 x the app volume) is the master gain every voice and
-  the room pass through, and `setVolume()` moves it on the app's slider, for a bed too (the old code moved only the tone).
+- **Ceiling and volume**: unchanged. `gainFor(appVolume)` (0.35 x the app volume) is each graph's `vol`, and
+  `setVolume()` moves it on the app's slider for every graph still alive, a leaving one included (hold where it is, then
+  approach), for a bed too (the old code moved only the tone, and only while it played).
 - **The app's sound switch** rules the spring (Codex): with sound off, neither a tone nor a bed starts (the sheet says so
-  and she can still just sit), and a sound already playing ends when the switch goes off.
+  and she can still just sit); when the switch goes off, a sound playing ends and every graph still leaving is hushed at
+  once (`hush`).
 - **One sound by the water**: a tone replaces a bed as a bed replaces a tone; the old code could leave both running
   through the public functions.
 - **The cave's own music** (ovu-music.js, a D drone with D, F sharp, A and B bowl strikes) now steps aside while a tone or
@@ -190,13 +205,16 @@ public name of OvuTones (openTones included).
 itself in an OfflineAudioContext (a fake root whose AudioContext returns the offline one; the lesson of 20 Oct) for the
 old voice (`--before origin/main`) and the new one, 140 s each with Stop at 132 s through `OfflineAudioContext.suspend`,
 and measures the steady part from 10 to 132 s (two minutes, as Codex asked): sample peak and a 4x true-peak estimate,
-the mono-average peak, RMS of each channel and of the mono average, a K-weighted ungated LUFS-like level (ITU-R BS.1770
-filters rebuilt from their analogue prototypes for the actual sample rate), spectral centroid, the share of energy
+the mono-average peak, RMS of each channel and of the mono average, a K-weighted ungated LUFS-like level (the BS.1770 filters
+from their analogue prototypes at the actual sample rate, checked against the published 48 kHz tables), spectral centroid, the share of energy
 above 2 kHz, amplitude-modulation depth and dominant rate from 100 ms RMS windows, the share of modulation power that
 is a wobble (1.5 to 8 Hz) against a swell (0.05 to 1.5 Hz), the largest sample step at start and around Stop against
 the steady state's own largest step (a diagnostic only), and the level of the last half second. `--selftest` renders
 a plain sine (must read as unmodulated) and a sine modulated 30 per cent at 3 Hz (must read as a 3 Hz wobble) to prove
-the estimator before it judges anything. Targets for the new voice: no sample or true peak above the ceiling, a zero
+the estimator before it judges anything. Four scripted cases run with the on-disk module, because a single start and
+Stop never shows them (Codex, round one): a pitch replaced by a pitch, then a bed, then a pitch; the slider up to one,
+down, Stop, then to zero during the fade; the switch off during a fade; the slider to zero during a bed's arrival. Each
+must keep its peak under the loudest ceiling in play, go quiet in the named seconds (under -70 dBFS) and end silent. Targets for the new voice: no sample or true peak above the ceiling, a zero
 first sample, no step at start or Stop above the steady maximum, a wobble share under 0.5, a modulation depth under
 4 dB, the two channels within 1.5 dB, and silence in the last half second. Previews: the first 22 s as WAV at the real
 level, plus loudness-matched copies (-26 LUFS-like) so timbres compare at one level; `ffmpeg` makes old-then-new m4a
@@ -235,9 +253,12 @@ twins, all beats between 0.1 and 1 Hz, the fundamental's worst swing under 3 dB)
 impulse (repeatable from its seed, finite, within one, 50 dB down at its end, one room with two correlated ears), the
 room's gain by phasor against a plain DFT and the per-pitch wet share, the seeded noises, the breath, envelope and
 release shape, the sum of gains per pitch, no random numbers, the music module's exclusivity. 2k5c, with a fake
-AudioContext and captured timers: the master at the ceiling, the dB Q, the unnormalised stereo room, the envelope from
-zero, the slider reaching a tone and a bed, a bed replacing a tone and a tone a bed, Stop clearing at once with every
-source stopped on the audio clock after the ramp to zero and the master after the room, housekeeping releasing every
-node, the app's sound switch refusing both, a start that fails half way releasing what it built, a timed sit's timer,
-the loopable seam. `tools/e2e_smoke.py`: the existing spring checks, plus a tone that holds its nodes while it fades
+AudioContext (a value set in the future is not the value now; a real rejected promise for a refused resume) and
+captured timers: the graph's vol at the ceiling and wired to the output, the dB Q, the unnormalised stereo room, the
+envelope from zero, the slider holding then approaching with no ramp of its own, a bed's arrival on its own ramp, a bed
+replacing a tone and a tone a bed, Stop clearing at once with every source stopped on the audio clock after the ramp to
+zero and the close after the room, the slider and the switch reaching a leaving voice, housekeeping that re-arms while
+the audio clock is early and releases once it is past, the app's sound switch refusing both, a start that fails at the
+envelope stopping the breath LFO it had started and clearing the earlier timed sit, a refused resume undoing an armed
+tone, a resume that throws building nothing, the loopable seam and the bed loop's exact half peak. `tools/e2e_smoke.py`: the existing spring checks, plus a tone that holds its nodes while it fades
 after Stop and lets every one go within a few seconds.

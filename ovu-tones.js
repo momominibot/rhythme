@@ -61,7 +61,7 @@
    * one before it rises again and never exceeds it. */
   function humShare(hz) { var p = PARTIALS[3]; return clamp((hz - p.from) / (p.full - p.from), 0, 1); }
   function cutoffFor(hz) { return clamp(2.2 * hz, 700, 1800); } /* the octave of 963 Hz sits past the cutoff: softened, not bare */
-  function panGains(pan) { var th = (clamp(pan, -1, 1) + 1) * Math.PI / 4; return [Math.cos(th), Math.sin(th)]; } /* equal power, as StereoPannerNode */
+  function panGains(pan) { if (!pan) return [1, 1]; var th = (clamp(pan, -1, 1) + 1) * Math.PI / 4; return [Math.cos(th), Math.sin(th)]; } /* a centred voice skips the panner (a mono signal, full in both channels); a panned one is equal power, as StereoPannerNode */
   /* every sine of one pitch: frequency, gain and pan, scaled so the loudest channel's gains sum to one (the pre-ceiling peak) */
   function voices(hz) {
     hz = Number(hz); if (!valid(hz)) return [];
@@ -129,112 +129,133 @@
   if (CAVE0 && !CAVE0.hotspots.some(function (h) { return h.id === 'crystals'; })) CAVE0.hotspots.push({ id: 'crystals', x: 24, y: 40, label: 'The crystals · a steady tone', prompt: 'Tap to sit by the water with a tone', icon: 'graphic_eq', wp: { x: STONE_WP.x, y: STONE_WP.y, flip: STONE_WP.flip } });
 
   /* ---------- the synth (browser only) ---------- */
-  var ctx = null, gain = null, voice = null, playing = null, endAt = null, endT = null, fns = [], bed = null, bedNodes = null, held = [], roomBuf = null, roomChans = null, wets = {}, bufs = {};
+  /* A graph is one sound: { nodes, vol, close, env, kind, deadline }. `vol` is the app's volume (the ceiling times the slider),
+   * `close` the ramp that shuts the graph after its room's tail, `env` the envelope that arrives and leaves. Every graph stays in
+   * `held` from its first node to its release, so the slider and the switch reach a sound that is still leaving (Codex, 22 Oct),
+   * and a test can ask whether anything is alive. */
+  var ctx = null, gen = 0, voice = null, bedG = null, playing = null, endAt = null, endT = null, fns = [], bed = null, held = [], roomBuf = null, roomChans = null, wets = {}, bufs = {};
   function AC() { return root.AudioContext || root.webkitAudioContext; }
   function notify() { fns.slice().forEach(function (f) { try { f(playing); } catch (e) { } }); }
   function appVolume() { var SND = root.OvuSound; try { return SND && SND.volume ? SND.volume() : 0.25; } catch (e) { return 0.25; } }
   /* the app's one sound switch rules the spring too (Codex, 22 Oct): off means nothing starts, and a sound already playing ends */
   function soundOn() { var SND = root.OvuSound; try { return SND && SND.enabled ? !!SND.enabled() : true; } catch (e) { return true; } }
-  function ensure() { if (!ctx) ctx = new (AC())(); if (ctx.state === 'suspended' && ctx.resume) { try { var p = ctx.resume(); if (p && p.catch) p.catch(function () { }); } catch (e) { } } return ctx; }
-  /* every node a start makes is held until its release, so a test can ask whether anything is still alive */
-  function hold(nodes) { held.push(nodes); return nodes; }
-  function release(nodes) { var i = held.indexOf(nodes); if (i > -1) held.splice(i, 1); nodes.forEach(function (x) { try { if (x.stop) x.stop(); } catch (e) { } try { x.disconnect(); } catch (e) { } }); }
-  function liveNodes() { return held.reduce(function (n, a) { return n + a.length; }, 0); }
-  function room(hz) {
+  function clearTimer() { clearTimeout(endT); endT = null; endAt = null; }
+  /* the context, resumed when the browser suspended it. A resume that throws means nothing can play: the start stops before it builds
+   * anything. A resume that is refused later means the same: whatever that start built is let go at once and listeners told,
+   * unless a later start already owns the stage (the generation) */
+  function ensure(myGen) {
+    if (!ctx) ctx = new (AC())();
+    if (ctx.state === 'suspended' && ctx.resume) {
+      var p; try { p = ctx.resume(); } catch (e) { return false; }
+      if (p && p.then) p.then(null, function () { if (gen === myGen) fail(); });
+    }
+    return true;
+  }
+  function make(nodes, n) { nodes.push(n); return n; } /* every node joins its graph's list the moment it is made, so a failure half way releases all of it */
+  function hold(g) { held.push(g); return g; }
+  function release(g) { var i = held.indexOf(g); if (i > -1) held.splice(i, 1); g.nodes.forEach(function (x) { try { if (x.stop) x.stop(); } catch (e) { } try { x.disconnect(); } catch (e) { } }); }
+  /* housekeeping only once the audio clock has passed the graph's final zero: a wall-clock timer runs late while the page is hidden
+   * and a suspended context stands still, so a timer that fires early re-arms itself instead of cutting a fade short */
+  function releaseAfter(g) { var wait = ctx && g.deadline != null ? (g.deadline - ctx.currentTime) * 1000 + 300 : 0; if (wait > 50) setTimeout(function () { releaseAfter(g); }, wait); else release(g); }
+  function liveNodes() { return held.reduce(function (n, g) { return n + g.nodes.length; }, 0); }
+  function fail() { held.slice().forEach(release); voice = null; bedG = null; playing = null; bed = null; clearTimer(); notify(); }
+  function room(nodes, hz) {
     if (!roomBuf) { roomChans = impulse(ctx.sampleRate, ROOM.seconds, ROOM.seed); roomBuf = ctx.createBuffer(2, roomChans[0].length, ctx.sampleRate); roomBuf.getChannelData(0).set(roomChans[0]); roomBuf.getChannelData(1).set(roomChans[1]); }
     var key = hz + ':' + ctx.sampleRate; if (wets[key] == null) wets[key] = wetFor(roomChans, hz, ctx.sampleRate);
-    var verb = ctx.createConvolver(); verb.normalize = false; verb.buffer = roomBuf; return { verb: verb, wet: wets[key] }; /* our own scale, not the browser's equal-power guess */
+    var verb = make(nodes, ctx.createConvolver()); verb.normalize = false; verb.buffer = roomBuf; return { verb: verb, wet: wets[key] }; /* our own scale, not the browser's equal-power guess */
+  }
+  /* a graph's output stage: `close` then `vol` then out. `vol` carries nothing but the volume, so the slider's approach never fights
+   * a fade-in or a closing ramp (those live on `env` and `close`) */
+  function stage(nodes, now) {
+    var vol = make(nodes, ctx.createGain()), close = make(nodes, ctx.createGain());
+    vol.gain.setValueAtTime(gainFor(appVolume()), now); close.gain.setValueAtTime(1, now); close.connect(vol); vol.connect(ctx.destination);
+    return { vol: vol, close: close };
   }
   function start(hz, minutes) {
     hz = Number(hz); if (!valid(hz) || !AC() || !soundOn()) return false;
-    var nodes = [];
+    var nodes = [], myGen = ++gen;
+    if (!ensure(myGen)) return false;
     try {
-      ensure();
       stopNodes(0.6); stopBed(0.6); bed = null; /* one sound by the water: a tone replaces a bed as a bed replaces a tone */
-      var now = ctx.currentTime, g = gainFor(appVolume());
-      gain = ctx.createGain(); nodes.push(gain); gain.gain.setValueAtTime(g, now); gain.connect(ctx.destination); /* the ceiling and the app's volume; every node joins `nodes` as it is made, so a failure half way releases all of them */
-      var dry = ctx.createGain(), wet = ctx.createGain(), bus = ctx.createGain(); nodes.push(dry, wet, bus);
-      var rm = room(hz), verb = rm.verb; nodes.push(verb);
-      dry.gain.value = ROOM.dry; wet.gain.value = rm.wet; bus.connect(dry); dry.connect(gain); bus.connect(wet); wet.connect(verb); verb.connect(gain);
-      var lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = cutoffFor(hz); lp.Q.value = FILTER_Q_DB; lp.connect(bus);
-      var swell = ctx.createGain(); swell.gain.value = SWELL.base; swell.connect(lp);
-      var lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = SWELL.hz; lg.gain.value = SWELL.depth; lfo.connect(lg); lg.connect(swell.gain); lfo.start(now);
-      var env = ctx.createGain(); env.gain.setValueAtTime(0, now); env.gain.setTargetAtTime(1, now, ENV.attackTau); env.connect(swell); /* from exactly nothing, so no click */
-      nodes.push(lp, swell, lfo, lg, env);
+      var now = ctx.currentTime, st = stage(nodes, now);
+      var dry = make(nodes, ctx.createGain()), wet = make(nodes, ctx.createGain()), bus = make(nodes, ctx.createGain()), rm = room(nodes, hz);
+      dry.gain.value = ROOM.dry; wet.gain.value = rm.wet; bus.connect(dry); dry.connect(st.close); bus.connect(wet); wet.connect(rm.verb); rm.verb.connect(st.close);
+      var lp = make(nodes, ctx.createBiquadFilter()); lp.type = 'lowpass'; lp.frequency.value = cutoffFor(hz); lp.Q.value = FILTER_Q_DB; lp.connect(bus);
+      var swell = make(nodes, ctx.createGain()); swell.gain.value = SWELL.base; swell.connect(lp);
+      var lfo = make(nodes, ctx.createOscillator()), lg = make(nodes, ctx.createGain()); lfo.frequency.value = SWELL.hz; lg.gain.value = SWELL.depth; lfo.connect(lg); lg.connect(swell.gain); lfo.start(now);
+      var env = make(nodes, ctx.createGain()); env.gain.setValueAtTime(0, now); env.gain.setTargetAtTime(1, now, ENV.attackTau); env.connect(swell); /* from exactly nothing, so no click */
       voices(hz).forEach(function (v) {
-        var o = ctx.createOscillator(), vg = ctx.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(v.f, now); vg.gain.value = v.gain; o.connect(vg);
-        if (v.pan && ctx.createStereoPanner) { var p = ctx.createStereoPanner(); p.pan.value = v.pan; vg.connect(p); p.connect(env); nodes.push(p); } else vg.connect(env);
-        o.start(now); nodes.push(o, vg);
+        var o = make(nodes, ctx.createOscillator()), vg = make(nodes, ctx.createGain()); o.type = 'sine'; o.frequency.setValueAtTime(v.f, now); vg.gain.value = v.gain; o.connect(vg);
+        if (v.pan && ctx.createStereoPanner) { var pn = make(nodes, ctx.createStereoPanner()); pn.pan.value = v.pan; vg.connect(pn); pn.connect(env); } else vg.connect(env); /* a centred voice goes straight in: a mono signal copied to both channels at full gain, which panGains(0) counts as such */
+        o.start(now);
       });
-      voice = { nodes: hold(nodes), env: env, gain: gain };
-    } catch (e) { release(nodes); voice = null; gain = null; playing = null; return false; } /* a half-built voice is torn down, never left humming */
-    playing = hz; clearTimeout(endT); endAt = null;
+      voice = hold({ nodes: nodes, vol: st.vol, close: st.close, env: env, kind: 'tone', deadline: null });
+    } catch (e) { release({ nodes: nodes }); voice = null; playing = null; clearTimer(); notify(); return false; } /* a half-built voice is torn down, its timer cleared, never left humming */
+    playing = hz; clearTimer();
     if (minutes && isFinite(minutes) && minutes > 0) { endAt = Date.now() + minutes * 60000; endT = setTimeout(function () { stop(); }, minutes * 60000); }
     notify(); return true;
   }
-  /* let a sound go over `secs`: its envelope approaches nothing, then a short ramp to exactly zero; every source stops on the audio
-   * clock just after; the master (after the room) closes last; the nodes are released as housekeeping two seconds on */
-  function letGo(env, master, nodes, secs) {
-    var now = ctx.currentTime, tau = Math.max(0.03, secs / 5), t0 = now + secs, p = env.gain, cur;
+  /* let a graph go over `secs`: its envelope approaches nothing, then a short ramp to exactly zero; every source stops on the audio
+   * clock just after; `close` shuts last so the room's tail cannot escape; housekeeping follows once the audio clock is past it */
+  function letGo(g, secs) {
+    var now = ctx.currentTime, tau = Math.max(0.03, secs / 5), t0 = now + secs, p = g.env.gain, cur;
     try { cur = Math.max(0, p.value); p.cancelScheduledValues(now); p.setValueAtTime(cur, now); p.setTargetAtTime(0, now, tau); p.setValueAtTime(cur * Math.exp(-secs / tau), t0); p.linearRampToValueAtTime(0, t0 + 0.05); } catch (e) { }
-    nodes.forEach(function (x) { if (x.stop && x !== env) { try { x.stop(t0 + 0.1); } catch (e) { } } });
-    if (master && master !== env) { try { var m = master.gain; m.cancelScheduledValues(t0 + 0.1); m.setValueAtTime(Math.max(0, m.value), t0 + 0.1); m.linearRampToValueAtTime(0, t0 + 0.3); } catch (e) { } }
-    setTimeout(function () { release(nodes); }, (secs + 2) * 1000);
+    g.nodes.forEach(function (x) { if (x.stop && x !== g.env) { try { x.stop(t0 + 0.1); } catch (e) { } } });
+    try { var c = g.close.gain; c.cancelScheduledValues(t0 + 0.1); c.setValueAtTime(1, t0 + 0.1); c.linearRampToValueAtTime(0, t0 + 0.3); } catch (e) { }
+    g.deadline = t0 + 0.3; g.draining = true;
+    setTimeout(function () { releaseAfter(g); }, (secs + 2) * 1000);
   }
-  function stopNodes(fade) {
-    if (!ctx || !voice) return;
-    var v = voice; voice = null; gain = null;
-    letGo(v.env, v.gain, v.nodes, fade == null ? ENV.releaseSeconds : fade);
-  }
-  function stop() { if (!playing && !voice && !bed) { notify(); return; } stopNodes(); stopBed(2); playing = null; endAt = null; clearTimeout(endT); endT = null; notify(); }
+  function stopNodes(fade) { if (!ctx || !voice) return; var g = voice; voice = null; letGo(g, fade == null ? ENV.releaseSeconds : fade); }
+  function stop() { if (!playing && !voice && !bed) { notify(); return; } stopNodes(); stopBed(2); playing = null; clearTimer(); notify(); }
+  /* a bed's loop: seeded noise, made loopable, then scaled so its loudest sample is a half (the overlap can lift a peak a little) */
+  function bedNoise(kind, len, ov, seed) { var d = loopable(noise(kind, len + ov, seed), len, ov), peak = 0; for (var i = 0; i < len; i++) peak = Math.max(peak, Math.abs(d[i])); if (peak > 0) for (var j = 0; j < len; j++) d[j] = d[j] * 0.5 / peak; return d; }
   function noiseBuffer(kind) {
     var key = kind + ':' + ctx.sampleRate; if (bufs[key]) return bufs[key];
     var len = ctx.sampleRate * 6, ov = Math.round(ctx.sampleRate * 0.4), buf = ctx.createBuffer(2, len, ctx.sampleRate);
-    for (var c = 0; c < 2; c++) buf.getChannelData(c).set(loopable(noise(kind, len + ov, 610 + c * 7), len, ov));
+    for (var c = 0; c < 2; c++) buf.getChannelData(c).set(bedNoise(kind, len, ov, 610 + c * 7));
     bufs[key] = buf; return buf;
   }
-  /* a bed's peak budget: noise peaks near a half, a low-pass or high-pass at -3 dB never passes gain one, each bed's branches and
-   * their modulation sum to at most 1.2, so a bed's loudest sample stays under 0.6 of the master (the ceiling itself) */
+  /* a bed's peak budget: noise peaks at a half, a low-pass or high-pass at -3 dB never passes gain one, each bed's branches and
+   * their modulation sum to at most 1.2, so a bed's loudest sample stays under 0.6 of its volume (the ceiling itself) */
   function startBed(kind, minutes) {
     if (!BEDS[kind] || !AC() || !soundOn()) return false;
-    var nodes = [];
+    var nodes = [], myGen = ++gen;
+    if (!ensure(myGen)) return false;
     try {
-      ensure();
       stopBed(0.4); stopNodes(0.4); playing = null;
-      var now = ctx.currentTime, g = ctx.createGain(); g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(gainFor(appVolume()), now + 3); g.connect(ctx.destination); nodes.push(g);
-      var ramp = ctx.createGain(); ramp.gain.setValueAtTime(0, now); ramp.gain.setTargetAtTime(1, now, 1); ramp.connect(g); nodes.push(ramp); /* the envelope the leaving uses, before the master */
-      function source(k) { var s = ctx.createBufferSource(); s.buffer = noiseBuffer(k); s.loop = true; nodes.push(s); return s; }
-      function filter(type, f, q) { var x = ctx.createBiquadFilter(); x.type = type; x.frequency.value = f; x.Q.value = q; nodes.push(x); return x; } /* Q: decibels for low and high pass, linear for a band pass */
-      function lfo(hz, depth, param, base) { var o = ctx.createOscillator(), og = ctx.createGain(); o.frequency.value = hz; og.gain.value = depth; o.connect(og); og.connect(param); if (base != null) param.value = base; o.start(now); nodes.push(o, og); return o; }
+      var now = ctx.currentTime, st = stage(nodes, now);
+      var ramp = make(nodes, ctx.createGain()); ramp.gain.setValueAtTime(0, now); ramp.gain.setTargetAtTime(1, now, 1); ramp.connect(st.close); /* the bed's own arrival, and the envelope its leaving uses */
+      function source(k) { var sr = make(nodes, ctx.createBufferSource()); sr.buffer = noiseBuffer(k); sr.loop = true; return sr; }
+      function filter(type, f, q) { var x = make(nodes, ctx.createBiquadFilter()); x.type = type; x.frequency.value = f; x.Q.value = q; return x; } /* Q: decibels for low and high pass, linear for a band pass */
+      function lfo(hz, depth, param, base) { var o = make(nodes, ctx.createOscillator()), og = make(nodes, ctx.createGain()); o.frequency.value = hz; og.gain.value = depth; o.connect(og); og.connect(param); if (base != null) param.value = base; o.start(now); return o; }
       if (kind === 'rain') { /* soft pink rain: nothing hisses above the roof; a slow drift like a gust (1 +/- 0.1) */
-        var pr = source('pink'), hp = filter('highpass', 300, -3), lp = filter('lowpass', 3500, -3), drift = ctx.createGain(); nodes.push(drift);
+        var pr = source('pink'), hp = filter('highpass', 300, -3), lp = filter('lowpass', 3500, -3), drift = make(nodes, ctx.createGain());
         pr.connect(hp); hp.connect(lp); lp.connect(drift); drift.connect(ramp); lfo(0.04, 0.1, drift.gain, 1);
       } else if (kind === 'stream') { /* brown water (0.85 +/- 0.15) with a quiet burble, 14 dB under it, whose centre wanders */
-        var sb = source('brown'), lp2 = filter('lowpass', 1100, -3), mod = ctx.createGain(); nodes.push(mod);
+        var sb = source('brown'), lp2 = filter('lowpass', 1100, -3), mod = make(nodes, ctx.createGain());
         sb.connect(lp2); lp2.connect(mod); mod.connect(ramp); lfo(0.3, 0.15, mod.gain, 0.85);
-        var sb2 = source('brown'), bp = filter('bandpass', 700, 2), bg = ctx.createGain(); bg.gain.value = 0.2; nodes.push(bg);
+        var sb2 = source('brown'), bp = filter('bandpass', 700, 2), bg = make(nodes, ctx.createGain()); bg.gain.value = 0.2;
         sb2.connect(bp); bp.connect(bg); bg.connect(mod); lfo(0.23, 200, bp.frequency, 700);
       } else { /* waves: a deep swell every eleven seconds (0.55 +/- 0.45) and a soft wash (0.06 +/- 0.05) that rises with it */
-        var sw = source('brown'), lp3 = filter('lowpass', 520, -3), mod2 = ctx.createGain(); nodes.push(mod2);
+        var sw = source('brown'), lp3 = filter('lowpass', 520, -3), mod2 = make(nodes, ctx.createGain());
         sw.connect(lp3); lp3.connect(mod2); mod2.connect(ramp); var swl = lfo(0.09, 0.45, mod2.gain, 0.55);
-        var pw = source('pink'), bp2 = filter('bandpass', 1800, 0.6), wash = ctx.createGain(); nodes.push(wash);
-        pw.connect(bp2); bp2.connect(wash); wash.connect(ramp); var wg = ctx.createGain(); wg.gain.value = 0.05; swl.connect(wg); wg.connect(wash.gain); wash.gain.value = 0.06; nodes.push(wg);
+        var pw = source('pink'), bp2 = filter('bandpass', 1800, 0.6), wash = make(nodes, ctx.createGain());
+        pw.connect(bp2); bp2.connect(wash); wash.connect(ramp); var wg = make(nodes, ctx.createGain()); wg.gain.value = 0.05; swl.connect(wg); wg.connect(wash.gain); wash.gain.value = 0.06;
       }
       nodes.forEach(function (x) { if (x.start && x.buffer) x.start(now); });
-      bedNodes = hold(nodes); bed = kind;
-    } catch (e) { release(nodes); bedNodes = null; bed = null; return false; }
-    clearTimeout(endT); endAt = null;
+      bedG = hold({ nodes: nodes, vol: st.vol, close: st.close, env: ramp, kind: 'bed', deadline: null }); bed = kind;
+    } catch (e) { release({ nodes: nodes }); bedG = null; bed = null; clearTimer(); notify(); return false; }
+    clearTimer();
     if (minutes && isFinite(minutes) && minutes > 0) { endAt = Date.now() + minutes * 60000; endT = setTimeout(function () { stop(); }, minutes * 60000); }
     notify(); return true;
   }
-  function stopBed(fade) {
-    if (!bedNodes || !ctx) { bed = null; return; }
-    var ns = bedNodes; bedNodes = null; bed = null;
-    letGo(ns[1], ns[0], ns, fade == null ? 2 : fade);
-  }
+  function stopBed(fade) { if (!bedG || !ctx) { bed = null; return; } var g = bedG; bedG = null; bed = null; letGo(g, fade == null ? 2 : fade); }
   function remaining() { return endAt ? Math.max(0, Math.round((endAt - Date.now()) / 1000)) : null; }
-  function setVolume() { if (!ctx) return; try { if (gain) gain.gain.setTargetAtTime(gainFor(appVolume()), ctx.currentTime, 0.3); if (bedNodes) bedNodes[0].gain.setTargetAtTime(gainFor(appVolume()), ctx.currentTime, 0.3); } catch (e) { } }
-  T.start = start; T.startBed = startBed; T.bed = function () { return bed; }; T.stop = stop; T.playing = function () { return playing; }; T.remaining = remaining; T.setVolume = setVolume; T.onChange = function (f) { fns.push(f); }; T.liveNodes = liveNodes; T.soundOn = soundOn;
+  /* the slider reaches every graph still alive, a leaving one included: hold where it is, then approach the new volume */
+  function setVolume() { if (!ctx) return; var now = ctx.currentTime, g = gainFor(appVolume()); held.forEach(function (h) { try { var v = h.vol.gain; v.cancelScheduledValues(now); v.setValueAtTime(Math.max(0, v.value), now); v.setTargetAtTime(g, now, 0.3); } catch (e) { } }); }
+  /* the switch went off: every graph alive, leaving ones included, goes quiet at once */
+  function hush() { if (!ctx) return; var now = ctx.currentTime; held.forEach(function (h) { try { var v = h.vol.gain; v.cancelScheduledValues(now); v.setValueAtTime(Math.max(0, v.value), now); v.setTargetAtTime(0, now, 0.05); } catch (e) { } }); }
+  T.start = start; T.startBed = startBed; T.bed = function () { return bed; }; T.stop = stop; T.playing = function () { return playing; }; T.remaining = remaining; T.setVolume = setVolume; T.hush = hush; T.onChange = function (f) { fns.push(f); }; T.liveNodes = liveNodes; T.soundOn = soundOn; T.bedNoise = bedNoise;
 
   /* ---------- the hidden spring: sitting by the water is the tone ---------- */
   var S = root.OvuStore, R = root.OvuRoom, W = root.OvuWalk, B = root.OvuBarn, CARE = root.OvuCare, doc = root.document;
@@ -314,7 +335,7 @@
     doc.addEventListener('visibilitychange', function () { if (doc.hidden) endAll(); });
     S.subscribe(function (reason) {
       if (reason === 'clear' || reason === 'import' || reason === 'external' || String(reason).indexOf('sync') === 0) endAll();
-      else if (reason === 'state') { if (S.state().sleeping || (!soundOn() && (playing || bed))) endAll(); else setVolume(); }
+      else if (reason === 'state') { if (S.state().sleeping) endAll(); else if (!soundOn()) { endAll(); hush(); } else setVolume(); }
     });
   });
   T.openSpring = openSpring; T.openTones = openSpring; T.sitDown = sitDown; T.standUp = function () { endAll(); }; T.sitting = function () { return !!sitting; };

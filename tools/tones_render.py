@@ -13,7 +13,9 @@ share of modulation power that is a wobble (1.5 to 8 Hz), and the largest sample
 state's own largest step (a diagnostic, since a high carrier's own slope can hide a small step), the level of the last half second.
 
 Usage: python3 tools/tones_render.py [--before origin/main] [--rate 44100] [--out DIR] [--pitches 174,528,963] [--beds rain]
-       [--json FILE] [--volume 0.25] [--selftest] [--compare BEFORE.json AFTER.json]
+       [--scenarios none|name,name] [--json FILE] [--volume 0.25] [--selftest] [--compare BEFORE.json AFTER.json]
+Scripted cases (replacement, the slider during a fade, the switch off during a fade, the slider to zero during a bed's
+arrival) run with the on-disk module and must keep the peak under the loudest ceiling in play and go quiet when told.
 Exit code 1 (for the on-disk module) when a target is missed: a sample or true peak above gainFor(volume), a nonzero first sample,
 a start or stop step larger than the steady maximum, a wobble share above 0.5, a modulation depth above 4 dB for a tone, a tone's two channels more than 1.5 dB apart in RMS, or sound
 left in the last half second (Stop on the audio clock must have silenced it)."""
@@ -23,6 +25,14 @@ from playwright.async_api import async_playwright
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PITCHES = [174, 285, 396, 417, 528, 639, 741, 852, 963]
 BEDS = ['rain', 'stream', 'waves']
+# scripted cases (Codex, 22 Oct): what a single start and Stop never shows. Each is a list of acts at render seconds; `quiet`
+# names one-second windows that must be under -70 dBFS (a fading sound must follow the slider to zero and the switch to off)
+SCENARIOS = [
+    {'name': 'switch-pitch-bed-pitch', 'seconds': 100, 'script': [{'t': 0, 'op': 'start', 'arg': 528}, {'t': 20, 'op': 'start', 'arg': 963}, {'t': 40, 'op': 'bed', 'arg': 'rain'}, {'t': 60, 'op': 'start', 'arg': 174}, {'t': 80, 'op': 'stop'}], 'quiet': []},
+    {'name': 'slider-up-down-zero-in-fade', 'seconds': 60, 'script': [{'t': 0, 'op': 'start', 'arg': 528}, {'t': 15, 'op': 'volume', 'arg': 1}, {'t': 30, 'op': 'volume', 'arg': 0.25}, {'t': 45, 'op': 'stop'}, {'t': 47, 'op': 'volume', 'arg': 0}], 'quiet': [49, 50, 51]},
+    {'name': 'switch-off-in-fade', 'seconds': 30, 'script': [{'t': 0, 'op': 'start', 'arg': 528}, {'t': 20, 'op': 'stop'}, {'t': 21, 'op': 'off'}], 'quiet': [22, 23, 24]},
+    {'name': 'bed-slider-zero-in-fade-in', 'seconds': 30, 'script': [{'t': 0, 'op': 'bed', 'arg': 'stream'}, {'t': 1, 'op': 'volume', 'arg': 0}], 'quiet': [3, 4, 5, 10, 20]}
+]
 # the estimator's own check: a plain sine must read as unmodulated, a sine modulated at 3 Hz by 30 per cent must read as a wobble near 3 Hz
 SELFTEST = """(function (root) { var ctx = null, o = null, g = null;
   function gainFor(v) { return Math.round(v * 0.35 * 1000) / 1000; }
@@ -59,7 +69,7 @@ def compare(before, after):
         print('%-12s %6.1f > %6.1f %6.1f > %6.1f %6.0f > %6.0f %6.1f > %6.1f %6.1f > %6.1f %6.2f > %6.2f' % (k, b['peakDb'], a['peakDb'], b['lufs'], a['lufs'], b['centroidHz'], a['centroidHz'], 100 * b['hiShare'], 100 * a['hiShare'], b['modDepthDb'], a['modDepthDb'], b['modRateHz'], a['modRateHz']))
 
 async def main():
-    ap = argparse.ArgumentParser(); ap.add_argument('--before', default=''); ap.add_argument('--rate', type=int, default=48000); ap.add_argument('--out', default=''); ap.add_argument('--preview', type=float, default=22); ap.add_argument('--match', type=float, default=-26.0); ap.add_argument('--pitches', default=''); ap.add_argument('--beds', default=''); ap.add_argument('--json', default=''); ap.add_argument('--seconds', type=float, default=140); ap.add_argument('--volume', type=float, default=0.25); ap.add_argument('--selftest', action='store_true'); ap.add_argument('--compare', nargs=2); a = ap.parse_args()
+    ap = argparse.ArgumentParser(); ap.add_argument('--before', default=''); ap.add_argument('--rate', type=int, default=48000); ap.add_argument('--out', default=''); ap.add_argument('--preview', type=float, default=22); ap.add_argument('--match', type=float, default=-26.0); ap.add_argument('--pitches', default=''); ap.add_argument('--beds', default=''); ap.add_argument('--json', default=''); ap.add_argument('--seconds', type=float, default=140); ap.add_argument('--volume', type=float, default=0.25); ap.add_argument('--selftest', action='store_true'); ap.add_argument('--scenarios', default=''); ap.add_argument('--compare', nargs=2); a = ap.parse_args()
     if a.compare: compare(a.compare[0], a.compare[1]); return
     pitches = [int(x) for x in a.pitches.split(',')] if a.pitches and a.pitches != 'none' else ([] if a.pitches == 'none' else PITCHES)
     beds = a.beds.split(',') if a.beds and a.beds != 'none' else ([] if a.beds == 'none' else BEDS)
@@ -77,16 +87,31 @@ async def main():
             await page.wait_for_function("()=>window.renderTone")
             if a.selftest:
                 cases = [{'name': 'plain-sine-528', 'hz': 528}, {'name': 'am-3hz-sine-528', 'hz': 528, 'am': 3}]
+                ITU = [[1.53512485958697, -2.69169618940638, 1.19839281085285, -1.69065929318241, 0.73248077421585], [1.0, -2.0, 1.0, -1.99004745483398, 0.99007225036621]]
+                got = await page.evaluate("()=>kCoeffs(48000)")
+                dev = max(abs(got[i][j] - ITU[i][j]) for i in range(2) for j in range(5))
+                print('K-weighting at 48 kHz against the published tables: largest deviation %.2e %s' % (dev, 'ok' if dev < 1e-9 else 'FAILED'))
+                if dev >= 1e-9: bad.append('K-weighting coefficients')
             else:
                 cases = [{'name': 'tone-%d' % hz, 'hz': hz} for hz in pitches] + [{'name': 'bed-%s' % b, 'bed': b} for b in beds]
+                if not a.before and not a.scenarios == 'none': cases += [dict(sc) for sc in SCENARIOS if not a.scenarios or sc['name'] in a.scenarios.split(',')]
             print('module: %s at %d Hz, %.0f s renders, steady %.0f to %.0f s, volume %.2f' % (label, a.rate, a.seconds, 10, a.seconds - 8, a.volume))
             print('%-14s %6s %6s %6s %6s %6s %6s %6s %7s %6s %6s %6s %6s %6s %6s %6s %s' % ('case', 'peak', 'tpeak', 'mono', 'rmsL', 'rmsR', 'rmsM', 'lufs', 'centrd', 'hi2k%', 'moddB', 'modHz', 'wobbl', 'start', 'stop', 'end', 'notes'))
             for c in cases:
-                opts = dict(c); opts.update({'src': src, 'label': label, 'sampleRate': a.rate, 'seconds': a.seconds, 'stopAt': a.seconds - 8, 'volume': a.volume, 'previewSeconds': a.preview if a.out else 0})
+                opts = dict(c); opts.update({'src': src, 'label': label, 'sampleRate': a.rate, 'seconds': c.get('seconds', a.seconds), 'stopAt': c.get('seconds', a.seconds) - 8, 'volume': a.volume, 'previewSeconds': a.preview if (a.out and not c.get('script')) else 0})
                 if c.get('am'): opts['src'] = src.replace('root.AM', str(c['am']))
                 r = await page.evaluate("(o)=>renderTone(o)", opts)
                 if r.get('refused'): print('%-14s refused' % c['name']); bad.append(c['name'] + ' refused'); continue
                 notes = []
+                if c.get('script'):
+                    ceil = db(r['gainMax']); wins = r['winPeaksDb']
+                    if r['peakDb'] > ceil + 0.05: notes.append('PEAK OVER CEILING %.1f' % ceil); bad.append(c['name'] + ' peak %.1f > ceiling %.1f' % (r['peakDb'], ceil))
+                    if r['truePeakDb'] > ceil + 0.3: notes.append('TRUE PEAK OVER'); bad.append(c['name'] + ' true peak %.1f' % r['truePeakDb'])
+                    loud = [w for w in c['quiet'] if w < len(wins) and wins[w] > -70]
+                    if loud: notes.append('NOT QUIET AT ' + ','.join('%ds %.0f' % (w, wins[w]) for w in loud)); bad.append(c['name'] + ' loud windows ' + ','.join(str(w) for w in loud))
+                    if r['endDb'] > -80: notes.append('STILL SOUNDING AT END %.1f' % r['endDb']); bad.append(c['name'] + ' end %.1f dB' % r['endDb'])
+                    print('%-28s peak %6.1f  true %6.1f  end %5.0f  ceiling %6.1f  %s' % (c['name'], r['peakDb'], r['truePeakDb'], r['endDb'], ceil, ' '.join(notes) or 'ok'))
+                    rows.append({'case': c['name'], 'module': label, 'peakDb': r['peakDb'], 'truePeakDb': r['truePeakDb'], 'endDb': r['endDb'], 'winPeaksDb': wins}); continue
                 ceil = db(r['gainFor'])
                 if a.selftest: pass
                 elif r['gainFor'] == 0:

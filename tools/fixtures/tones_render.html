@@ -10,16 +10,17 @@ function fft(re, im) {
   for (var i = 1, j = 0; i < N; i++) { var bit = N >> 1; for (; j & bit; bit >>= 1) j ^= bit; j ^= bit; if (i < j) { var t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; } }
   for (var len = 2; len <= N; len <<= 1) { var ang = -2 * Math.PI / len, wr = Math.cos(ang), wi = Math.sin(ang); for (var i2 = 0; i2 < N; i2 += len) { var cr = 1, ci = 0; for (var k = 0; k < len / 2; k++) { var ur = re[i2 + k], ui = im[i2 + k], vr = re[i2 + k + len / 2] * cr - im[i2 + k + len / 2] * ci, vi = re[i2 + k + len / 2] * ci + im[i2 + k + len / 2] * cr; re[i2 + k] = ur + vr; im[i2 + k] = ui + vi; re[i2 + k + len / 2] = ur - vr; im[i2 + k + len / 2] = ui - vi; var nr = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = nr; } } }
 }
-/* ITU-R BS.1770 K-weighting at any sample rate: the two biquads from their analogue prototypes (a +4 dB high shelf at 1681.97 Hz,
-   Q 0.7071752, then a high-pass at 38.13547 Hz, Q 0.5003270) by the RBJ cookbook; at 48 kHz this reproduces the published tables */
+/* ITU-R BS.1770 K-weighting at any sample rate, from the analogue prototypes the reference meters use (a high shelf at 1681.97 Hz,
+   +4 dB, Q 0.7071752, then a high-pass at 38.13547 Hz, Q 0.5003270; tan pre-warping, the shelf's Vb = Vh^0.49966677): at 48 kHz
+   this reproduces the published coefficient tables to the last digit, which the self-test checks */
 function kCoeffs(sr) {
-  function shelf(f0, G, Q) { var A = Math.pow(10, G / 40), w = 2 * Math.PI * f0 / sr, c = Math.cos(w), s = Math.sin(w), al = s / (2 * Q), sq = 2 * Math.sqrt(A) * al;
-    var b0 = A * ((A + 1) + (A - 1) * c + sq), b1 = -2 * A * ((A - 1) + (A + 1) * c), b2 = A * ((A + 1) + (A - 1) * c - sq), a0 = (A + 1) - (A - 1) * c + sq, a1 = 2 * ((A - 1) - (A + 1) * c), a2 = (A + 1) - (A - 1) * c - sq;
-    return [b0 / a0, b1 / a0, b2 / a0, a1 / a0, a2 / a0]; }
-  function hp(f0, Q) { var w = 2 * Math.PI * f0 / sr, c = Math.cos(w), s = Math.sin(w), al = s / (2 * Q), a0 = 1 + al;
-    return [(1 + c) / 2 / a0, -(1 + c) / a0, (1 + c) / 2 / a0, -2 * c / a0, (1 - al) / a0]; }
-  return [shelf(1681.974450955533, 3.999843853973347, 0.7071752369554196), hp(38.13547087602444, 0.5003270373238773)];
+  var f0 = 1681.974450955533, G = 3.999843853973347, Q = 0.7071752369554196, K = Math.tan(Math.PI * f0 / sr), Vh = Math.pow(10, G / 20), Vb = Math.pow(Vh, 0.4996667741545416), a0 = 1 + K / Q + K * K;
+  var shelf = [(Vh + Vb * K / Q + K * K) / a0, 2 * (K * K - Vh) / a0, (Vh - Vb * K / Q + K * K) / a0, 2 * (K * K - 1) / a0, (1 - K / Q + K * K) / a0];
+  f0 = 38.13547087602444; Q = 0.5003270373238773; K = Math.tan(Math.PI * f0 / sr); a0 = 1 + K / Q + K * K;
+  var hp = [1, -2, 1, 2 * (K * K - 1) / a0, (1 - K / Q + K * K) / a0];
+  return [shelf, hp];
 }
+window.kCoeffs = kCoeffs;
 function biquadRun(a, co, from, to) { var x1 = 0, x2 = 0, y1 = 0, y2 = 0, acc = 0; for (var i = from; i < to; i++) { var x = a[i], y = co[0] * x + co[1] * x1 + co[2] * x2 - co[3] * y1 - co[4] * y2; x2 = x1; x1 = x; y2 = y1; y1 = y; acc += y * y; } return acc / (to - from); }
 function kMeanSquare(a, sr, from, to) { var co = kCoeffs(sr), tmp = new Float32Array(to - from), x1 = 0, x2 = 0, y1 = 0, y2 = 0, c = co[0]; for (var i = from; i < to; i++) { var x = a[i], y = c[0] * x + c[1] * x1 + c[2] * x2 - c[3] * y1 - c[4] * y2; x2 = x1; x1 = x; y2 = y1; y1 = y; tmp[i - from] = y; } return biquadRun(tmp, co[1], 0, tmp.length); }
 /* a 4x true-peak estimate: windowed-sinc interpolation (12 taps) at the three points between samples, over a range */
@@ -28,14 +29,26 @@ function truePeak(a, from, to) { var p = 0; for (var i = Math.max(6, from); i < 
 window.renderTone = async function (opts) {
   var sr = opts.sampleRate || 48000, secs = opts.seconds, ctx = new OfflineAudioContext(2, Math.ceil(sr * secs), sr), byMe = false;
   var realResume = ctx.resume.bind(ctx); ctx.resume = function () { return byMe ? realResume() : Promise.resolve(); }; /* the module resumes a 'suspended' context; offline is suspended until it renders */
-  var root = { AudioContext: function () { return ctx; }, OvuSound: { volume: function () { return opts.volume == null ? 0.25 : opts.volume; }, enabled: function () { return opts.soundOn == null ? true : !!opts.soundOn; } } };
+  var vol = opts.volume == null ? 0.25 : opts.volume, on = opts.soundOn == null ? true : !!opts.soundOn;
+  var root = { AudioContext: function () { return ctx; }, OvuSound: { volume: function () { return vol; }, enabled: function () { return on; } } };
   new Function('window', opts.src + '\n//# sourceURL=' + (opts.label || 'tones') + '.js')(root);
   var T = root.OvuTones; if (!T) throw new Error('module did not export OvuTones');
-  var ok = opts.bed ? T.startBed(opts.bed, null) : T.start(opts.hz, null);
-  if (!ok) return { refused: true, live: T.liveNodes ? T.liveNodes() : null };
-  var stopAt = opts.stopAt || (secs - 8);
-  var sus = ctx.suspend(stopAt).then(function () { byMe = true; T.stop(); byMe = false; return realResume(); });
-  var buf = await ctx.startRendering(); await sus;
+  function op(step) { /* one scripted act at a suspended moment of the render */
+    if (step.op === 'start') return T.start(step.arg, null); if (step.op === 'bed') return T.startBed(step.arg, null); if (step.op === 'stop') return T.stop();
+    if (step.op === 'volume') { vol = step.arg; return T.setVolume(); } if (step.op === 'off') { on = false; T.stop(); return T.hush && T.hush(); } if (step.op === 'on') { on = true; return; }
+  }
+  var pending = [], stopAt, gainAt = T.gainFor(vol);
+  if (opts.script) { /* every suspend is booked before rendering; each runs its act and resumes */
+    opts.script.forEach(function (step) { if (step.t > 0) pending.push(ctx.suspend(step.t).then(function () { byMe = true; op(step); byMe = false; return realResume(); })); else op(step); });
+    var stops = opts.script.filter(function (x) { return x.op === 'stop' || x.op === 'off'; }); stopAt = stops.length ? stops[stops.length - 1].t : secs - 8;
+    opts.script.forEach(function (x) { if (x.op === 'volume') gainAt = Math.max(gainAt, T.gainFor(x.arg)); });
+  } else {
+    var ok = opts.bed ? T.startBed(opts.bed, null) : T.start(opts.hz, null);
+    if (!ok) return { refused: true, live: T.liveNodes ? T.liveNodes() : null };
+    stopAt = opts.stopAt || (secs - 8);
+    pending.push(ctx.suspend(stopAt).then(function () { byMe = true; T.stop(); byMe = false; return realResume(); }));
+  }
+  var buf = await ctx.startRendering(); await Promise.all(pending);
   var L = buf.getChannelData(0), R = buf.getChannelData(1), n = L.length;
   function peakOf(f, t) { var p = 0; for (var i = Math.max(0, f); i < Math.min(n, t); i++) { var x = Math.max(Math.abs(L[i]), Math.abs(R[i])); if (x > p) p = x; } return p; }
   function monoPeak(f, t) { var p = 0; for (var i = Math.max(0, f); i < Math.min(n, t); i++) { var x = Math.abs((L[i] + R[i]) / 2); if (x > p) p = x; } return p; }
@@ -66,7 +79,9 @@ window.renderTone = async function (opts) {
   for (var q2 = 0; q2 < head; q2++) { pcm[q2 * 2] = Math.max(-32768, Math.min(32767, Math.round(L[q2] * 32767))); pcm[q2 * 2 + 1] = Math.max(-32768, Math.min(32767, Math.round(R[q2] * 32767))); }
   var bytes = new Uint8Array(pcm.buffer), chunks = []; for (var c = 0; c < bytes.length; c += 0x8000) chunks.push(String.fromCharCode.apply(null, bytes.subarray(c, c + 0x8000)));
   var db = function (x) { return 20 * Math.log10(x || 1e-9); };
+  var winPeaks = []; for (var wp = 0; wp + sr <= n; wp += sr) winPeaks.push(db(peakOf(wp, wp + sr))); /* one peak per second, for the scripted cases */
   return {
+    winPeaksDb: winPeaks, gainMax: gainAt,
     sampleRate: sr, seconds: secs, stopAt: stopAt, steady: [s0 / sr, s1 / sr], gainFor: T.gainFor(opts.volume == null ? 0.25 : opts.volume), live: T.liveNodes ? T.liveNodes() : null,
     peakDb: db(peakOf(0, n)), truePeakDb: db(Math.max(truePeak(L, 0, n), truePeak(R, 0, n))), monoPeakDb: db(monoPeak(0, n)), steadyPeakDb: db(peakOf(s0, s1)),
     rmsLDb: db(Math.sqrt(sl / (s1 - s0))), rmsRDb: db(Math.sqrt(srr / (s1 - s0))), rmsMonoDb: db(Math.sqrt(sm / (s1 - s0))), lufs: -0.691 + 10 * Math.log10(kw || 1e-12),
