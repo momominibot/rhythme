@@ -1,37 +1,79 @@
-/* Rhythme alignment for the older reading pages (loaded by appnav.js): the room's header,
-   tabs, fonts and palette, so Learn pages look like the rest of the app. */
-:root{
+/* The room's look for Rhythme's older pages (Learn articles, privacy, terms, lab and health notes, the camera pulse).
+ * Linked last in each page's head, so it wins over theme.css and the page's own styles, and also added by appnav.js
+ * for any page that forgets it. Same tokens as room.css and ovu-pages.css: the room's light palette, Newsreader
+ * headings, Manrope text, the room's buttons, a round back button and the room's five tabs (appnav.js builds the
+ * header and the tabs). Light only: the room has no night colours since 22 Oct 2026, so neither do these pages. */
+:root, html[data-theme], html[data-persona]{
+  --rm-paper:#f8f3fb; --rm-paper-2:#f1e9f7; --rm-card:#ffffff;
+  --rm-ink:#3b2d52; --rm-ink-2:#6f5f8c; --rm-ink-3:#9a8cb3;
+  --rm-mauve:#7a5c96; --rm-lilac:#c9b6e6; --rm-lilac-2:#e7dcf5; --rm-blush-2:#fbe3ea; --rm-plum:#5a4274;
+  --rm-shadow:0 10px 30px rgba(90,66,116,.12);
+  /* theme.css names, pointed at the room's values */
   --paper:#f8f3fb; --paper-deep:#f1e9f7; --card:#ffffff; --card-solid:#ffffff; --sunken:#f1e9f7;
   --ink:#3b2d52; --cocoa:#3b2d52; --taupe:#6f5f8c; --faded:#9a8cb3; --mauve:#7a5c96;
   --line:rgba(107,82,142,.14); --line-soft:rgba(107,82,142,.08);
   --rh-plum:#5a4274; --rh-lilac:#c9b6e6; --rh-lilac-2:#e7dcf5;
+  --ovuluna-text-primary:#3b2d52;
   --serif:'Newsreader',Georgia,serif; --sans:'Manrope',system-ui,sans-serif;
+  color-scheme:light;
 }
-body{font-family:var(--sans);color:var(--ink);background:var(--paper)}
+html,body{background:var(--rm-paper)!important;color:var(--rm-ink)}
+body{font-family:var(--sans)}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(42% 30% at 82% 6%,rgba(201,182,230,.5),transparent 70%),radial-gradient(38% 26% at 8% 16%,rgba(246,201,214,.45),transparent 70%),radial-gradient(40% 26% at 4% 66%,rgba(200,215,240,.3),transparent 70%)!important}
+.dark-stars,.theme-toggle,.font-toggle{display:none!important}
+.ms,.n-ic{font-family:'Material Symbols Outlined'!important;font-weight:400;font-style:normal;line-height:1;letter-spacing:normal;text-transform:none;white-space:nowrap;direction:ltr;-webkit-font-smoothing:antialiased}
 
-/* header: the room's soft bar with the RHYTHME wordmark and round icon buttons */
-.top{background:rgba(248,243,251,.9)!important;border-bottom:1px solid rgba(201,182,230,.25)!important;box-shadow:0 6px 18px rgba(90,66,116,.06)}
-.top .rh-brand{font-family:var(--serif);font-weight:600;font-size:17px;letter-spacing:.18em;color:var(--rh-plum);text-decoration:none}
-.top .brandline{flex:1}
-.top .t-icon{width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;border-radius:50%!important;border:1px solid rgba(255,255,255,.9)!important;background:rgba(255,255,255,.85)!important;box-shadow:0 4px 14px rgba(90,66,116,.14)!important;color:var(--rh-plum)!important;font-size:20px!important}
-.top .t-title{font-family:var(--serif);font-weight:600;color:var(--rh-plum)}
+/* header: a round back button and the page's name, like the journal and the doctor view (no !important on display: the
+   in-app viewer hides a page's own header and tabs, ovu-pageview.js) */
+.top.rh-top{display:flex;flex-wrap:nowrap!important;align-items:center;gap:10px;background:rgba(248,243,251,.92)!important;border-bottom:1px solid rgba(201,182,230,.25)!important;box-shadow:0 6px 18px rgba(90,66,116,.06)}
+.top.rh-top .rh-back{width:38px;height:38px;border-radius:50%;background:#fff;box-shadow:0 4px 14px rgba(90,66,116,.14);display:flex;align-items:center;justify-content:center;color:var(--rm-plum);text-decoration:none;flex-shrink:0}
+.top.rh-top .rh-back .ms{font-size:20px}
+.top.rh-top .rh-title{flex:1;min-width:0;margin:0;font:600 20px/1.15 var(--serif);color:var(--rm-plum);overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+/* the header carries the way back, so the older in-page back links step aside */
+html.rh-aligned :is(a.learning-back,a.back-link,a.assessment-back){display:none!important}
 
-/* tabs: same five as the room, same look */
-.nav{border-top:1px solid rgba(107,82,142,.08)!important;background:rgba(255,255,255,.92)!important;padding-top:8px!important}
-.nav a{font:700 10px var(--sans)!important;color:var(--faded)!important;gap:2px!important;outline:none}
-.nav a .ms,.nav a .n-ic{font-family:'Material Symbols Outlined'!important;font-size:22px!important;font-weight:400}
-.nav a.on{color:var(--mauve)!important;background:rgba(231,220,245,.55)}
-.nav a.on .ms{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24}
-.nav a:focus-visible{box-shadow:0 0 0 2px #fff,0 0 0 4px var(--rh-lilac);background:rgba(231,220,245,.6)}
+/* tabs: the room's five, same icons, same look */
+.nav.rh-nav{display:flex;justify-content:space-around;border-top:1px solid rgba(107,82,142,.08)!important;background:rgba(255,255,255,.94)!important;padding-top:8px!important}
+.nav.rh-nav a{display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;min-height:44px;font:700 10px var(--sans)!important;color:var(--rm-ink-3)!important;text-decoration:none;border-radius:12px;outline:none}
+.nav.rh-nav a .ms{font-size:22px!important}
+.nav.rh-nav a.on{color:var(--rm-mauve)!important;background:rgba(231,220,245,.55)}
+.nav.rh-nav a.on .ms{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24}
+.nav.rh-nav{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:100%;max-width:430px;z-index:40;align-items:center;padding:8px 0 calc(10px + env(safe-area-inset-bottom))!important;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+body.rh-column.rh-made-nav{padding-bottom:calc(var(--shell-bottom-size,72px) + 16px)}
+.nav.rh-nav a:focus-visible{box-shadow:0 0 0 2px #fff,0 0 0 4px var(--rm-lilac);background:rgba(231,220,245,.6)}
 .nav .dream-symbol{display:none!important}
 
-/* cards, headings and links in the room's style */
-.card{background:#fff!important;border:1px solid rgba(150,120,190,.14)!important;border-radius:22px!important;box-shadow:0 10px 30px rgba(90,66,116,.10)!important}
-h1,h2,h3{font-family:var(--serif);color:var(--rh-plum)}
-main :is(p,li,td,small) > a:not([class]){color:var(--rh-plum);text-decoration-color:rgba(122,92,150,.35);text-underline-offset:2px}
-.learning-back{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;background:#fff;border:1px solid rgba(150,120,190,.2);border-radius:999px;padding:7px 14px;font:800 12.5px var(--sans);color:var(--rh-plum)!important;text-decoration:none!important;box-shadow:0 4px 12px rgba(90,66,116,.08)}
-.top .theme-toggle{display:none!important}
-.top .font-toggle{width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.9)!important;background:rgba(255,255,255,.85)!important;box-shadow:0 4px 14px rgba(90,66,116,.14);color:var(--rh-plum)}
-.top .t-icon.ms{font-family:'Material Symbols Outlined'!important}
-.top .rh-brand{display:inline-flex;align-items:center;gap:.42em}
-.top .rh-brand .rh-logo{width:1.45em;height:1.45em;margin-right:0}
+/* the older pages' own Luna button: Luna lives in the room (Tell Luna), so the page does not float a second one */
+#lunaBtn,#lunaPanel,#lunaFab,.luna-fab{display:none!important}
+
+/* cards, headings and links */
+.card,.chapter-card,.chapter-hero,.journey-link,.terms-section,.privacy-card{background:#fff!important;border:1px solid rgba(150,120,190,.14)!important;border-radius:22px!important;box-shadow:var(--rm-shadow)!important}
+h1,h2,h3,.dream-heading,.chapter-hero h1,.chapter-card h2{font-family:var(--serif);color:var(--rm-plum)}
+main :is(p,li,td,small,span) > a:not([class]),.scroll :is(p,li,td,small,span) > a:not([class]){color:var(--rm-plum);text-decoration-color:rgba(122,92,150,.35);text-underline-offset:2px}
+
+/* buttons: the room's primary, soft and ghost */
+.btn,.save-btn,.ppg-btn.ppg-btn-primary,.privacy-actions button:not(.secondary):not(.danger),button.primary{background:linear-gradient(135deg,#7b5db3,#5f4596)!important;color:#fff!important;border:none!important;border-radius:16px!important;box-shadow:0 6px 18px rgba(122,92,150,.3)!important;font:800 13px var(--sans)!important;padding:12px 14px!important;min-height:44px}
+.btn.mauve{background:linear-gradient(135deg,#7b5db3,#5f4596)!important}
+.btn.ghost,.export-btn,.ppg-btn.ppg-btn-secondary,.privacy-actions button.secondary,.back-btn{background:transparent!important;color:var(--rm-ink-2)!important;border:1.5px solid rgba(107,82,142,.18)!important;border-radius:16px!important;box-shadow:none!important;font:800 13px var(--sans)!important;min-height:44px}
+.privacy-actions button.danger{background:#fbe3e6!important;color:#9b2f3c!important;border:none!important;border-radius:16px!important;box-shadow:none!important;font:800 13px var(--sans)!important;min-height:44px}
+.btn:active,.save-btn:active,.export-btn:active,.ppg-btn:active{transform:scale(.97)}
+.chip.on,.journey-choice[aria-current],.persona-opt.on{border-color:var(--rm-mauve)!important;background:var(--rm-mauve)!important;color:#fff!important}
+.chip.on *,.persona-opt.on *{color:#fff!important}
+.journey-banner{background:linear-gradient(135deg,#efe4fb,#fbe3ea)!important;color:var(--rm-ink)!important;border:1.5px solid rgba(201,182,230,.6)!important}
+.journey-banner .dream-heading,.journey-banner p,.journey-banner .journey-eyebrow{color:var(--rm-plum)!important}
+input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),select,textarea{border:1.5px solid rgba(107,82,142,.14);border-radius:14px;background:#fff;color:var(--rm-ink);font-family:var(--sans)}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--rm-lilac);box-shadow:0 0 0 3px rgba(201,182,230,.35)}
+:focus-visible{outline:3px solid var(--rm-lilac);outline-offset:2px}
+
+/* a page whose parts sit straight in <body> (the camera pulse) lays them out in one column like the rest */
+body.rh-column{flex-direction:column!important;align-items:center!important;justify-content:flex-start!important;padding-top:calc(var(--shell-top-size,64px) + 6px)}
+body.rh-column > *{width:100%;max-width:430px;box-sizing:border-box}
+body.rh-column > .expbanner{width:calc(100% - 32px);max-width:398px}
+
+/* a sources button on a page's opening card sits top right, as on the reading cards below it */
+.chapter-hero{position:relative}
+.chapter-hero > .qi{position:absolute;top:16px;right:16px;margin:0}
+
+/* the chapter she chose in Settings, marked on Your life journey (journey.js) */
+.journey-link.mine{border:1.5px solid var(--rm-mauve)!important}
+.journey-link .mine-tag{display:inline-block;align-self:flex-start;padding:2px 8px;border-radius:99px;background:var(--rm-lilac-2);color:var(--rm-plum);font:800 9.5px var(--sans);letter-spacing:.05em;text-transform:uppercase}

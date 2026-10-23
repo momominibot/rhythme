@@ -1647,6 +1647,68 @@
     openSheet('choices', 'Your choices', 'Each use of your data, separately', 'fact_check', OvuConsent.choicesHTML());
     OvuConsent.wireChoices(body, { toast: toast, chime: chime, rerender: openChoices });
   }
+  /* Settings (You tab), 22 Oct: the old settings.html moved here so it looks and works like the rest of the room. Every
+     setting it had is kept, stored where it always was: the life-stage look in localStorage 'ovuluna_persona' (the older
+     reading pages and the privacy list read it), and sleep from a CSV file as OvuStore sleep entries with source 'import'.
+     Its links go to the same places, each opening in the room or its page viewer. */
+  var PERSONAS = [['grow', 'eco', 'Grow', 'Trying to conceive'], ['nurture', 'spa', 'Nurture', 'After pregnancy'], ['peri', 'eco', 'Changing seasons', 'Perimenopause'], ['wisdom', 'bedtime', 'Your next chapter', 'After menopause']]; /* the chapter names of the reading pages (journey-*.html) */
+  function personaNow() { try { var p = localStorage.getItem('ovuluna_persona'); return PERSONAS.some(function (x) { return x[0] === p; }) ? p : ''; } catch (e) { return ''; } } /* none chosen: nothing is marked */
+  function sleepCsv(text) {
+    var ok = 0, bad = 0;
+    String(text).split(/\r?\n/).forEach(function (line) {
+      var c = line.split(',').map(function (x) { return x.trim(); });
+      if (c.length < 3 || !S.validDate(c[0]) || !S.validTime(c[1]) || !S.validTime(c[2])) { if (line.trim() && !/^date/i.test(line)) bad++; return; }
+      var data = { bedTime: c[1], wakeTime: c[2], quality: c[3] && Number(c[3]) >= 1 && Number(c[3]) <= 5 ? Number(c[3]) : null, notes: 'Imported from CSV', mode: 'import' };
+      /* a night an earlier sleep file brought in is updated, never added twice; nights she wrote herself are left as they are */
+      var mine = S.list('sleep').filter(function (e) { return e.date === c[0] && e.source === 'import' && e.data && e.data.notes === 'Imported from CSV'; })[0];
+      try { if (mine) S.update(mine.id, { data: data, source: 'import' }); else S.add('sleep', c[0], data, 'import'); ok++; } catch (e) { bad++; }
+    });
+    return { ok: ok, bad: bad };
+  }
+  function openSettings(note) {
+    var row = function (icon, title, sub, act, href) { return (href ? '<a class="yrow" href="' + href + '"' : '<button type="button" class="yrow" data-sact="' + act + '"') + '><span class="ms">' + icon + '</span><span><b>' + esc(title) + '</b><small>' + esc(sub) + '</small></span><span class="ms go">chevron_right</span>' + (href ? '</a>' : '</button>'); };
+    var conn = function (icon, title, sub, status) { return '<div class="stat"><span class="ms">' + icon + '</span><div><b>' + esc(title) + ' <span class="spill">' + esc(status) + '</span></b><span>' + esc(sub) + '</span></div></div>'; };
+    var cur = personaNow();
+    openSheet('settings', 'Settings', 'Your look, your files, your connections', 'settings',
+      '<div class="ygroup"><span class="lbl">Your life chapter</span><div class="chips" role="group" aria-label="Your life chapter">' + PERSONAS.map(function (p) { return '<button type="button" class="chipbtn' + (p[0] === cur ? ' on' : '') + '" data-persona="' + p[0] + '" aria-pressed="' + (p[0] === cur) + '"><span class="ms">' + p[1] + '</span>' + esc(p[2]) + ' · ' + esc(p[3]) + '</button>'; }).join('') + '</div>' +
+      '<p class="help">Marks your chapter on the Your life journey reading pages, so it is easy to find. It changes nothing else: it does not measure your cycle or change any check.</p><div class="msg" id="setPersonaMsg" role="status" aria-live="polite"></div></div>' +
+      '<div class="ygroup"><span class="lbl">Bring in from files</span>' + row('move_to_inbox', 'Apple Health and Google', 'Choose an export file: sleep, cycle, weight and more', 'import') +
+      conn('phone_iphone', 'Apple Health', 'In the Health app, tap your picture, then Export All Health Data. Then tap Apple Health and Google above and choose export.zip. Nothing is uploaded.', 'File') +
+      conn('android', 'Google Fit', 'Make a Google Takeout with Fit ticked. Then tap Apple Health and Google above and choose the Takeout zip. Health Connect has no export file yet.', 'File') +
+      conn('radio_button_checked', 'Smart rings', 'Bring a ring’s sleep export in with Sleep from a file, below.', 'File') +
+      '<label class="yrow" for="setSleepCsv" style="cursor:pointer"><span class="ms">bedtime</span><span><b>Sleep from a file</b><small>A CSV file, one night per line. Nothing is uploaded.</small></span><span class="ms go">upload_file</span></label><input type="file" id="setSleepCsv" accept=".csv,text/csv" hidden>' +
+      '<details class="help"><summary style="cursor:pointer">The file’s format</summary>Each line is date, bedtime, wake time and an optional quality from 1 to 5, separated by commas: 2026-10-17,23:10,06:45,4. A header line is skipped. Bringing the same nights in again updates them instead of adding them twice; nights you wrote yourself are kept.</details><div class="msg" id="setSleepMsg" role="status" aria-live="polite"></div></div>' +
+      '<div class="ygroup"><span class="lbl">Live links</span>' + conn('sync_disabled', 'Not here yet', 'A live link to Apple Health, Health Connect or a ring needs the phone app. Until then, files bring your data in.', 'Planned') + '</div>' +
+      '<div class="ygroup"><span class="lbl">Your records</span>' + row('medical_information', 'Your health notes', 'A short guide to keeping medicines, supplements and treatment notes for your care team', '', 'health-profile.html') + row('science', 'Lab records', 'Enter, review and export dated results', '', 'labs.html') + row('edit_note', 'Cycle observations', 'Dated signs on your wall calendar', 'calendar') + '</div>' +
+      '<div class="ygroup"><span class="lbl">Your data and account</span>' + row('delete_sweep', 'Choose what to delete', 'Pick local records, export a copy, then confirm', '', 'privacy.html#privacy-local-title') + row('person_remove', 'Your account', 'Sign in, account status and deleting your account', 'you') + row('shield', 'Privacy and local data', 'What is kept on this phone and why', '', 'privacy.html') + '</div>' +
+      '<p class="help" style="text-align:center">Rhythme offers wellness notes, not a medical diagnosis.</p>');
+    if (note) message($('#setSleepMsg'), note.text, note.ok);
+    body.addEventListener('click', function (e) {
+      var pb = e.target.closest('[data-persona]');
+      if (pb) {
+        var id = pb.dataset.persona, saved = true; try { localStorage.setItem('ovuluna_persona', id); } catch (err) { saved = false; }
+        chime('tap'); $$('[data-persona]', body).forEach(function (b) { var on = b === pb; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
+        message($('#setPersonaMsg'), saved ? 'Saved on this phone. Your life journey marks this chapter.' : 'This phone could not save it; nothing changed.', saved);
+        return;
+      }
+      var b = e.target.closest('[data-sact]'); if (!b) return; chime('tap');
+      var act = b.dataset.sact;
+      if (act === 'import') return openImport();
+      if (act === 'calendar') return openCalendar();
+      if (act === 'you') { openYou(); setTab('you'); var ya = $('#youAccount'); if (ya) ya.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    });
+    $('#setSleepCsv').addEventListener('change', function () {
+      var f = this.files && this.files[0], input = this; if (!f) return;
+      var r = new FileReader();
+      r.onload = function () {
+        var n = sleepCsv(r.result), text = 'Brought in ' + n.ok + ' night' + (n.ok === 1 ? '' : 's') + (n.bad ? ', skipped ' + n.bad + ' unreadable line' + (n.bad === 1 ? '' : 's') : '') + '.'; input.value = '';
+        if (n.ok) { chime('save'); renderDeck(); }
+        if (current === 'settings') openSettings({ ok: n.ok > 0, text: text }); else toast(text, 'bedtime'); /* she may have closed Settings while the file was read: never reopen it over what she is doing */
+      };
+      r.onerror = function () { input.value = ''; if (current === 'settings') message($('#setSleepMsg'), 'This file could not be read.', false); else toast('This file could not be read.', 'error'); };
+      r.readAsText(f);
+    });
+  }
   /* Jamie, 22 Oct: "some may not want the mindfulness part and we shouldn't force". A choice on the You tab: slow mindful
      steps and gentle cues (the default), or quick steps with no cues. Practices she opens on purpose are unchanged. */
   function mindfulQuick() { return (S.profile() || {}).mindfulPace === 'quick'; }
@@ -1664,7 +1726,7 @@
       '<div id="youAccount"></div>' +
       '<div class="ygroup"><span class="lbl">Your room</span>' + row('waving_hand', 'Getting to know you', 'Update your answers any time', 'intro') + row('checkroom', 'Wardrobe', 'Change your outfit', 'wardrobe') + row('format_size', 'Text size', 'Bigger words and buttons', 'text') + row('self_improvement', 'Mindful pace', mindfulQuick() ? 'Quick steps, no cues. Tap to bring the slow steps back' : 'Slow steps and gentle cues. Tap for quick steps instead', 'mindful') + row('record_voice_over', 'Erin\'s voice', erinCuesOn() ? 'On: her lines play in practices and on everyday actions. Tap to keep her quiet' : 'Off. Her words show as text; tap to hear her voice', 'erinvoice') + row('storefront', 'Dream Street', 'Pet shop, furniture store, property showroom', 'shop') + row('diversity_1', 'Plaza friends', (window.OvuFriends && OvuFriends.summaryNow ? OvuFriends.summaryNow() : 'Friends you meet in the plaza groups'), 'friends') + (RW.tester && RW.tester() ? row('science', 'Tester mode is on', 'Unlimited hearts for trying things out. Tap to turn off', 'testeroff') : '') + row('alarm', 'Reminders', 'Gentle nudges, set by you', 'clock') + '</div>' +
       '<div class="ygroup"><span class="lbl">Your records</span>' + row('auto_stories', 'My journal', 'Daily logs and Luna’s readings', '', 'journal.html') + row('medical_services', 'Share with my doctor', 'A 4-week summary card', '', 'journal.html#share') + row('menu_book', 'Evidence', 'Every source behind the guides, by number', '', 'evidence.html') + '</div>' +
-      '<div class="ygroup"><span class="lbl">Your data</span>' + row('auto_awesome', 'Rhythme Plus', (window.OvuPodcast && OvuPodcast.plusActive() ? 'On for this phone' : 'Erin’s full library · preview'), 'plus') + row('fact_check', 'Your choices', 'Each use of your data, on or off, and your receipt', 'choices') + row('dark_mode', 'Luna’s settings', 'Reading, food photos and readings', 'luna') + row('move_to_inbox', 'Apple Health and Google', (window.OvuHealth ? OvuHealth.importedCount(S) : 0) ? OvuHealth.importedCount(S).toLocaleString() + ' entries brought in · see them or bring in more' : 'Choose what comes in: sleep, cycle, weight and more', 'import') + row('download', 'Export my data', 'A copy of everything, as a file', 'export') + row('delete', 'Delete everything', 'Start fresh on this phone', 'delete') + '</div>' +
+      '<div class="ygroup"><span class="lbl">Your data</span>' + row('settings', 'Settings', 'Your life chapter, files from health apps, a sleep file', 'settings') + row('auto_awesome', 'Rhythme Plus', (window.OvuPodcast && OvuPodcast.plusActive() ? 'On for this phone' : 'Erin’s full library · preview'), 'plus') + row('fact_check', 'Your choices', 'Each use of your data, on or off, and your receipt', 'choices') + row('dark_mode', 'Luna’s settings', 'Reading, food photos and readings', 'luna') + row('move_to_inbox', 'Apple Health and Google', (window.OvuHealth ? OvuHealth.importedCount(S) : 0) ? OvuHealth.importedCount(S).toLocaleString() + ' entries brought in · see them or bring in more' : 'Choose what comes in: sleep, cycle, weight and more', 'import') + row('download', 'Export my data', 'A copy of everything, as a file', 'export') + row('delete', 'Delete everything', 'Start fresh on this phone', 'delete') + '</div>' +
       (confirmDelete ? '<div class="flag high" id="yDel"><span class="ms">warning</span><div><b>Delete everything on this phone?</b><span>Every entry, answer, photo thumbnail and heart is removed, and this cannot be undone. Your sign-in, cloud backup and Rhythme Plus access stay. Export a copy first if you want to keep it.' + (function () { var h = window.OvuSync && OvuSync.status ? OvuSync.status().held || 0 : 0; return h ? ' ' + h + ' Movement ' + (h === 1 ? 'entry is' : 'entries are') + ' not in your cloud backup yet, so ' + (h === 1 ? 'it' : 'they') + ' would be lost.' : ''; })() + '</span><div class="row"><button type="button" class="btn danger" data-yact="delete-yes"><span class="ms">delete</span>Delete everything</button><button type="button" class="btn ghost" data-yact="delete-no">Keep my data</button></div></div></div>' : '') +
       '<p class="help" style="text-align:center"><a href="privacy.html">Privacy notes</a> · <a href="terms.html">Terms</a> · Rhythme is a diary, not a diagnosis, and never replaces care.</p>');
     $('#youNameSave').addEventListener('click', function () { S.setProfile({ name: $('#youName').value.trim() }); updateGreeting(); chime('save'); toast('Nice to meet you' + (S.profile().name ? ', ' + S.profile().name : '') + '.', 'favorite'); openYou(); });
@@ -1685,6 +1747,7 @@
       if (act === 'clock') return openClock();
       if (act === 'plus') return openPlus();
       if (act === 'choices') return openChoices();
+      if (act === 'settings') return openSettings();
       if (act === 'luna') { openLuna(); var ab = $('#aibox'); if (ab) { ab.open = true; setTimeout(function () { ab.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 80); } return; }
       if (act === 'import') return openImport();
       if (act === 'export') {
@@ -3300,8 +3363,10 @@
   function requireConsent(next) { if (!window.OvuConsent) { toast('Rhythme could not load its consent record. Please reload.', 'error'); return; } OvuConsent.require(next, { chime: chime, toast: toast }); }
   /* where a link into the room asked to go (room.html#medas and so on); a new account keeps it until the intro is done */
   var pendingRoute = '', pendingOnb = null; /* the intro that the link waits behind */
+  /* sheets that live on the You tab, for links from retired pages (settings.html and the rest: legacy pages, 22 Oct) */
+  var YOU_ROUTES = { settings: function () { openSettings(); }, reminders: function () { openClock(); }, plus: function () { openPlus(); }, friends: function () { if (window.OvuFriends && OvuFriends.open) OvuFriends.open(); else openYou(); } };
   function openRoute(hk) {
-    if (hk === 'luna') openLuna(); else if (hk === 'calendar') openCalendar(); else if (hk === 'scores') openScores(); else if (hk === 'learn') openLearn(); else if (hk === 'medas') openMedas(); else if (hk === 'recipes') openRecipes(); else if (hk === 'move') { openExercise(); setTab('mind'); } else if (TABS[hk]) goTab(hk);
+    if (hk === 'luna') openLuna(); else if (hk === 'calendar') openCalendar(); else if (hk === 'scores') openScores(); else if (hk === 'learn') openLearn(); else if (hk === 'medas') openMedas(); else if (hk === 'recipes') openRecipes(); else if (hk === 'move') { openExercise(); setTab('mind'); } else if (YOU_ROUTES[hk]) { YOU_ROUTES[hk](); setTab('you'); } else if (TABS[hk]) goTab(hk);
   }
   /* opened at once, never on a timer: a delayed open could cover a sheet she opened in the meantime (Codex round two) */
   function takePending() { var r = pendingRoute; pendingRoute = ''; if (r && r !== 'onboarding') openRoute(r); }
@@ -3385,7 +3450,7 @@
       '<div class="row"><button class="btn primary" id="winSleep"><span class="ms">' + act.icon + '</span>' + act.text + '</button><button class="btn soft" id="winSound"><span class="ms">' + (soundOn() ? 'volume_up' : 'volume_off') + '</span>Sounds ' + (soundOn() ? 'on' : 'off') + '</button></div>' +
       '<div class="row"><button type="button" class="btn soft music" id="winMusic" aria-pressed="' + (S.state().music === true ? 'true' : 'false') + '"><span class="ms" aria-hidden="true">' + (S.state().music === true ? 'music_note' : 'music_off') + '</span><span class="mlabel">Music ' + (S.state().music === true ? 'on' : 'off') + '</span></button></div>' +
         (soundOn() && window.OvuSound ? '<label class="volrow"><span class="ms">volume_down</span><input type="range" id="winVol" min="0" max="100" step="5" value="' + Math.round(OvuSound.volume() * 100) + '" aria-label="Sound volume"><span class="ms">volume_up</span></label>' : '') +
-      '<div class="row"><a class="btn ghost" href="settings.html"><span class="ms">settings</span>Settings & health connections</a></div>' +
+      '<div class="row"><a class="btn ghost" href="room.html#settings"><span class="ms">settings</span>Settings & health connections</a></div>' +
       '<div class="row"><button type="button" class="btn ghost" id="winIntro"><span class="ms">favorite</span>' + (S.profile().onboarded ? 'Update my intro' : 'Tell me about you') + '</button></div>' +
       '<p class="help">Sounds are tiny chimes plus Erin’s good-night and good-morning lines; they stay off unless you turn them on. Guided sessions always play when you start one. Music is a soft tune drawn in the browser for each place, off until you turn it on; it shares the Sounds volume, pauses while she sleeps and never plays over Erin’s voice. The note in the top bar stops it any time.</p>');
     $('#winSleep').addEventListener('click', function () { if (act.id === 'log') { openSleepRecord(); return; } closeSheet(); tap(hotspot(act.id)); });
