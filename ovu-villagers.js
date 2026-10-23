@@ -252,6 +252,7 @@
   function locked(fn) { return FM.locked ? FM.locked(S, fn) : Promise.resolve(fn()); }
   function stillOpen(sheetId, seq) { return (!R.sheetId || R.sheetId() === sheetId) && (!R.sheetSeq || R.sheetSeq() === seq); }
   function seqNow() { return R.sheetSeq ? R.sheetSeq() : 0; }
+  var CLOCK = 'The day on this phone looks earlier than your last visit.';
   function heartRow(points) {
     var h = hearts(points), c = colour(h), out = '';
     for (var i = 0; i < 10; i++) out += '<span class="ms' + (i < h ? ' fill' : ' off') + '" style="color:' + (i < h ? c[1] : '') + '">favorite</span>';
@@ -308,7 +309,7 @@
         if (!stillOpen(sheetId, seq)) return; /* she closed the sheet or moved on while another tab held the lock */
         var f = JSON.parse(JSON.stringify(FM.farmState(S))), have = it.kind === 'dish' ? n0(f.dishes && f.dishes[it.key]) : it.kind === 'crop' ? n0(f.harvest[it.key]) : n0(f.pantry && f.pantry[it.key]);
         if (!have) { R.toast('That is no longer in your bag.', 'info'); openVillager(id, { hold: true }); return; } /* another tab used it first */
-        var r = gift(all(), id, today(), it.key, it.kind, it.name); if (!r.ok) { R.toast(r.why === 'clock' ? 'The day on this phone looks earlier than your last visit.' : r.why, 'info'); openVillager(id, { hold: true }); return; }
+        var r = gift(all(), id, today(), it.key, it.kind, it.name); if (!r.ok) { R.toast(r.why === 'clock' ? CLOCK : r.why, 'info'); openVillager(id, { hold: true }); return; }
         takeFromBag(f, it);
         try { save({ villagers: r.state, farm: f }); } catch (er) { R.toast('That could not be saved just now.', 'info'); openVillager(id, { hold: true }); return; } /* the gift and the bag in one save */
         if (R.moment) R.moment('friend', { quiet: true }); popHearts(id);
@@ -320,7 +321,7 @@
   function askTopic(v, sheetId, seq) {
     locked(function () {
       if (!stillOpen(sheetId, seq)) return;
-      var r = offer(all(), v.id, today()); if (!r.ok || r.answered) { openVillager(v.id, { hold: true }); return; }
+      var r = offer(all(), v.id, today()); if (!r.ok || r.answered) { if (r.why === 'clock') R.toast(CLOCK, 'info'); openVillager(v.id, { hold: true }); return; }
       if (!r.already) { try { save({ villagers: r.state }); } catch (er) { R.toast('That could not be saved just now.', 'info'); openVillager(v.id, { hold: true }); return; } }
       var t = r.topic, say = doc.getElementById('vSay'), acts = doc.getElementById('vActs'); if (!say || !acts) return;
       say.innerHTML = '<p class="vline">' + esc(t.ask) + '</p>';
@@ -333,6 +334,7 @@
         locked(function () {
           if (!stillOpen(sheetId, seq)) return;
           var a = answer(all(), v.id, today(), t.id, reply);
+          if (a.why === 'clock') R.toast(CLOCK, 'info');
           if (a.ok && !a.already) { try { save({ villagers: a.state }); } catch (er) { R.toast('That could not be saved just now.', 'info'); openVillager(v.id, { hold: true }); return; } if (R.moment) R.moment('hello', { quiet: true }); popHearts(v.id); }
           openVillager(v.id, { hold: true, say: true }); /* his answer (or, if another tab answered first, that one), before any heart scene */
         });
@@ -387,6 +389,7 @@
       if (L.solids && !L.solids.some(function (b) { return b.id === 'villager-' + v.id; })) L.solids.push(blockOf(v)); /* once, in the layout's own list */
       var el = doc.createElement('button'); el.type = 'button'; el.className = 'villager'; el.dataset.id = v.id; el.setAttribute('aria-label', v.name + ', ' + v.role + '. Tap to talk');
       el.style.left = v.spot.x + '%'; el.style.top = v.spot.y + '%'; el.style.width = ((L.avatarW || 12) * (v.wk || 1)).toFixed(2) + '%'; /* her own width: he is drawn on her canvas at her figure height */
+      el.style.setProperty('--cs', (0.62 / (v.wk || 1)).toFixed(3)); /* his contact shadow is her footprint, whatever his canvas width */
       el.innerHTML = '<img src="' + R.ART + v.img + '" alt="" draggable="false"><span class="vname" aria-hidden="true">' + esc(v.name.split(' ')[0]) + '</span>';
       el.querySelector('img').style.clipPath = 'polygon(' + v.outline + ')'; /* only his figure takes a tap */
       el.addEventListener('click', function (e) { e.stopPropagation(); e.preventDefault(); tapped(v, L); });

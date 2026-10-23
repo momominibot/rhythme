@@ -266,7 +266,7 @@
    * already in the layout. A shopkeeper (.keeper) is ranked by its feet and is not a solid either: its block is in the layout; so is a
    * villager (.villager, ovu-villagers.js) */
   function sprites() {
-    return Array.prototype.slice.call(doc.querySelectorAll('#ownedProps .prop.owned, #ownedProps .nb, #ownedProps .plot, #ownedProps .keeper, #ownedProps .villager, #plateOcc .plate-occ')).map(function (el) { var occ = el.classList.contains('plate-occ'); return { el: el, id: el.dataset.id, x: parseFloat(el.style.left), y: parseFloat(occ ? el.dataset.base : el.style.top), w: parseFloat(el.style.width) || 8, solid: !occ && !el.classList.contains('plot') && !el.classList.contains('keeper') && !el.classList.contains('villager') }; }).filter(function (p) { return isFinite(p.x) && isFinite(p.y); });
+    return Array.prototype.slice.call(doc.querySelectorAll('#ownedProps .prop.owned, #ownedProps .nb, #ownedProps .plot, #ownedProps .keeper, #ownedProps .villager, #plateOcc .plate-occ')).map(function (el) { var occ = el.classList.contains('plate-occ'), x = parseFloat(el.style.left), w = parseFloat(el.style.width) || 8; return { el: el, id: el.dataset.id, x: x, cx: occ ? x + w / 2 : x, y: parseFloat(occ ? el.dataset.base : el.style.top), w: w, solid: !occ && !el.classList.contains('plot') && !el.classList.contains('keeper') && !el.classList.contains('villager') }; }).filter(function (p) { return isFinite(p.x) && isFinite(p.y); }); /* cx: a cutout is placed by its left edge, the rest by their centre */
   }
   /* the layout's foreground cutouts (L.occluders; only the wide street has any). They live in #plateOcc, a layer of their own
    * beside #ownedProps with no stacking context, so the one depth sort covers them with her and the pets, while a props
@@ -322,7 +322,7 @@
   function herY() { if (active && cur) return cur.y; if (cyc.cssRaf && avatar.classList.contains('walking')) return liveY(); return R.pos().y; }
   function sortDepth(avatarY) {
     var list = sprites(), ay = typeof avatarY === 'number' ? avatarY : herY();
-    var items = list.map(function (p) { return { y: p.y, x: p.x, w: p.w }; }).concat([{ y: ay }]);
+    var items = list.map(function (p) { return { y: p.y, x: p.cx, w: p.w }; }).concat([{ y: ay }]);
     var z = depthRank(items);
     list.forEach(function (p, i) { if (p.el.style.zIndex !== String(z[i])) p.el.style.zIndex = z[i]; });
     if (avatar.style.zIndex !== String(z[z.length - 1])) avatar.style.zIndex = z[z.length - 1];

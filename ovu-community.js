@@ -110,6 +110,7 @@
       el.innerHTML = '<img src="' + ART + 'avatar-' + n.outfit + '.webp" alt=""><span class="nbtag">' + (n.friend ? '<span class="ms" aria-hidden="true">favorite</span>' : '') + esc(n.name) + '</span>'; clipTo(el.querySelector('img'), n.outfit); wrap.appendChild(el);
       if (n.pet) { var p = nbNode(n, { x: n.petSpot.x, y: n.petSpot.y, w: n.pet.w }, 'nbpet'); p.innerHTML = '<img src="' + ART + n.pet.img + '" alt="">'; wrap.appendChild(p); }
     });
+    if (root.OvuWalk && root.OvuWalk.sortDepth) root.OvuWalk.sortDepth(); /* a friends redraw comes without the props event: rank the new people with her and a villager (Codex, 22 Oct) */
   }
   function openNeighbour(id) {
     var n = neighbour(id); if (!n || root.OvuWalk.napping()) return; var hellos = notesState().hellos, said = hellos[id] === S.today();
