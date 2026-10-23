@@ -2990,7 +2990,7 @@ async def main():
             try: await p6.wait_for_function("()=>OvuPlaza.state().joined && /Make a plaza card/.test((document.querySelector('#plazaFriendsRow')||{}).textContent||'')", timeout=8000)
             except Exception: pass
             pr = await p6.evaluate("()=>({row: (document.querySelector('#plazaFriendsRow')||{}).textContent||'', help: (document.querySelector('#sheetBody, .sheet')||document.body).textContent.indexOf('Unless you turn on Plaza friends') > -1, samples: document.querySelectorAll('.nbperson:not(.nbreal)').length, real: document.querySelectorAll('.nbreal').length})")
-            check("in a group without a card: the plaza sheet offers a plaza card, says who sees what, and only the samples stand about", "Make a plaza card" in pr["row"] and pr["help"] and pr["samples"] == 4 and pr["real"] == 0 and not fcall("social_people"), pr)
+            check("in a group without a card: the plaza sheet offers a plaza card, says who sees what, and nobody stands about (no samples since 23 Oct)", "Make a plaza card" in pr["row"] and pr["help"] and pr["samples"] == 0 and pr["real"] == 0 and not fcall("social_people"), pr)
             await p6.click('#plazaFriendsRow [data-frp=open]'); await p6.wait_for_selector('#frName')
             await p6.fill('#frName', 'Staff'); await p6.wait_for_timeout(100)
             bad = await p6.evaluate("()=>({msg: document.querySelector('#frNameMsg').textContent, dis: document.querySelector('#frSave').disabled, cue: /Pick a name that feels like you/.test(document.querySelector('#frSheet').textContent), words: /Your diary, your cycle, your account name and your email are never shown/.test(document.querySelector('#frSheet').textContent)})")
@@ -4150,7 +4150,7 @@ async def main():
             m3 = await pm.evaluate("()=>OvuMusic.state()")
             check("music: the garden brings its own recorded tune on a crossfade (Jamie, 23 Oct: a different melody per scene); the cave plays its own soft drawn drone (22 Oct)", m2["theme"] == "garden" and m2["mode"] == "play" and m2["track"] and m2["track"]["src"] == "assets/music/garden.mp3" and m3["mode"] == "play" and m3["theme"] == "cave" and m3["track"] is None, {"garden": m2, "cave": m3})
             await travel_m('home'); await pm.wait_for_timeout(1500)
-            SILENT = re.search(r"var SILENT = '([^']+)'", open(os.path.join(ROOT, "ovu-morning.js")).read()).group(1)
+            SILENT = "data:audio/wav;base64,UklGRsQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YaAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"  # a silent WAV (Morning start no longer carries one: nothing there is spoken since 23 Oct)
             dk = await pm.evaluate("""async(sil)=>{var out={};
               var m0=OvuVoice.muted(); OvuVoice.set(false); var a=new Audio('assets/audio/guide-interim/teeth-0-0.mp3'); a.volume=1; OvuVoice.allow(a, true); try{ await a.play(); }catch(e){ out.playErr=String(e); }
               await new Promise(r=>setTimeout(r,500)); out.during=OvuMusic.state();
