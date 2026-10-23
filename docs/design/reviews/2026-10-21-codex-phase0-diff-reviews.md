@@ -326,3 +326,23 @@ The reported failure/retry sequence is fixed. Independently verified **1,812/1,8
 FIX
 
 Fix: the first overview always owes one full feed reload, so a feed request sent at boot before a hold is answered can never outlive it (admin.js loadOverview; test-core dashboardFeedFirstLoad). The round-five hold test was adjusted because the first overview now issues that reload itself, and async harnesses now register so a stalled one fails the run instead of silently dropping its checks.
+
+
+# Round seven (commit 07e3680, verdict FIX, one P1; fixed in the following commit)
+
+**P1 remains: first overview does not clear an already-populated feed.** At [admin.js:337](/Users/michiyomimi/Doubao/chats/2026-10-16/new-chat-12/ovumind/.claude/worktrees/farm-barn-cave/admin.js:337), the `releaseKey === null` branch sets `feedNeedsFull` but leaves `feed`, `feedTop` and displayed content intact.
+
+Reproduced with the real loading functions:
+
+1. Boot feed returns pre-hold `eligible:21` before the first overview.
+2. First overview reports `latest_run:null, held_runs:1`.
+3. Its full reload fails with HTTP 500.
+4. Cached rows and panel HTML retain `eligible:21`, including after an identical overview and failed retry.
+
+Clear the cached feed and cursor, and redraw the Feed tab on initial reconciliation too. Add this response-order/failure regression.
+
+The slower boot-answer case is resolved. No other changed-line findings. Independently verified **1,813/1,813 core checks**, **81 pages with zero static problems**, and both stalled-harness and removed-generation-guard mutations fail correctly. PostgreSQL tests were not rerun. No files changed; migration-first ordering remains required.
+
+FIX
+
+Fix: the first overview now counts as a change, so it drops the cached feed and cursor and redraws the Feed tab before the owed full reload (admin.js loadOverview; test-core dashboardFeedFirstLoadFails, which fails on 07e3680).

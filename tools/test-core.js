@@ -2648,6 +2648,37 @@ function scenes(todayIso) {
     });
   }).catch(function (e) { check('dashboard first-load harness ran', false, String(e && e.stack || e)); });
 })();
+(function dashboardFeedFirstLoadFails() {
+  console.log('phase 0 (23 Oct): a boot feed answered before the first overview is dropped even when the owed reload fails');
+  var el = function () { return { innerHTML: '', textContent: '', className: '', style: {}, dataset: {}, classList: { add: function () { }, remove: function () { }, toggle: function () { } }, setAttribute: function () { }, addEventListener: function () { }, querySelector: function () { return null; }, querySelectorAll: function () { return []; }, insertAdjacentHTML: function () { }, appendChild: function () { } }; };
+  var w = { console: console, setTimeout: setTimeout, clearTimeout: clearTimeout, setInterval: function () { return 0; }, clearInterval: function () { }, Promise: Promise, JSON: JSON, Date: Date, Math: Math, String: String, Number: Number, Array: Array, Object: Object, encodeURIComponent: encodeURIComponent, location: { search: '', hash: '', href: 'x' }, history: { replaceState: function () { } } };
+  w.window = w; w.document = { getElementById: function () { return el(); }, createElement: el, querySelector: function () { return null; }, querySelectorAll: function () { return []; }, addEventListener: function () { }, body: el(), documentElement: el(), hidden: false };
+  w.OVU_CONFIG = { supabaseUrl: 'https://t.invalid', supabaseKey: 'k' };
+  w.OvuAuth = { token: function () { return 't'; }, init: function () { return new Promise(function () { }); }, session: function () { return null; } };
+  w.__ADMIN_TEST__ = {};
+  var pendingFeed = [];
+  w.fetch = function (u, o) {
+    var name = String(u).split('/rpc/')[1], body = JSON.parse(o.body || '{}');
+    if (name === 'admin_feed') return new Promise(function (res) { pendingFeed.push({ args: body, res: function (rows) { res({ ok: true, status: 200, text: function () { return Promise.resolve(JSON.stringify(rows)); } }); }, rej: function () { res({ ok: false, status: 500, text: function () { return Promise.resolve('{"message":"down"}'); } }); } }); });
+    return Promise.resolve({ ok: true, status: 200, text: function () { return Promise.resolve(JSON.stringify({ latest_run: null, held_runs: 1 })); } });
+  };
+  vm.runInContext(fs.readFileSync(path.join(root, 'admin.js'), 'utf8'), vm.createContext(w), { filename: 'admin.js' });
+  var T = w.__ADMIN_TEST__.api; T.setTab('none');
+  var tick = function () { return new Promise(function (r) { setTimeout(r, 0); }); };
+  openHarness.dashboardFeedFirstLoadFails = true;
+  var boot = T.loadFeed(false);
+  tick().then(function () { pendingFeed.shift().res([{ id: 5, title: 'cycle: 21 eligible adults', detail: { summary: { eligible: 21 } } }]); return boot; }).then(tick).then(function () {
+    var before = T.state().feed.length;
+    return T.loadOverview().then(tick).then(tick).then(function () {
+      pendingFeed.shift().rej(); /* the owed full reload fails */
+      return tick().then(tick).then(function () { return T.loadOverview(); }).then(tick).then(tick).then(function () {
+        var st = T.state();
+        check('a pre-hold boot feed is dropped by the first overview and stays dropped while the owed reload fails', before === 1 && st.feed.length === 0 && st.needsFull === true, JSON.stringify({ before: before, st: st }));
+        delete openHarness.dashboardFeedFirstLoadFails;
+      });
+    });
+  }).catch(function (e) { check('dashboard first-load failure harness ran', false, String(e && e.stack || e)); });
+})();
 (function plotGrowth() {
   console.log('the plot grows a stage per credited day and never shrinks');
   var w = scenes('2026-10-18'), S = w.OvuStore, G = w.OvuGarden;
