@@ -5,10 +5,12 @@
   home folder, put the worker key in ~/.config/rhythme/worker_key (chmod 600) and the project URL and anon key in
   ~/.config/rhythme/worker.json.
 
-  Every 20 seconds launchd runs one pass. A pass with no queued review is one small database call and no model call.
-  A pass with a review runs the five stages, each one codex exec call. The worker takes a pid lock, so passes never
+  Every 20 seconds launchd runs one pass. A pass first checks the pinned Codex CLI at RHYTHME_CODEX (an absolute
+  path; the worker never searches PATH for it), then asks for a queued review: with none, that is one small database
+  call and no model call.
+  A pass with a review runs the five stages, each one codex exec call. The worker holds an OS file lock, so passes never
   overlap, and a provider failure writes BLOCKED.json and stops all later passes until an owner clears the block on the
-  dashboard.
+  dashboard; the next review then starts only when someone presses Refresh.
 -->
 <plist version="1.0">
 <dict>
@@ -24,7 +26,8 @@
   <key>RunAtLoad</key><true/>
   <key>EnvironmentVariables</key>
   <dict>
-    <key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    <key>PATH</key><string>/usr/bin:/bin</string>
+    <key>RHYTHME_CODEX</key><string>HOME_DIR/.local/bin/codex</string>
   </dict>
   <key>StandardOutPath</key><string>HOME_DIR/.local/state/rhythme-worker/launchd.out.log</string>
   <key>StandardErrorPath</key><string>HOME_DIR/.local/state/rhythme-worker/launchd.err.log</string>
