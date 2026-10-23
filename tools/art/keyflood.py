@@ -4,7 +4,7 @@ inside the outline stays). Soft 2 px edge, green spill pulled down at the edge."
 import sys, colorsys, numpy as np
 from PIL import Image, ImageFilter
 from scipy import ndimage
-def key2(src, size=240, pad=0.94, key='green', despill='edge', nokeyhue=False, shade_s=0.22, dist=70, shade_lo=70, shade_v=0.55):
+def key2(src, size=240, pad=0.94, key='green', despill='edge', nokeyhue=False, shade_s=0.22, dist=70, shade_lo=70, shade_v=0.55, crop=True):
     im = np.asarray(Image.open(src).convert('RGB')).astype(np.float32); H, W, _ = im.shape
     edge = np.concatenate([im[:, :10], im[:, -10:]], axis=1); rowbg = np.median(edge, axis=1)  # H x 3
     rowbg = ndimage.uniform_filter1d(rowbg, 31, axis=0)
@@ -34,7 +34,8 @@ def key2(src, size=240, pad=0.94, key='green', despill='edge', nokeyhue=False, s
         lim = rgb[..., 1] + 12; rgb[..., 0] = np.where(edgeband & (rgb[..., 0] > lim) & (rgb[..., 2] > lim), np.minimum(rgb[..., 0], lim + 20), rgb[..., 0]); rgb[..., 2] = np.where(edgeband & (rgb[..., 0] > lim) & (rgb[..., 2] > lim), np.minimum(rgb[..., 2], lim), rgb[..., 2])
     else:
         m2 = np.maximum(rgb[..., 0], rgb[..., 2]); sp = edgeband & (rgb[..., 1] > m2 + 6); rgb[..., 1] = np.where(sp, m2 + 6, rgb[..., 1])
-    img = Image.fromarray(np.dstack([rgb, a * 255]).astype(np.uint8), 'RGBA'); img = img.crop(Image.fromarray((a > 0.05).astype(np.uint8) * 255).getbbox())
+    img = Image.fromarray(np.dstack([rgb, a * 255]).astype(np.uint8), 'RGBA')
+    if crop: img = img.crop(Image.fromarray((a > 0.05).astype(np.uint8) * 255).getbbox())  # crop=False keeps the canvas (tools/art/gymstrip.py)
     if size:
         w, h = img.size; sc = size * pad / max(w, h); img = img.resize((round(w * sc), round(h * sc)), Image.LANCZOS)
         c = Image.new('RGBA', (size, size), (0, 0, 0, 0)); c.paste(img, ((size - img.width) // 2, (size - img.height) // 2)); return c

@@ -72,12 +72,13 @@
     doors: [{ id: 'boutiquemat', to: 'lane', x: 53.5, y: 78.5, r: 2.5, flip: false }],
     meditator: { x: 52, y: 61, w: 8.3 }, aura: { x: 52, y: 59, w: 12.5 }, holo: { x: 56, y: 61, w: 10 }
   });
-  /* the gym's four stations are ovu-lane.js STATIONS (treadmill, bike, mat, weights): each opens the movement log */
+  /* the gym's four stations are ovu-lane.js STATIONS (treadmill, bike, mat, weights): each is a workout she does on the
+   * machine (ovu-gym.js), whose sheet also keeps the movement log as it was */
   var GYMSPOTS = [
-    { id: 'treadmill', x: 26, y: 60, label: 'Treadmill · a walk', prompt: 'Tap to log a walk', icon: 'directions_walk', wp: { x: 33, y: 58, flip: true } },
-    { id: 'bike', x: 37, y: 68, label: 'Bike · a ride', prompt: 'Tap to log a ride', icon: 'directions_bike', wp: { x: 39, y: 60, flip: true } },
-    { id: 'mat', x: 44, y: 57, label: 'Mats · a stretch', prompt: 'Tap to log a stretch', icon: 'self_improvement', wp: { x: 46, y: 56, flip: false } },
-    { id: 'weights', x: 55, y: 50, label: 'Weights · lift slowly', prompt: 'Tap to log strength work', icon: 'fitness_center', wp: { x: 55, y: 56, flip: false } }
+    { id: 'treadmill', x: 26, y: 60, label: 'Treadmill · a walk', prompt: 'Tap to walk on the treadmill', icon: 'directions_walk', wp: { x: 33, y: 58, flip: true } },
+    { id: 'bike', x: 37, y: 68, label: 'Bike · a ride', prompt: 'Tap to ride the bike', icon: 'directions_bike', wp: { x: 39, y: 60, flip: true } },
+    { id: 'mat', x: 44, y: 57, label: 'Mats · a slow flow', prompt: 'Tap to flow on the mat', icon: 'self_improvement', wp: { x: 46, y: 56, flip: false } },
+    { id: 'weights', x: 55, y: 50, label: 'Weights · lift slowly', prompt: 'Tap to lift slowly', icon: 'fitness_center', wp: { x: 55, y: 56, flip: false } }
   ];
   var GYM = inside({
     id: 'lane-gym', scene: 'lane-gym', name: 'Tideline Gym', img: 'shop-gym-2f-v1.webp', mapIcon: 'fitness_center',
@@ -149,6 +150,7 @@
       if (!at(L, 'lane-gym')) return false; if (busy()) return true;
       var st = (LN.STATIONS || []).filter(function (s) { return s.id === g.id; })[0];
       if (asleep() || !LN.openNow('gym') || !st || !R.openExercise) { LN.openPlace('gym'); return true; }
+      if (root.OvuGym && root.OvuGym.open && root.OvuGym.open(g.id)) return true; /* a workout she does on the machine (ovu-gym.js) */
       R.openExercise(st.act); if (R.moment) R.moment('gym', { quiet: true }); /* as the gym sheet's own buttons do; only her save logs anything */
       return true;
     };
