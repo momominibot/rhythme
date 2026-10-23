@@ -354,7 +354,7 @@
     cam = { z: 1, x: 0, y: 0 }; camApply(anim);
   }
   function camLocal(e) { var r = scene.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
-  function camInteractive(t) { return t.closest('.hotspot,.avatar,.prop.owned.pet,.prop.owned.tool,.poop,.camctl,.topbar,.chip,.bubble,.visitbar,.propctl,.walkpad,.minimap,.nb,.plot,button,a,input'); }
+  function camInteractive(t) { return t.closest('.hotspot,.avatar,.prop.owned.pet,.prop.owned.tool,.poop,.camctl,.topbar,.chip,.bubble,.visitbar,.propctl,.walkpad,.minimap,.nb,.plot,.tidy,button,a,input'); }
   scene.addEventListener('pointerdown', function (e) {
     if (arranging || e.pointerType === 'mouse' && e.button !== 0) return;
     camPointers.set(e.pointerId, camLocal(e));
@@ -537,7 +537,7 @@
       var sl = S.state().sleeping; if (sl && sl.prevOutfit) S.setState({ sleeping: Object.assign({}, sl, { prevOutfit: null }) }); /* her pick stands when she wakes: the clothes she went to bed in are not put back over it */
     }
     if (meditating && !meditator.classList.contains('onseat')) wearImg(meditator.querySelector('img'), meditateSrc(o), ART + 'avatar-meditate.webp'); /* the mat; a bench is redrawn by ovu-garden.js */
-    if (practice) setPose(practice.a.pose);
+    if (practice) { if (practice.a.pose) setPose(practice.a.pose); else showOutfit(wearing(), true); } /* a practice she only watches (tidy up) keeps her standing picture */
     else if (window.OvuMorning && OvuMorning.active()) OvuMorning.repose();
     else if (lastPose && avatar.classList.contains('acting')) setPose(lastPose); /* watering the garden, a minute with a plant */
     emit('outfit', o); /* a bench, the warm stone and a seated practice redraw their own sitter */
@@ -3096,15 +3096,15 @@
   function openEveryday(selId) {
     var ex = MF.explored();
     openSheet('everyday', 'Everyday mindfulness', 'Guides for things you are really doing', 'self_improvement',
-      '<div class="erin small"><img src="assets/avatars/erin/erin-chibi-face.webp" alt="Erin Lee"><div><b>Informal practice, with Erin</b><small>Pick what you are about to do for real, press Begin as you start, and let the guide walk alongside you. The guides are spoken in Erin’s voice from interim scripts; her own written scripts will replace them one by one.</small></div></div>' +
+      '<div class="erin small"><img src="assets/avatars/erin/erin-chibi-face.webp" alt="Erin Lee"><div><b>Informal practice, with Erin</b><small>Pick what you are about to do for real, press Begin as you start, and let the guide walk alongside you. Most guides are spoken in Erin’s voice from interim scripts, and a new one may start as written text; her own scripts replace them one by one.</small></div></div>' +
       (window.OvuMorning ? '<button type="button" class="act morningact" id="evMorning"><img src="' + ART + 'avatar-act-teeth.webp" alt=""><span><b>Morning start</b><small>Just after you wake · wake, brush, sip, in Erin’s voice</small></span><em><span class="ms">wb_twilight</span></em></button>' : '') +
-      '<div class="acts" id="acts">' + MF.ACTIVITIES.map(function (a) { var n = ex[a.id] || 0; return '<button type="button" class="act' + (selId === a.id ? ' on' : '') + '" data-act="' + a.id + '"><img src="' + ART + 'avatar-act-' + a.pose + '.webp" alt=""><span><b>' + esc(a.name) + '</b><small>' + esc(a.when) + ' · ' + a.minutes + ' min</small></span><em>' + (n ? '<span class="ms">check_circle</span>' + n : '<span class="ms fill">favorite</span>2') + '</em></button>'; }).join('') + '</div>' +
+      '<div class="acts" id="acts">' + MF.ACTIVITIES.map(function (a) { var n = ex[a.id] || 0; return '<button type="button" class="act' + (selId === a.id ? ' on' : '') + '" data-act="' + a.id + '"><img src="' + ART + MF.cardImg(a) + '" alt=""><span><b>' + esc(a.name) + '</b><small>' + esc(a.when) + ' · ' + a.minutes + ' min' + (a.audio === false ? ' · text guide' : '') + '</small></span><em>' + (n ? '<span class="ms">check_circle</span>' + n : '<span class="ms fill">favorite</span>2') + '</em></button>'; }).join('') + '</div>' +
       '<div class="actdetail" id="actDetail"></div>' +
       '<p class="help">Each completed practice earns 2 hearts, up to 6 a day. The point is not the points: it is two ordinary minutes, fully lived. Please only confirm practices you really did.</p>');
     function detail(id) {
       var a = MF.byId(id), v = MF.nextVariation(a), vi = a.variations.indexOf(v), n = MF.timesDone(id);
       $$('.act', body).forEach(function (b) { b.classList.toggle('on', b.dataset.act === id); });
-      $('#actDetail').innerHTML = '<div class="actcard"><div class="acthead"><img src="' + ART + 'avatar-act-' + a.pose + '.webp" alt=""><div><h3>' + esc(a.name) + '</h3><p>' + esc(a.intro) + '</p>' + (a.care ? '<p class="actcare"><span class="ms">health_and_safety</span>' + esc(a.care) + '</p>' : '') + '<small>Script ' + (vi + 1) + ' of ' + a.variations.length + ' · “' + esc(v.title) + '” · about ' + Math.max(1, Math.round(MF.totalSecs(v) / 60)) + ' min' + (n ? ' · done ' + n + ' time' + (n > 1 ? 's' : '') : ' · new to you') + '</small></div></div>' +
+      $('#actDetail').innerHTML = '<div class="actcard"><div class="acthead"><img src="' + ART + MF.cardImg(a) + '" alt=""><div><h3>' + esc(a.name) + '</h3><p>' + esc(a.intro) + '</p>' + (a.care ? '<p class="actcare"><span class="ms">health_and_safety</span>' + esc(a.care) + '</p>' : '') + '<small>Script ' + (vi + 1) + ' of ' + a.variations.length + ' · “' + esc(v.title) + '” · about ' + Math.max(1, Math.round(MF.totalSecs(v) / 60)) + ' min' + (a.audio === false ? ' · written guide, no voice yet' : '') + (n ? ' · done ' + n + ' time' + (n > 1 ? 's' : '') : ' · new to you') + '</small></div></div>' +
         '<ol class="steps">' + v.steps.map(function (s) { return '<li>' + esc(s.text) + '</li>'; }).join('') + '</ol>' +
         '<div class="row"><button type="button" class="btn primary" id="actStart" data-act="' + id + '" data-v="' + vi + '"><span class="ms">play_arrow</span>Begin as you begin</button></div></div>';
       $('#actDetail').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -3118,8 +3118,9 @@
     if (asleep()) { toast('She is asleep. Tap the bed to wake her first.', 'bedtime'); return; }
     var a = MF.byId(id); if (!a || practice) return; var v = a.variations[vi] || a.variations[0]; vi = a.variations.indexOf(v);
     if (window.OvuPodcast) OvuPodcast.pause();
-    var run = practice = { a: a, vi: vi, v: v, startedAt: Date.now(), stopped: false, audio: new Audio(), timer: null, total: MF.totalSecs(v), pre: null, hiddenMs: 0, hiddenAt: null };
-    try { var first = GUIDE + id + '-' + vi + '-0.mp3'; run.audio.src = first; run.pre = first; var pr0 = run.audio.play(); if (pr0 && pr0.catch) pr0.catch(function () { }); } catch (e) { } /* the first line starts inside the tap, which unlocks the element for the rest */
+    var voiced = a.audio !== false; /* a practice with no clips yet (tidy up) is captions and bells only: nothing is requested that is not there */
+    var run = practice = { a: a, vi: vi, v: v, startedAt: Date.now(), stopped: false, audio: voiced ? new Audio() : null, timer: null, total: MF.totalSecs(v), pre: null, hiddenMs: 0, hiddenAt: null };
+    if (voiced) try { var first = GUIDE + id + '-' + vi + '-0.mp3'; run.audio.src = first; run.pre = first; var pr0 = run.audio.play(); if (pr0 && pr0.catch) pr0.catch(function () { }); } catch (e) { } /* the first line starts inside the tap, which unlocks the element for the rest */
     /* from the Mind hub she was on the mat, hidden: bring her back before the pose, or the practice plays to an empty room
      * (four-persona review, 20 Oct, all four Codex walkthroughs) */
     endMoment();
@@ -3127,22 +3128,22 @@
     emit('activity', 'practice', id); /* as for a session: the HUD is handed over first */
     if (!practiceCurrent(run)) return;
     clearTimeout(fadeTimer); fadeTimer = null;
-    hideSheet(); hud.classList.add('on'); $('#hudTitle').textContent = a.name; setPose(a.pose); avatar.classList.add('acting'); hudClockStart((run.total || 0) * 1000);
+    hideSheet(); hud.classList.add('on'); $('#hudTitle').textContent = a.name; if (a.pose) setPose(a.pose); else restorePose(); /* no pose (tidy up): she stands and watches in her own clothes, and a moment's pose still loading is overtaken (Codex design review, 23 Oct) */ avatar.classList.add('acting'); hudClockStart((run.total || 0) * 1000);
     var chain = Promise.resolve();
     v.steps.forEach(function (s, si) {
       chain = chain.then(function () {
         if (!practiceCurrent(run)) return;
         caption(s.text); if (si) chime('bell', true);
         var t0 = Date.now();
-        return playUrl(GUIDE + id + '-' + vi + '-' + si + '.mp3', run).then(function () { return pwait(Math.max(0, s.secs * 1000 - (Date.now() - t0)), run); });
+        return (voiced ? playUrl(GUIDE + id + '-' + vi + '-' + si + '.mp3', run) : Promise.resolve()).then(function () { return pwait(Math.max(0, s.secs * 1000 - (Date.now() - t0)), run); });
       });
     });
     chain.then(function () { if (practiceCurrent(run)) askPracticeDone(true, run); });
   }
   function askPracticeDone(finished, run) {
     var p = run || practice; if (!p || practice !== p) return;
-    cancelRunner(p); hudClockStop();
-    var secs = Math.round(practiceMs(p) / 1000);
+    cancelRunner(p); hudClockStop(); emit('practiceStop', p.a.id); /* the moment the runner stops, before the save question: the broom (ovu-tidy.js) ends here, never behind the sheet (Codex design review, 23 Oct) */
+    var ms = practiceMs(p), secs = Math.round(ms / 1000); /* the boundary is judged on the milliseconds; the seconds are for the words and the entry */
     chime('bell', true); caption(finished ? 'That is the practice.' : 'Paused');
     openSheet('practiceDone', finished ? 'How was that?' : 'Stopping early', p.a.name, 'self_improvement',
       '<div class="orbwrap"><div class="orb out"></div><div class="orbtext">' + (finished ? 'Save this pause to your journal?' : 'You did about ' + Math.max(1, Math.round(secs / 60)) + ' minute' + (secs >= 90 ? 's' : '') + '. Save it?') + '</div></div>' +
@@ -3150,7 +3151,7 @@
       '<p class="help">Save it if you really did it. A mind that wandered and came back still counts: noticing is the practice. This stays between you and your room.</p>');
     function end(confirmed) {
       if (practice !== p) return;
-      if (confirmed && secs >= 30) {
+      if (confirmed && ms >= (p.a.minSecs || 30) * 1000) { /* a practice may ask for a full minute of real time (tidy up: nothing under a minute is saved, even after a guide that ran out while the app was hidden); 59.5 s rounds to 60 but is not a minute (Codex diff review) */
         try { if (!p.saved) p.saved = MF.complete(p.a.id, p.vi, secs, true, !!finished); }
         catch (e) { toast('Your practice could not be saved. Tap Yes to retry.', 'error'); return; }
       }
@@ -3169,7 +3170,7 @@
     if (!practice) return;
     var elapsed = practiceMs(practice) / 1000;
     if (elapsed >= Math.min(60, practice.total * 0.5)) { askPracticeDone(false); return; }
-    cancelRunner(practice); hudClockStop();
+    cancelRunner(practice); hudClockStop(); emit('practiceStop', practice.a.id);
     if (!session) hud.classList.remove('on'); avatar.classList.remove('acting'); restorePose(); practice = null;
     toast('Stopped. Nothing under a minute is recorded.', 'self_improvement');
   }

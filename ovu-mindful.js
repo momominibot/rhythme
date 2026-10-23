@@ -176,9 +176,33 @@
           { text: 'Circle the hips a few times each way, loosening the lower back.', secs: 60 },
           { text: 'Finish standing tall. The day can soften now.', secs: 50 }
         ] }
+      ] },
+    /* Tidy up your room (Jamie, 22 Oct 2026): a real tidy, one thing at a time, while a magical broom sweeps the picture
+     * of her room (ovu-tidy.js). No pose: she stands and watches the broom. No clips yet, so the guide is text on the bar
+     * (audio: false says so on the card and in the journal); interim text by the Rhythme team, in Erin's voice style, with
+     * the Codex copy review of 23 Oct (no chore orders, no judgement of pace, nothing promised about the outcome).
+     * Nothing under a minute of real time is saved (minSecs). */
+    { id: 'tidy', name: 'Tidy up your room', icon: 'cleaning_services', minutes: 3, pose: null, card: 'tidy-broom.webp', audio: false, minSecs: 60, when: 'Any room that needs a few minutes of care', intro: 'A few things put back where they live, one at a time, while a little broom sweeps the picture of your room.',
+      variations: [
+        { title: 'One thing at a time', steps: [
+          { text: 'Stand in the doorway, or wherever you are, and look at the room as it is. Nothing to fix yet. Just notice.', secs: 20 },
+          { text: 'If you like, choose one thing to put away. Notice its weight and texture as you lift it.', secs: 30 },
+          { text: 'Carry it to where it lives. Notice the walk, however short, and the small sound of setting it down.', secs: 35 },
+          { text: 'Choose another. The mind may start listing everything else. Let the list be, and come back to this one thing.', secs: 40 },
+          { text: 'When you are ready, stop, even if the room is not finished. Notice the space around you and let one breath come naturally.', secs: 25 }
+        ] },
+        { title: 'Clearing the floor', steps: [
+          { text: 'Before you touch anything, notice your feet on the floor and let your shoulders settle.', secs: 20 },
+          { text: 'Start with the floor. Lift one item and feel how the space under it opens.', secs: 30 },
+          { text: 'Put it where you want it to live. Notice the small sound as it settles.', secs: 30 },
+          { text: 'Carry on at this pace: one thing, one breath, one place. If your pace changes, simply notice.', secs: 45 },
+          { text: 'Pause wherever you are. Notice the room again. It can stay unfinished.', secs: 20 }
+        ] }
       ] }
   ];
   function byId(id) { return ACTIVITIES.filter(function (a) { return a.id === id; })[0] || null; }
+  /* the picture on a practice's card: her pose, or the practice's own art when she only watches (the broom) */
+  function cardImg(a) { return a.pose ? 'avatar-act-' + a.pose + '.webp' : (a.card || 'tidy-broom.webp'); }
   function explored() { return S.state()[KEY_STATE] || {}; }
   function timesDone(id) { return explored()[id] || 0; }
   /* pick the variation for now: a script marked for this part of the day wins (morning before 3 pm, evening after);
@@ -192,8 +216,8 @@
     var ex = Object.assign({}, explored()); var first = !ex[id]; ex[id] = (ex[id] || 0) + 1;
     var minutes = Math.round(secsDone / 6) / 10; /* the time she practised, not rounded up to a minute (Codex sweep, 21 Oct) */
     /* The exploration count and entry land together, or neither changes on this phone. */
-    var ev = S.add('mindfulness', S.today(), { kind: 'informal', activity: id, activityName: a.name, variation: variationIndex, minutes: minutes, completed: finished === undefined ? true : !!finished, confirmedReal: !!confirmed, guide: (a.variations[variationIndex] && a.variations[variationIndex].author === 'erin') ? 'Everyday mindfulness, Erin’s own script in her voice' : 'Everyday mindfulness, Erin’s voice (interim script)', first: first }, 'room', { statePatch: { explored: ex } });
+    var ev = S.add('mindfulness', S.today(), { kind: 'informal', activity: id, activityName: a.name, variation: variationIndex, minutes: minutes, completed: finished === undefined ? true : !!finished, confirmedReal: !!confirmed, guide: a.audio === false ? 'Everyday mindfulness, text guide (interim script)' : (a.variations[variationIndex] && a.variations[variationIndex].author === 'erin') ? 'Everyday mindfulness, Erin’s own script in her voice' : 'Everyday mindfulness, Erin’s voice (interim script)', first: first }, 'room', { statePatch: { explored: ex } });
     return { event: ev, first: first, count: ex[id] };
   }
-  root.OvuMindful = { ACTIVITIES: ACTIVITIES, byId: byId, explored: explored, timesDone: timesDone, nextVariation: nextVariation, partOfDay: partOfDay, totalSecs: totalSecs, complete: complete };
+  root.OvuMindful = { ACTIVITIES: ACTIVITIES, byId: byId, cardImg: cardImg, explored: explored, timesDone: timesDone, nextVariation: nextVariation, partOfDay: partOfDay, totalSecs: totalSecs, complete: complete };
 })(window);
