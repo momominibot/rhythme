@@ -259,6 +259,7 @@
       if (pendingAsk !== tok) return;
       if (R.asleep() || !inGym() || (R.activityNow && R.activityNow()) || !R.openExercise) { dropAsk(); return; }
       if (R.sheetOpen()) return; /* never over another sheet: asked again when it closes */
+      if (R.restoring && R.restoring()) return; /* not before her own picture is back on, so a save's moment never takes it over (Codex diff review 2, 23 Oct) */
       dropAsk(); R.openExercise(r.st.act, { minutes: mins, intro: intro, date: r.day, strengthTick: false });
     }
     if (R.sheetOpen()) R.toast('Well done. Your movement log opens when you close this.', 'fitness_center');

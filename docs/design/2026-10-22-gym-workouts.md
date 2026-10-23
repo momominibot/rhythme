@@ -163,3 +163,22 @@ kit shows in five of its eight walk frames, and its blink has faint smudges at t
   activity, bedtime reaching home and the bed sheet, and Jamie's no-float rule (every weights frame within 2% of her standing
   height on screen, feet on the strip's bottom edge). Measured at phone width: standing 78.6 px, standing frames 77.9 to
   79.4 px, feet gap 0 px; the bike rider's head is her standing head's width.
+
+## After Codex diff review 2 (HOLD: 1 P1, 2 P2; docs/design/reviews/2026-10-23-codex-gym-diff-2.md)
+
+- Restoring her own clothes keeps ownership until her own picture is really on. room.js keeps `lastCostume` (the workout
+  clothes and the picture she wore before them) after the costume is gone. Another workout begun while her own clothes still
+  load takes that earlier picture as its way back, never the workout clothes on screen. If a newer picture takes over and
+  the workout clothes are still showing 1.2 s later (`watchRestore`), she is put in the earlier picture. The gym's log offer
+  waits for `OvuRoom.restoring()` to clear, so a save moment's pose cannot cut the restore short.
+- Another tab's restore that replaces the diary is told apart even when the backup is this same diary: Replace and Delete
+  everything write a fresh token (`ovumind_db_epoch_v1`, not diary data), and `OvuStore.born()` reads it. Core check with
+  two real store instances sharing storage: an ordinary save and a merging restore keep it, a same-diary Replace and Delete
+  everything change it.
+- Her own strength-day choice stands through the form: once she ticks or unticks it, tapping Strength again (or another
+  activity and back) never restores the default over it.
+- Tests: the browser now runs the image races with the real room.js (her new pick's picture held, then failing: a second
+  workout begun meanwhile, and a pose that will not load taking over), the tick, untick and reselect sequence, Jamie's sizing
+  and no-float rule on all four machines in both kits (standing frames within 2% of her standing figure, the rider's head
+  within 3% of her standing head, the strip's bottom within a pixel of the machine's spot, no gap), and a real breathing
+  session: refused mid-workout, and dropping a waiting log offer when it starts.

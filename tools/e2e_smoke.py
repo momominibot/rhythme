@@ -235,24 +235,58 @@ async def gym_checks(browser, gate):
     await pg.click('#gpStop'); await pg.clock.run_for(2500); await pg.wait_for_timeout(200)
     s = await pg.evaluate(G)
     check("gym: Stop under a minute brings her off, back in her own clothes and seen at the treadmill's stand point; nothing is offered or written", not s["active"] and s["costume"] is None and s["src"] == "avatar-base.webp" and not s["hidden"] and not s["strip"] and s["sheet"] is None and abs(s["pos"]["x"] - 33) < 1 and abs(s["pos"]["y"] - 58) < 1 and await pg.evaluate("()=>OvuStore.list().length") == ex0, s)
+    # Jamie's rule: nobody floats and everyone keeps her size. Every frame of every machine's strip, in both kits, as drawn on
+    # screen, against her standing figure in the same kit: standing frames keep her height, the rider keeps her head size, and
+    # the strip's bottom (her feet, the mat, the bike's base) sits on the machine's spot with no gap
+    SIZE_JS = """async (on) => { const e=document.querySelector('#ownedProps .gymworker'), r=e.getBoundingClientRect(), st=OvuGym.state(), m=OvuGym.strip(st.kit, st.id), inner=document.querySelector('#sceneInner').getBoundingClientRect();
+      const load=(src)=>new Promise((res,rej)=>{ const I=new Image(); I.onload=()=>res(I); I.onerror=rej; I.src=src; });
+      function box(img, sx, w, h, band){ const c=document.createElement('canvas'); c.width=w; c.height=h; const g=c.getContext('2d'); g.drawImage(img, sx, 0, w, h, 0, 0, w, h); const d=g.getImageData(0,0,w,h).data; let top=h, bot=0;
+        for (let y=0;y<h;y++) for (let x=0;x<w;x++) if (d[(y*w+x)*4+3]>24){ if(y<top) top=y; if(y>bot) bot=y; }
+        let hw=0; const k=band==null?0.2*(bot-top+1):band; for (let y=top;y<Math.min(h,top+k);y++){ let L=-1,R=-1; for (let x=0;x<w;x++) if (d[(y*w+x)*4+3]>24){ if(L<0) L=x; R=x; } if (L>=0 && R-L+1>hw) hw=R-L+1; }
+        return {top:top, bot:bot, hw:hw}; }
+      const S=await load('assets/room/dream/avatar-'+st.kit+'.webp'), aw=parseFloat(document.querySelector('#avatar').style.width)/100*inner.width, ss=aw/S.naturalWidth, sb=box(S, 0, S.naturalWidth, S.naturalHeight);
+      const stand={fig:(sb.bot-sb.top+1)*ss, hw:sb.hw*ss};
+      const I=await load(e.querySelector('.gwa').getAttribute('src')), n=m.frames, cw=Math.round(I.naturalWidth/n), H=I.naturalHeight, s=r.width/cw, out=[];
+      for (let f=0; f<n; f++){ const b=box(I, f*cw, cw, H, 0.2*stand.fig/s); out.push({fig:(b.bot-b.top+1)*s, gap:(H-1-b.bot)*s, hw:b.hw*s}); }
+      return {kit:st.kit, id:st.id, frames:out, stand:stand, bottomOff:r.bottom-(inner.top+on.y/100*inner.height)}; }"""
+    sizes = []
+    for kit_outfit in ["base", "tudung"]:
+        await pg.evaluate("(o)=>OvuRoom.setOutfit(o, true)", kit_outfit); await pg.wait_for_timeout(300)
+        for sid in ["treadmill", "bike", "mat", "weights"]:
+            await begin('gym' + sid, 5)
+            on = await pg.evaluate("(id)=>OvuGym.STATIONS[id].on", sid)
+            sizes.append(await pg.evaluate(SIZE_JS, on))
+            await pg.click('#gpStop'); await pg.clock.run_for(2500); await pg.wait_for_timeout(300)
+    await pg.evaluate("()=>OvuRoom.setOutfit('base', true)"); await pg.wait_for_timeout(300)
+    def fits(z):
+        st = z["stand"]; fr = z["frames"]
+        if abs(z["bottomOff"]) >= 1 or any(f["gap"] >= 0.5 for f in fr): return False
+        if z["id"] in ("treadmill", "weights"): return all(abs(f["fig"] - st["fig"]) / st["fig"] < 0.02 for f in fr)
+        if z["id"] == "mat": return abs(fr[0]["fig"] - st["fig"]) / st["fig"] < 0.02  # the flow begins standing; later poses kneel and lie on the mat
+        return all(abs(f["hw"] - st["hw"]) / st["hw"] < 0.03 for f in fr)  # the rider: her head as wide as when she stands
+    check("gym: on every machine in both kits she keeps her size (standing frames within 2% of her standing figure, the rider's head within 3% of her standing head, the flow's first pose her full height) and nothing floats (the strip's bottom on the machine's spot, no gap under her feet, the mat or the bike)", len(sizes) == 8 and {z["kit"] for z in sizes} == {"yoga", "gym-tudung"} and all(fits(z) for z in sizes), [{"kit": z["kit"], "id": z["id"], "ok": fits(z), "stand": z["stand"], "off": round(z["bottomOff"], 2), "figs": [round(f["fig"], 1) for f in z["frames"]], "hws": [round(f["hw"], 1) for f in z["frames"]], "gaps": [round(f["gap"], 2) for f in z["frames"]]} for z in sizes])
     await begin('gymweights', 10)
-    # Jamie's rule: nobody floats and everyone keeps her size. Every frame of the strip, as drawn on screen, against her standing figure
-    sz = await pg.evaluate("""()=>new Promise(function(res){ var e=document.querySelector('#ownedProps .gymworker'), r=e.getBoundingClientRect(), st=OvuGym.state(), m=OvuGym.strip(st.kit, st.id), I=new Image();
-      I.onload=function(){ var n=m.frames, cw=I.naturalWidth/n, H=I.naturalHeight, c=document.createElement('canvas'); c.width=cw; c.height=H; var g=c.getContext('2d'), out=[];
-        for (var f=0; f<n; f++){ g.clearRect(0,0,cw,H); g.drawImage(I, f*cw, 0, cw, H, 0, 0, cw, H); var d=g.getImageData(0,0,cw,H).data, top=H, bot=0; for (var y=0;y<H;y++) for (var x=0;x<cw;x++) if (d[(y*cw+x)*4+3]>24){ if(y<top) top=y; if(y>bot) bot=y; } out.push({fig:(bot-top+1)*r.width/cw, gap:(H-1-bot)*r.width/cw}); }
-        var S=new Image(); S.onload=function(){ var c2=document.createElement('canvas'); c2.width=S.naturalWidth; c2.height=S.naturalHeight; var g2=c2.getContext('2d'); g2.drawImage(S,0,0); var d2=g2.getImageData(0,0,c2.width,c2.height).data, t2=c2.height, b2=0; for (var y=0;y<c2.height;y++) for (var x=0;x<c2.width;x++) if (d2[(y*c2.width+x)*4+3]>24){ if(y<t2) t2=y; if(y>b2) b2=y; }
-          var aw=parseFloat(document.querySelector('#avatar').style.width)/100*document.querySelector('#sceneInner').getBoundingClientRect().width; res({frames: out, stand: (b2-t2+1)*aw/S.naturalWidth, feetAt: r.bottom}); }; S.src='assets/room/dream/avatar-'+st.kit+'.webp'; };
-      I.src=e.querySelector('.gwa').getAttribute('src'); })""")
-    check("gym: she keeps her standing height on the machine (every weights frame within 2% of her standing figure as drawn) and nothing floats (her feet on the strip's bottom edge)", all(abs(f["fig"] - sz["stand"]) / sz["stand"] < 0.02 and f["gap"] < 0.5 for f in sz["frames"]), sz)
-    await pg.clock.run_for(65000); await pg.click('#gpStop'); await pg.clock.run_for(1600); await pg.wait_for_timeout(200)
+    await pg.clock.run_for(65000); await pg.click('#gpStop')
+    for _ in range(20):  # the offer waits until she has turned back into her own clothes
+        await pg.clock.run_for(400)
+        if await pg.evaluate("()=>OvuRoom.sheetId()==='move'"): break
+    await pg.wait_for_timeout(200)
     m = await pg.evaluate("()=>({id: OvuRoom.sheetId(), str: !!document.querySelector('#sheet [data-mact=strength][aria-pressed=true]'), min: (document.querySelector('#mvMin')||{}).value, tick: (document.querySelector('#mvStr')||{}).checked, from: (document.querySelector('#mvFrom')||{}).textContent||'', costume: OvuRoom.costume(), ex: OvuStore.list().length})")
+    tk = []
+    for step in ["#mvStr", "#sheet [data-mact=strength]", "#mvStr", "#sheet [data-mact=strength]", "#sheet [data-mact=walk]", "#sheet [data-mact=strength]"]:
+        await pg.click(step); tk.append(await pg.evaluate("()=>document.querySelector('#mvStr').checked"))
+    check("gym: in the movement log her own strength-day choice stands: ticked, it stays ticked when she taps Strength again; unticked, it stays unticked, even after choosing walking and Strength again", tk == [True, True, False, False, False, False], tk)
     await pg.click('#mvVars [data-mvar="reps"]'); await pg.click('#mvSave'); await pg.wait_for_timeout(400)
     sv = await pg.evaluate("()=>{ var e=OvuStore.list('exercise').slice(-1)[0]; return {n: OvuStore.list().length, a: e&&e.data.activity, mins: e&&e.data.minutes, strength: e&&e.data.strength}; }")
     check("gym: after a minute at the weights, Stop opens the movement log with strength chosen, 1 minute from the clock and her words; the strength day is left for her to tick; nothing was written until her Save, which writes one entry", m["id"] == "move" and m["str"] and m["min"] == "1" and m["tick"] is False and "About 1 minute on the weights" in m["from"] and m["costume"] is None and m["ex"] == ex0 and sv["n"] == ex0 + 1 and sv["a"] == "strength" and sv["mins"] == 1 and sv["strength"] is False, [m, sv])
     await pg.evaluate("()=>OvuRoom.hideSheet()")
     await begin('gymmat', 5)
     f0 = await pg.evaluate("()=>OvuGym.state().frame"); await pg.clock.run_for(5200); f1 = await pg.evaluate("()=>OvuGym.state().frame")
-    await pg.clock.run_for(5 * 60000); await pg.wait_for_timeout(200)
+    await pg.clock.run_for(5 * 60000)
+    for _ in range(20):  # the offer waits until she has turned back into her own clothes
+        if await pg.evaluate("()=>OvuRoom.sheetId()==='move'"): break
+        await pg.clock.run_for(400)
+    await pg.wait_for_timeout(200)
     e = await pg.evaluate("()=>({id: OvuRoom.sheetId(), yoga: !!document.querySelector('#sheet [data-mact=yoga][aria-pressed=true]'), min: (document.querySelector('#mvMin')||{}).value, active: OvuGym.active(), n: OvuStore.list().length})")
     await pg.evaluate("()=>OvuRoom.closeSheet()"); await pg.wait_for_timeout(300)
     n2 = await pg.evaluate("()=>OvuStore.list().length")
@@ -280,6 +314,34 @@ async def gym_checks(browser, gate):
     await pg.unroute("**/avatar-party*.webp")
     check("gym: if her own outfit's picture will not load when she changes back, she wears the picture she had on before the workout, never the yoga set, and is seen", fr["saved"] == "party" and fr["costume"] is None and fr["src"] == "avatar-sundress.webp" and not fr["hidden"], fr)
     await pg.evaluate("()=>OvuRoom.setOutfit('base', true)"); await pg.wait_for_timeout(300)
+    # her own clothes still on their way when something else happens: the requests for her new pick are held, then fail
+    held = []
+    async def hold(route): held.append(route)
+    async def fail_held():
+        for _ in range(6):
+            while held: await held.pop().abort()
+            await pg.wait_for_timeout(150)
+    await pg.route("**/avatar-cozy*.webp", hold)
+    await begin('gymtreadmill', 5)
+    await pg.evaluate("()=>OvuRoom.setOutfit('cozy')"); await pg.wait_for_timeout(200)
+    await pg.click('#gpStop'); await pg.clock.run_for(600); await pg.wait_for_timeout(200)
+    ra = await pg.evaluate("()=>({restoring: OvuRoom.restoring(), src: (document.querySelector('#avatarImg').getAttribute('src')||'').split('/').pop()})")
+    await begin('gymweights', 5)
+    rb = await pg.evaluate(G)
+    await pg.evaluate("()=>OvuGym.cancel()"); await pg.clock.run_for(300)
+    await fail_held(); await pg.clock.run_for(1500); await pg.wait_for_timeout(300)
+    rc = await pg.evaluate(G)
+    check("gym: another workout begun while her own clothes are still loading keeps the picture she wore before the first one as the way back; when her own will not load she wears that, never the workout clothes", ra["restoring"] and ra["src"] == "avatar-yoga.webp" and rb["active"] and rb["costume"] == "yoga" and not rc["active"] and rc["costume"] is None and rc["saved"] == "cozy" and rc["src"] == "avatar-base.webp" and not rc["hidden"], [ra, rb, rc])
+    await begin('gymtreadmill', 5)
+    await pg.click('#gpStop'); await pg.clock.run_for(400)
+    await pg.evaluate("()=>OvuRoom.setPose('no-such-pose')"); await pg.wait_for_timeout(500)
+    await pg.clock.run_for(1500); await pg.wait_for_timeout(300)
+    rd = await pg.evaluate(G)
+    await fail_held(); await pg.clock.run_for(1500); await pg.wait_for_timeout(300)
+    re2 = await pg.evaluate(G)
+    await pg.unroute("**/avatar-cozy*.webp")
+    check("gym: a newer picture taking over while her own clothes load (a pose that will not load either) never leaves the workout clothes on her: she wears what she had on before", rd["src"] == "avatar-base.webp" and re2["src"] == "avatar-base.webp" and re2["costume"] is None and not re2["hidden"], [rd, re2])
+    await pg.evaluate("()=>{ OvuRoom.restorePose(); OvuRoom.setOutfit('base', true); }"); await pg.wait_for_timeout(300)
     # a phone lock mid-workout: paused, time away not counted, Resume carries on
     await begin('gymtreadmill', 10)
     await pg.clock.run_for(5000)
@@ -292,12 +354,20 @@ async def gym_checks(browser, gate):
     pr0 = await pg.evaluate("()=>OvuGym.state().ms"); await pg.evaluate("()=>OvuRoom.renderProps()"); await pg.clock.run_for(2000)
     pr = await pg.evaluate(G)
     check("gym: a props rebuild keeps her on the belt with the clock running", pr["strip"] and pr["active"] and pr["st"]["ms"] > pr0 + 1500, [pr0, pr])
-    # a waiting log offer is dropped when something else starts
+    # one activity at a time: a breathing session asked for mid-workout is refused and the workout carries on
+    await pg.evaluate("()=>OvuRoom.runSession('just', 1)"); await pg.wait_for_timeout(200)
+    rf = await pg.evaluate("()=>({active: OvuGym.active(), session: OvuRoom.sessionOn(), panel: !!document.querySelector('#gpanel') && !document.querySelector('#gpanel').hidden, toast: document.querySelector('#toast').textContent})")
+    check("gym: a breathing session started mid-workout is refused with a line, and the workout carries on with its panel showing", rf["active"] and not rf["session"] and rf["panel"] and "is running" in rf["toast"], rf)
+    # a waiting log offer is dropped when a real session starts
     await pg.clock.run_for(60000); await pg.evaluate("()=>OvuRoom.openCalendar()"); await pg.wait_for_timeout(300)
     await pg.evaluate("()=>document.querySelector('#gpStop').click()"); await pg.clock.run_for(1500)  # the calendar sheet sits over the panel
-    await pg.evaluate("()=>{ OvuRoom.emit('activity', 'test', 'x'); OvuRoom.hideSheet(); }"); await pg.clock.run_for(3000); await pg.wait_for_timeout(200)
+    pw = await pg.evaluate("()=>!!OvuGym.pendingAsk()")
+    await pg.evaluate("()=>OvuRoom.runSession('just', 1)"); await pg.clock.run_for(3000); await pg.wait_for_timeout(200)
+    ps2 = await pg.evaluate("()=>({session: OvuRoom.sessionOn(), sheet: OvuRoom.sheetOpen() ? OvuRoom.sheetId() : null, ask: !!OvuGym.pendingAsk()})")
+    await pg.evaluate("()=>document.querySelector('#hudStop').click()"); await pg.clock.run_for(3000); await pg.wait_for_timeout(200)
     po = await pg.evaluate(G)
-    check("gym: a log offer waiting behind another sheet is dropped when another activity starts, so it never opens over it", not po["active"] and po["sheet"] != "move" and not await pg.evaluate("()=>OvuGym.pendingAsk()"), po)
+    check("gym: a log offer waiting behind another sheet is dropped when a breathing session starts, so it never opens over the session or after it", pw and ps2["session"] and ps2["sheet"] != "move" and not ps2["ask"] and not po["active"] and po["sheet"] != "move" and not await pg.evaluate("()=>OvuGym.pendingAsk()"), [pw, ps2, po])
+    await pg.evaluate("()=>{ if (OvuRoom.sheetOpen()) OvuRoom.hideSheet(); }")
     await begin('gymtreadmill', 10)
     await pg.clock.run_for(70000)
     await pg.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('bed'))")

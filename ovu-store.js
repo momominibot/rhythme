@@ -14,7 +14,11 @@
   var listeners = [];
   var cache = null;
   var seenRaw = null, baseText = null; /* the stored text this tab last read or wrote, and its own copy at that moment: the base of mergeStored() */
-  var REV = 'ovumind_db_rev', seenRev = null; /* a short token every save changes, so a read can tell cheaply that another tab wrote */
+  var REV = 'ovumind_db_rev', seenRev = null;
+  /* a fresh token whenever the diary is replaced as a whole (Delete everything, a restore that replaces it): another tab tells a
+     new diary from an ordinary save by it, even when a restored backup keeps the old createdAt. Not diary data */
+  var EPOCH = 'ovumind_db_epoch_v1';
+  function newEpoch() { try { localStorage.setItem(EPOCH, Date.now().toString(36) + Math.random().toString(36).slice(2, 8)); } catch (e) { } } /* a short token every save changes, so a read can tell cheaply that another tab wrote */
   function readRev() { try { return localStorage.getItem(REV); } catch (e) { return null; } }
 
   function nowIso() { return new Date().toISOString(); }
@@ -569,6 +573,7 @@
       db.profile = Object.assign(db.profile, incoming.profile);
     }
     var pf = load().profile; ['owner', 'cloud', 'consent', 'consentEvents', 'ageAttest'].forEach(function (k) { if (k in keep) pf[k] = keep[k]; else delete pf[k]; }); /* a backup never brings an account, not even an old one onto a fresh phone */
+    if (mode === 'replace') newEpoch(); /* before the save, so another tab's storage event already reads the new diary */
     save('import', mode === 'replace');
     return load().events.length;
   }
@@ -588,7 +593,7 @@
   var DAILY_LOG = /^ovuluna_daily_log_\d{4}-\d{2}-\d{2}$/;
   function clearAll() {
     try { if (root.OvuPodcast && root.OvuPodcast.forget) root.OvuPodcast.forget(); } catch (e) { } /* its page-close save would write the listening back */
-    cache = empty(); save('clear', true);
+    cache = empty(); newEpoch(); save('clear', true);
     try { localStorage.removeItem(REV); } catch (e) { } /* not diary data; another tab reads its absence as a change */
     try {
       var keys = []; for (var i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i));
@@ -645,10 +650,14 @@
   /* same-day duplicates (a sync can bring two checks for one day): the newest edit is the answer; on a tie, the later row (Codex, 21 Oct) */
   function newestFirst(a, b) { var ta = String(a.updatedAt || a.createdAt || ''), tb = String(b.updatedAt || b.createdAt || ''); return tb > ta ? 1 : tb < ta ? -1 : 0; }
   function latestOnDate(type, date) { var l = list(type, { from: date, to: date }).map(function (e, i) { return { e: e, i: i }; }).sort(function (x, y) { return newestFirst(x.e, y.e) || (y.i - x.i); }); return l.length ? l[0].e : null; }
-  /* when this diary was begun, as stored: Delete everything or a restore that replaces the diary gives a new one, and another
-     tab sees it at once (ovu-gym.js ends a workout on it, since that tab's merge keeps its own createdAt in memory) */
+  /* which diary this is, as stored: Delete everything or a restore that replaces the diary changes it, and another tab sees it
+     at once (ovu-gym.js ends a workout on it; that tab's merge keeps its own createdAt in memory). Before any replacement the
+     diary's createdAt stands in */
   function born() {
-    try { var raw = localStorage.getItem(KEY), m = raw && /"createdAt"\s*:\s*"([^"]{1,40})"/.exec(raw.slice(0, 400)); if (m) return m[1]; } catch (e) { }
+    try {
+      var e = localStorage.getItem(EPOCH); if (e) return 'e:' + e;
+      var raw = localStorage.getItem(KEY), m = raw && /"createdAt"\s*:\s*"([^"]{1,40})"/.exec(raw.slice(0, 400)); if (m) return m[1];
+    } catch (err) { }
     return load().createdAt || null;
   }
   root.OvuStore = { registerMerge: registerMerge, born: born,

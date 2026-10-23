@@ -590,24 +590,43 @@
     };
     preloadBlink(id); img.src = ART + 'avatar-' + id + '.webp';
   }
+  /* the last workout's clothes and the picture she wore before them, kept after the costume is gone until her own picture is
+   * really on: a newer picture taking over (a pose, a blink), an image that will not load, or another workout begun while it
+   * loads can never leave the workout clothes on her (Codex diff reviews, 22 and 23 Oct) */
+  var lastCostume = null, restoreTimer = 0;
+  function leftOn() { return !costume && !!lastCostume && spriteKey() === lastCostume.outfit && lastCostume.outfit !== savedOutfit(); }
   function dressFor(id, done) {
     if (!/^[a-z0-9-]{1,32}$/.test(id || '') || asleep()) return false;
     if (trying) endTryOn(true);
-    var k = spriteKey(); /* the picture she wears now: the way back if her own outfit's picture will not load (Codex diff review, 22 Oct) */
-    costume = { outfit: id, at: L.id, from: k && k.indexOf('act-') !== 0 ? ART + 'avatar-' + k + '.webp' : '' }; quietMoment();
+    var k = spriteKey(); /* the picture she wears now is the way back, unless it is still the last workout's clothes on their way off */
+    var from = leftOn() ? lastCostume.back : k && k.indexOf('act-') !== 0 ? ART + 'avatar-' + k + '.webp' : '';
+    clearTimeout(restoreTimer); lastCostume = null;
+    costume = { outfit: id, at: L.id, from: from }; quietMoment();
     turnInto(id, done); return true;
   }
   /* back into her own saved clothes (a pick made meanwhile wins). silent: at once, no turn (leaving the room, bedtime) */
   function undress(silent, done) {
     if (!costume) return false;
-    var own = savedOutfit(), back = costume.from; costume = null;
+    var own = savedOutfit(), back = costume.from, rec = lastCostume = { outfit: costume.outfit, back: back, gen: 0, pending: !silent }; costume = null;
     if (silent) {
       ++imgGen; finishTwirl(); quietMoment();
       if (!avatar.classList.contains('hidden') || (avatarImg.getAttribute('src') || '').indexOf('/avatar-act-') < 0) wearOwn(own, back);
-      if (done) done(true); return true;
+      watchRestore(rec); if (done) done(true); return true;
     }
-    turnInto(own, function (ok) { if (!ok) wearOwn(own, back); if (done) done(ok); }); return true;
+    turnInto(own, function (ok) { rec.pending = false; if (!ok) wearOwn(own, back); if (done) done(ok); });
+    rec.gen = imgGen; watchRestore(rec); return true;
   }
+  /* while this restore still owns her picture and is loading, it waits; once anything else took her picture, or nothing put her
+     own on, the workout clothes give way to the picture she wore before the workout */
+  function watchRestore(rec) {
+    clearTimeout(restoreTimer);
+    restoreTimer = setTimeout(function () {
+      if (lastCostume !== rec || !leftOn()) return;
+      if (rec.pending && rec.gen === imgGen) { watchRestore(rec); return; } /* her own picture is still on its way */
+      ++imgGen; finishTwirl(); avatarImg.src = rec.back || ART + 'avatar-' + savedOutfit() + '.webp';
+    }, 1200);
+  }
+  function restoring() { return !!(lastCostume && lastCostume.pending && lastCostume.gen === imgGen); }
   /* her own picture; if it will not load (a pick made during the workout, offline), the picture she wore before the workout:
      never the workout clothes (Codex diff review, 22 Oct) */
   function wearOwn(own, back) {
@@ -2722,7 +2741,7 @@
     if (meditating && !session) exitMeditation();
     var today = S.today(), from = EX.addDays(today, -6), wk = EX.week(S.list('exercise', { from: from, to: today }), today);
     var ctx = EX.periodContext(S.byDate(today)), recent = S.list('exercise', { from: from, to: today }).reverse().slice(0, 10);
-    var st = { act: null, variant: null, noTick: opt.strengthTick === false }; /* a few curls at the gym never pre-confirm a whole strength day: she ticks it herself (Codex reviews, 22 Oct) */
+    var st = { act: null, variant: null, noTick: opt.strengthTick === false, tick: null }; /* a few curls at the gym never pre-confirm a whole strength day: she ticks it herself; once she ticks or unticks it, her choice stands through the form (Codex reviews, 22 and 23 Oct) */
     var preMin = Math.round(Number(opt.minutes)); if (!(preMin >= 1 && preMin <= EX.MAX_MINUTES)) preMin = 30;
     var preDay = typeof opt.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(opt.date) && opt.date <= today ? opt.date : today;
     openSheet('move', 'Movement', 'Log what you did and see your week', 'directions_run',
@@ -2752,14 +2771,14 @@
       if (!a) { f.hidden = true; return; }
       if (!EX.variant(a.id, st.variant)) st.variant = a.variants.length === 1 ? a.variants[0].id : null;
       box.innerHTML = a.variants.map(function (v) { var it = EX.intensityOf(v.met, v.effort); return '<button type="button" class="mvvar' + (v.id === st.variant ? ' on' : '') + '" data-mvar="' + v.id + '" aria-pressed="' + (v.id === st.variant) + '"><b>' + esc(v.label) + '</b><small>' + (v.met === null ? 'No MET value' : v.met + ' MET') + ' · ' + EX.WORD[it] + '</small></button>'; }).join('');
-      f.hidden = false; str.checked = !!a.strength && !st.noTick; /* pre-ticked for strength work, never locked: the person decides */
+      f.hidden = false; str.checked = st.tick !== null ? st.tick : !!a.strength && !st.noTick; /* pre-ticked for strength work, never locked: the person decides */
       preview();
     }
     var actsBox = $('#mvActs');
     actsBox.addEventListener('click', function (e) { var b = e.target.closest('[data-mact]'); if (!b) return; chime('tap'); st.act = b.dataset.mact; st.variant = null; $$('.mvact', actsBox).forEach(function (x) { var on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); }); renderVars(); });
     $('#mvVars').addEventListener('click', function (e) { var b = e.target.closest('[data-mvar]'); if (!b) return; chime('tap'); st.variant = b.dataset.mvar; $$('.mvvar', this).forEach(function (x) { var on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); }); preview(); });
     $('#mvQuick').addEventListener('click', function (e) { var b = e.target.closest('[data-min]'); if (!b) return; $('#mvMin').value = b.dataset.min; $$('.chipbtn', this).forEach(function (x) { x.classList.toggle('on', x === b); }); preview(); });
-    $('#mvStr').addEventListener('change', function () { st.noTick = false; preview(); });
+    $('#mvStr').addEventListener('change', function () { st.tick = this.checked; preview(); });
     $('#mvMin').addEventListener('input', function () { var v = this.value; $$('#mvQuick .chipbtn').forEach(function (x) { x.classList.toggle('on', x.dataset.min === v); }); preview(); });
     $('#mvSave').addEventListener('click', function () {
       try {
@@ -3701,7 +3720,7 @@
     els: { scene: scene, inner: inner, avatar: avatar, avatarImg: avatarImg, hud: hud, meditator: meditator, holo: holo, props: $('#ownedProps'), visitBar: $('#visitBar') },
     applyLayout: applyLayout, buildHotspots: buildHotspots, placeAvatar: placeAvatar, walkTo: walkTo, tap: tap, hotspot: hotspot,
     openSheet: openSheet, openDiary: openDiary, openEveryday: openEveryday, closeSheet: closeSheet, hideSheet: hideSheet, toast: toast, chime: chime, esc: esc, afterSave: afterSave, renderDeck: renderDeck, openShop: openShop, shopAct: shopAct, STORES: STORES, openWardrobe: openWardrobe, setOutfit: setOutfit, outfitLocked: outfitLocked,
-    OUTFITS: OUTFITS, wearing: wearing, savedOutfit: savedOutfit, dressFor: dressFor, undress: undress, costume: function () { return costume ? costume.outfit : null; }, tryOn: tryOn, tryAcc: tryAcc, endTryOn: endTryOn, keepTryOn: keepTryOn, tryingOn: tryingOn, savedAcc: savedAcc, spriteKey: spriteKey, fitFor: fitFor, reduced: function () { return reduced; }, updateGreeting: updateGreeting, openPlus: openPlus, openExercise: openExercise, openMoveGuide: openMoveGuide,
+    OUTFITS: OUTFITS, wearing: wearing, savedOutfit: savedOutfit, dressFor: dressFor, undress: undress, restoring: restoring, costume: function () { return costume ? costume.outfit : null; }, tryOn: tryOn, tryAcc: tryAcc, endTryOn: endTryOn, keepTryOn: keepTryOn, tryingOn: tryingOn, savedAcc: savedAcc, spriteKey: spriteKey, fitFor: fitFor, reduced: function () { return reduced; }, updateGreeting: updateGreeting, openPlus: openPlus, openExercise: openExercise, openMoveGuide: openMoveGuide,
     moment: moment, endMoment: endMoment, freezeWalk: freezeWalk, enterMeditation: enterMeditation, exitMeditation: exitMeditation, meditating: function () { return meditating; }, meditateSrc: function () { return meditateSrc(wornOutfit()); }, runSession: runSession, sessionOn: function () { return !!session; }, practiceOn: function () { return !!practice; },
     activityNow: activityNow, busyLine: busyLine, refuseBusy: refuseBusy,
     asleep: asleep, stopEverything: stopEverything, poseSrc: poseSrc, shopOpenNow: shopOpenNow,
