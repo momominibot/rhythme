@@ -4142,13 +4142,13 @@ async def main():
             except Exception: pass
             await pm.click('#winMusic'); await pm.wait_for_timeout(1200)
             m1 = await pm.evaluate("()=>Object.assign(OvuMusic.state(), {btn: document.querySelector('#winMusic') && document.querySelector('#winMusic').getAttribute('aria-pressed'), label: document.querySelector('#winMusic .mlabel') && document.querySelector('#winMusic .mlabel').textContent, focus: document.activeElement && document.activeElement.id, chip: document.querySelector('#musicChip').getAttribute('aria-pressed')})")
-            check("music: Music on from the window sheet starts the home tune with the context running; the button stays focused and reads pressed, the chip too", m1["on"] is True and m1["mode"] == "play" and m1["theme"] == "home" and m1["running"] is True and m1["ctx"] == "running" and m1["btn"] == "true" and m1["label"] == "Music on" and m1["focus"] == "winMusic" and m1["chip"] == "true" and m1["layers"] == 1, m1)
+            check("music: Music on from the window sheet starts the home tune with the context running; the button stays focused and reads pressed, the chip too", m1["on"] is True and m1["mode"] == "play" and m1["theme"] == "home" and m1["running"] is True and m1["ctx"] == "running" and m1["btn"] == "true" and m1["label"] == "Music on" and m1["focus"] == "winMusic" and m1["chip"] == "true" and m1["layers"] == 1 and m1["track"] and m1["track"]["src"] == "assets/music/home.mp3" and m1["track"]["playing"], m1)
             await pm.keyboard.press("Escape"); await pm.wait_for_timeout(300)
             await travel_m('garden'); await pm.wait_for_timeout(400)
             m2 = await pm.evaluate("()=>OvuMusic.state()")
             await travel_m('cave'); await pm.wait_for_timeout(1300)
             m3 = await pm.evaluate("()=>OvuMusic.state()")
-            check("music: the garden brings its own theme on a crossfade; the cave plays its own soft ambient theme (Jamie, 22 Oct)", m2["theme"] == "garden" and m2["mode"] == "play" and m3["mode"] == "play" and m3["theme"] == "cave", {"garden": m2, "cave": m3})
+            check("music: the garden brings its own recorded tune on a crossfade (Jamie, 23 Oct: a different melody per scene); the cave plays its own soft drawn drone (22 Oct)", m2["theme"] == "garden" and m2["mode"] == "play" and m2["track"] and m2["track"]["src"] == "assets/music/garden.mp3" and m3["mode"] == "play" and m3["theme"] == "cave" and m3["track"] is None, {"garden": m2, "cave": m3})
             await travel_m('home'); await pm.wait_for_timeout(1500)
             SILENT = re.search(r"var SILENT = '([^']+)'", open(os.path.join(ROOT, "ovu-morning.js")).read()).group(1)
             dk = await pm.evaluate("""async(sil)=>{var out={};

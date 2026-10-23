@@ -3078,6 +3078,16 @@ function scenes(todayIso) {
   var gsrc = fs.readFileSync(path.join(root, 'ovu-garden.js'), 'utf8');
   check('the garden watering minute says nothing aloud', !/new Audio\(|garden-water-|\.mp3/.test(gsrc));
 })();
+(function musicTracksAreCC0() {
+  console.log('music (Jamie, 23 Oct): a livelier recorded tune of its own for each scene, every one CC0 and on disk; the cave keeps its drawn drone');
+  var w = fresh(); w.OvuRoom = null; vm.runInContext(fs.readFileSync(path.join(root, 'ovu-music.js'), 'utf8'), w, { filename: 'ovu-music.js' });
+  var M = w.OvuMusic, withTrack = Object.keys(M.THEMES).filter(function (k) { return M.THEMES[k].track; });
+  check('six scenes have their own recorded track, all different, and the cave has none', withTrack.sort().join() === 'farm,garden,harbour,home,plaza,street' && !M.THEMES.cave.track && withTrack.map(function (k) { return M.THEMES[k].track; }).filter(function (t, i, a) { return a.indexOf(t) === i; }).length === 6);
+  check('every track is an MP3 on disk under assets/music, between 0.5 and 3 MB', withTrack.every(function (k) { var f = path.join(root, M.MUSIC_DIR + M.THEMES[k].track); return /\.mp3$/.test(f) && fs.existsSync(f) && fs.statSync(f).size > 500000 && fs.statSync(f).size < 3000000; }));
+  check('every track has a credit: title, author, its OpenGameArt page and CC0, matched in docs/music-credits.md', withTrack.every(function (k) { var c = M.CREDITS[k]; return c && c.title && c.by && /^https:\/\/opengameart\.org\/content\//.test(c.page) && c.licence === 'CC0'; }) && withTrack.every(function (k) { return fs.readFileSync(path.join(root, 'docs/music-credits.md'), 'utf8').indexOf(M.CREDITS[k].page) > -1; }));
+  var msrc = fs.readFileSync(path.join(root, 'ovu-music.js'), 'utf8');
+  check('the music players are never counted as a voice (no ducking under itself) and live outside assets/audio (the voice mute never touches them)', /el\.__ovuMusic\) return false;/.test(msrc) && M.MUSIC_DIR === 'assets/music/' && M.audible({ tagName: 'AUDIO', __ovuMusic: true, paused: false, ended: false, muted: false, volume: 1, src: 'assets/music/home.mp3' }) === false);
+})();
 (function plazaHasOnlyRealPeople() {
   console.log('the plaza shows only real people (Jamie, 23 Oct: no sample neighbours; nobody there means an empty plaza)');
   var w = scenes('2026-10-18'), C = w.OvuCommunity;
@@ -5281,7 +5291,7 @@ var summarised = false;
   check('init wires the room once: a second call does nothing, and the state reports off until she opts in', first === true && second === false && hooks.layout.length === 1 && hooks.travel.length === 1 && hooks.boot.length === 1 && M.state().on === false && M.state().mode === 'off');
   check('the module pays no hearts, writes no diary entry, names no model and uses no em dash', !/OvuRewards|\.award\(|S\.add\(|OvuStore\.add\(|addMany\(/.test(src) && !/gpt|claude|doubao|deepseek|gemini/i.test(src) && src.indexOf('—') < 0);
   var rs = fs.readFileSync(path.join(root, 'room.js'), 'utf8'), rh = fs.readFileSync(path.join(root, 'room.html'), 'utf8'), ss = fs.readFileSync(path.join(root, 'ovu-sound.js'), 'utf8');
-  check('the two controls are native buttons named Music with aria-pressed, the icon hidden from assistive technology, and the window help says what music is', /id="musicChip" type="button" aria-label="Music" aria-pressed="false"><span class="ms" aria-hidden="true">/.test(rh) && /id="winMusic" aria-pressed="/.test(rs) && /Music is a soft tune drawn in the browser/.test(rs) && rh.indexOf('<script src="ovu-music.js"></script>') > rh.indexOf('<script src="ovu-voicemute.js"></script>'));
+  check('the two controls are native buttons named Music with aria-pressed, the icon hidden from assistive technology, and the window help says what music is', /id="musicChip" type="button" aria-label="Music" aria-pressed="false"><span class="ms" aria-hidden="true">/.test(rh) && /id="winMusic" aria-pressed="/.test(rs) && /Music is a cheerful tune of its own for each place/.test(rs) && /Music credits/.test(rs) && rh.indexOf('<script src="ovu-music.js"></script>') > rh.indexOf('<script src="ovu-voicemute.js"></script>'));
   check('the kit shares its graph without resuming it, resumes only on request, and knows the cast', /function graph\(\)/.test(ss) && !/function graph\(\)[^\n]*resume/.test(ss) && /function resume\(\)/.test(ss) && !!w.OvuSound.KIT.cast && /play\('cast'\)/.test(fs.readFileSync(path.join(root, 'ovu-harbour.js'), 'utf8')) && /play\('boop'\)/.test(fs.readFileSync(path.join(root, 'ovu-seats.js'), 'utf8')) && /R\.emit\('travel', target, T\)/.test(fs.readFileSync(path.join(root, 'ovu-walk.js'), 'utf8')) && typeof w.OvuBreathTap.running === 'function');
 })();
 
