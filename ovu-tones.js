@@ -212,7 +212,7 @@
     setTimeout(function () { releaseAfter(g); }, (secs + 2) * 1000);
   }
   function stopNodes(fade) { if (!ctx || !voice) return; var g = voice; voice = null; letGo(g, fade == null ? ENV.releaseSeconds : fade); }
-  function stop() { gen++; if (!playing && !voice && !bed) { notify(); return; } stopNodes(); stopBed(2); playing = null; clearTimer(); notify(); } /* Stop takes the stage: a refusal of an earlier start can still let its graphs go, but touches nothing newer */
+  function stop() { gen++; clearTimer(); if (!playing && !voice && !bed) { notify(); return; } stopNodes(); stopBed(2); playing = null; notify(); } /* Stop takes the stage: a refusal of an earlier start can still let its graphs go, but touches nothing newer. The timer clears first, so a timed quiet sit (no sound) ended early cannot stand her up later (Codex round three; the bug predates this branch) */
   /* a bed's loop: seeded noise, made loopable, then scaled so its loudest sample is a half (the overlap can lift a peak a little) */
   function bedNoise(kind, len, ov, seed) { var d = loopable(noise(kind, len + ov, seed), len, ov), peak = 0; for (var i = 0; i < len; i++) peak = Math.max(peak, Math.abs(d[i])); if (peak > 0) for (var j = 0; j < len; j++) d[j] = d[j] * 0.5 / peak; return d; }
   function noiseBuffer(kind) {

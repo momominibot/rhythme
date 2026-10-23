@@ -32,7 +32,7 @@ SCENARIOS = [
     {'name': 'switch-pitch-bed-pitch', 'seconds': 100, 'script': [{'t': 0, 'op': 'start', 'arg': 528}, {'t': 20, 'op': 'start', 'arg': 963}, {'t': 40, 'op': 'bed', 'arg': 'rain'}, {'t': 60, 'op': 'start', 'arg': 174}, {'t': 80, 'op': 'stop'}], 'quiet': [], 'loud': [15, 35, 55, 75]},
     {'name': 'slider-up-down-zero-in-fade', 'seconds': 60, 'script': [{'t': 0, 'op': 'start', 'arg': 528}, {'t': 15, 'op': 'volume', 'arg': 1}, {'t': 30, 'op': 'volume', 'arg': 0.25}, {'t': 45, 'op': 'stop'}, {'t': 47, 'op': 'volume', 'arg': 0}], 'quiet': [49, 50, 51], 'loud': [10, 25, 40]},
     {'name': 'switch-off-in-fade', 'seconds': 30, 'script': [{'t': 0, 'op': 'start', 'arg': 528}, {'t': 20, 'op': 'stop'}, {'t': 21, 'op': 'off'}], 'quiet': [22, 23, 24], 'loud': [10, 19]},
-    {'name': 'bed-slider-zero-in-fade-in', 'seconds': 30, 'script': [{'t': 0, 'op': 'bed', 'arg': 'stream'}, {'t': 1, 'op': 'volume', 'arg': 0}], 'quiet': [3, 4, 5, 10, 20], 'loud': []},
+    {'name': 'bed-slider-zero-in-fade-in', 'seconds': 30, 'script': [{'t': 0, 'op': 'bed', 'arg': 'stream'}, {'t': 1, 'op': 'volume', 'arg': 0}], 'quiet': [3, 4, 5, 10, 20], 'loud': [0]},
     {'name': 'switch-on-again-in-fade', 'seconds': 30, 'script': [{'t': 0, 'op': 'start', 'arg': 639}, {'t': 15, 'op': 'stop'}, {'t': 16, 'op': 'off'}, {'t': 17, 'op': 'on'}, {'t': 17.5, 'op': 'volume', 'arg': 0.25}], 'quiet': [18, 19, 20, 21], 'loud': [10]}
 ]
 # the sound switch coming back on mid-leaving must not revive the ended tone (Codex, round two): the hushed graph stays hushed

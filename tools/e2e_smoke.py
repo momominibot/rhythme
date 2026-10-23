@@ -2022,6 +2022,21 @@ async def main():
             await go_to('barn'); await go_to('farm')
             ta = await page.evaluate("()=>({playing: OvuTones.playing(), sitting: OvuTones.sitting()})")
             check("a tone left humming stops, and she is up, as soon as she leaves the spring", tb == 396 and ta["playing"] is None and not ta["sitting"], {"before": tb, "after": ta})
+            # a timed quiet sit (no sound) stood up early must leave no timer behind (Codex round three, 23 Oct): back in, Just sit for ten minutes, Stand up, Just sit again untimed
+            await go_to('barn'); await go_to('cave')
+            await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('warmstone'))")
+            try: await page.wait_for_function("()=>OvuRoom.sheetOpen() && OvuRoom.sheetId && OvuRoom.sheetId()==='cavetones'", timeout=12000)
+            except Exception: pass
+            await page.click("#toneSnd .chipbtn[data-snd='none']"); await page.click("#toneMin .chipbtn[data-min='10']"); await page.click("#toneActs [data-tone=start]"); await page.wait_for_timeout(300)
+            q1 = await page.evaluate("()=>({sitting: OvuTones.sitting(), rem: OvuTones.remaining(), playing: OvuTones.playing()})")
+            await page.click('#springStop'); await page.wait_for_timeout(300)
+            await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('warmstone'))")
+            try: await page.wait_for_function("()=>OvuRoom.sheetOpen() && OvuRoom.sheetId && OvuRoom.sheetId()==='cavetones'", timeout=12000)
+            except Exception: pass
+            await page.click("#toneSnd .chipbtn[data-snd='none']"); await page.click("#toneMin .chipbtn[data-min='0']"); await page.click("#toneActs [data-tone=start]"); await page.wait_for_timeout(300)
+            q2 = await page.evaluate("()=>({sitting: OvuTones.sitting(), rem: OvuTones.remaining(), playing: OvuTones.playing()})")
+            await page.click('#springStop'); await page.wait_for_timeout(300)
+            check("a timed quiet sit stood up early leaves no timer: the next untimed sit has no remaining time", q1["sitting"] and q1["playing"] is None and q1["rem"] is not None and 590 <= q1["rem"] <= 600 and q2["sitting"] and q2["rem"] is None, {"q1": q1, "q2": q2})
             await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('farmgate'))")
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout === 'garden'", timeout=12000)
             except Exception: pass
