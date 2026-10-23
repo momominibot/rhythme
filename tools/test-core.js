@@ -6044,4 +6044,32 @@ var summarised = false;
   check('the sweep ends on practiceStop, activity, layout, clear and import, sleep and a replaced floor; pauses by the frame clamp while hidden; writes through the farm lock, after a re-read, before any puff', /R\.on\('practiceStop', end\)/.test(tj) && /R\.on\('activity', function \(kind, id\) \{ end\(\);/.test(tj) && /R\.on\('layout', function \(\) \{ end\(\); draw\(\); \}\)/.test(tj) && /reason === 'clear' \|\| reason === 'import'/.test(tj) && /if \(sweep && R\.asleep && R\.asleep\(\)\) \{ end\(\); return; \}/.test(tj) && /FMl\.locked\(S, go\)/.test(tj) && /S\.reload\(\)/.test(tj) && /Math\.min\(0\.1, \(t - last\) \/ 1000\)/.test(tj) && tj.indexOf('puffAt(target.x') > tj.indexOf("(S.commit || S.setState)({ tidy: r.state })"));
 })();
 
+(function migrationsSafeupdate() {
+  console.log('2mbs. migrations survive Supabase safeupdate (23 Oct): no DELETE or UPDATE without a WHERE stays live');
+  /* Supabase loads the safeupdate guard for every API session, so a bare DELETE inside a function the dashboard calls fails
+     there ("DELETE requires a WHERE clause") while local Postgres and CI pass. Take each function's last definition across
+     the migrations; any bare DELETE or UPDATE left in it must be rewritten by a later migration's replace(...) of that
+     exact statement on pg_get_functiondef of the same function. */
+  var dir = path.join(root, 'supabase', 'migrations'), files = fs.readdirSync(dir).filter(function (f) { return /\.sql$/.test(f); }).sort();
+  var last = {}, open = [];
+  files.forEach(function (f, i) {
+    var t = fs.readFileSync(path.join(dir, f), 'utf8'), re = /create\s+or\s+replace\s+function\s+([a-z_."]+)\s*\(/gi, m;
+    while ((m = re.exec(t))) {
+      var tagM = /\sas\s+(\$[a-z_]*\$)/i.exec(t.slice(m.index)); if (!tagM) continue;
+      var start = m.index + tagM.index + tagM[0].length, end = t.indexOf(tagM[1], start); if (end < 0) continue;
+      last[m[1].toLowerCase()] = { file: i, name: f, body: t.slice(start, end) };
+    }
+  });
+  var texts = files.map(function (f) { return fs.readFileSync(path.join(dir, f), 'utf8'); });
+  Object.keys(last).forEach(function (fn) {
+    var d = last[fn], re = /\b(delete\s+from\s+[a-z_."]+\s*;|update\s+[a-z_."]+\s+set\s+[^;]*;)/gi, m;
+    while ((m = re.exec(d.body))) {
+      var stmt = m[1]; if (/^update/i.test(stmt) && /\swhere\s/i.test(stmt)) continue;
+      var fixed = texts.slice(d.file + 1).some(function (t) { return t.indexOf("'" + stmt + "'") > -1 && t.toLowerCase().indexOf("pg_get_functiondef('" + fn) > -1; });
+      if (!fixed) open.push(fn + ' (' + d.name + '): ' + stmt);
+    }
+  });
+  check('no function\'s live definition keeps a bare DELETE or UPDATE: each is rewritten by a later migration, as staff.metrics_build is by 20261023100000 (safeupdate refuses them through the API)', open.length === 0 && files.indexOf('20261023100000_metrics_build_safeupdate.sql') > -1 && Object.keys(last).length > 20, open.join(' | ') + ' functions=' + Object.keys(last).length);
+})();
+
 process.on('beforeExit', function () { if (summarised) return; summarised = true; Object.keys(openHarness).forEach(function (k) { check('async harness ' + k + ' finished', false, 'its promises never settled'); }); console.log('\n' + passes + ' passed, ' + fails + ' failed'); process.exit(fails ? 1 : 0); });
