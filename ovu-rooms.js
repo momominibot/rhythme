@@ -73,7 +73,7 @@
   function whyText(j) { var w = j && j.why; if (w === 'text') return PROBLEMS[j.problem] || PROBLEMS.word; return WHY[w] || 'That did not go through. Please try again.'; }
 
   /* the same rules the server keeps (plaza.text_problem); the core suite checks both against one list of cases */
-  var LINK = /(https?:|www\.|[a-z0-9-]+\.(com|net|org|io|ly|gg|app|info|xyz|link|site|online|shop|store|biz)\b|[a-z0-9-]{3,}\.(co|me|sg|uk|au|ph|my|in|id|us|ca|de|fr|tv|ai|so|to|cc)\b)/;
+  var LINK = /(https?:|www\.|[a-z0-9-]+\.[a-z]{2,}\/[a-z0-9]|[a-z0-9-]+\.(com|net|org|io|ly|gg|app|dev|info|xyz|link|site|online|shop|store|biz|health|care|clinic|life|live|world|today|blog|page|club|fun|art|space|tech|news)\b|[a-z0-9-]{3,}\.(co|me|sg|uk|au|ph|my|in|id|us|ca|de|fr|tv|ai|so|to|cc|nz|hk|jp)\b)/;
   var MSG_WORDS = { cunt: 'word', whore: 'word', slut: 'word', nudes: 'word', onlyfans: 'word', porn: 'word', nazi: 'word', hitler: 'word',
     telegram: 'contact', whatsapp: 'contact', kik: 'contact', wechat: 'contact', discord: 'contact', snapchat: 'contact' };
   function squash(s) { return String(s == null ? '' : s).replace(/\s+/g, ' ').replace(/^ | $/g, ''); }
@@ -103,7 +103,10 @@
     med: ['ibuprofen', 'paracetamol', 'acetaminophen', 'panadol', 'aspirin', 'naproxen', 'mefenamic', 'ponstan', 'tranexamic', 'codeine', 'tramadol', 'metformin',
       'letrozole', 'clomid', 'clomiphene', 'progesterone', 'estrogen', 'oestrogen', 'estradiol', 'oestradiol', 'testosterone', 'hrt', 'inositol', 'spironolactone',
       'vitex', 'berberine', 'semaglutide', 'ozempic', 'wegovy', 'tirzepatide', 'mounjaro', 'sertraline', 'fluoxetine', 'antidepressant', 'antidepressants',
-      'the pill', 'supplement', 'supplements', 'pills', 'tablets', 'painkillers'],
+      'the pill', 'supplement', 'supplements', 'pills', 'tablets', 'painkillers', 'insulin', 'antibiotic', 'antibiotics', 'medication', 'medications',
+      'medicine', 'medicines', 'meds', 'drug', 'drugs', 'dose', 'doses', 'steroid', 'steroids', 'birth control', 'contraceptive', 'contraceptives', 'hormones',
+      'vitamin', 'vitamins', 'melatonin', 'magnesium', 'folic acid', 'ashwagandha', 'cbd', 'antihistamine', 'antihistamines', 'laxative', 'laxatives',
+      'prednisone', 'levothyroxine', 'misoprostol', 'mifepristone'],
     news: ["i'm pregnant", 'im pregnant', 'i am pregnant', "we're pregnant", 'we are pregnant', "i'm expecting", 'i am expecting', "we're expecting", 'we are expecting',
       'bfp', 'big fat positive', 'got my positive', "it's a girl", "it's a boy", 'its a girl', 'its a boy', 'gender reveal', 'pregnancy announcement',
       'birth announcement', 'baby is here']
@@ -112,7 +115,7 @@
   function hasPhrase(f, list) { return list.some(function (p) { return f.indexOf(' ' + p.replace(/-/g, ' ') + ' ') > -1; }); }
   var DOSE = / [0-9]+ ?(mg|mcg|iu|ml|g|tablets?|pills?|capsules?|caps|drops?|puffs?|units?) /, EVERY = / every [0-9]+ ?(hours?|hrs?|h|days?) /,
     TIMES = / ([0-9]+|once|twice|three|four) times? (a|per) day /, TIMES2 = / (once|twice) (a|per) day /,
-    ACT = / (take|taking|start|starting|stop|stopping|try|use|double|increase|up|skip|quit|buy|swap|switch) /;
+    ACT = / (take|taking|start|starting|stop|stopping|try|use|double|increase|up|skip|quit|buy|swap|switch|avoid|reduce|lower|halve|drop|cut|add) /;
   function holdWhy(s, noNews) {
     var f = flat(s);
     if (hasPhrase(f, HOLD.care)) return 'care';
@@ -166,7 +169,7 @@
    * the same, so an old feed never lingers. */
   var missing = false, broken = false, seen = false, probing = null, lastUid = null, wordsHash = '';
   var groups = null, rooms = null, view = null, feed = null, drafts = {}, busy = {}, gens = { groups: 0, rooms: 0, feed: 0 }, els = { groups: null, rooms: null };
-  var timers = [];
+  var timers = [], stick = false;
 
   function esc(s) { return R.esc ? R.esc(s) : String(s == null ? '' : s); }
   function noop() { }
@@ -190,6 +193,9 @@
   function mutedList() { var m = S.state().roomsMuted; return m && m.uid === uid() && Array.isArray(m.handles) ? m.handles : []; }
   function unmuted(rows) { var mute = mutedList(); return rows.filter(function (m) { return m.mine || mute.indexOf(m.handle) < 0; }); }
   function setRows(rows) { feed.rows = rows; feed.msgs = unmuted(rows); }
+  /* a fresh look after something she did changed the window (Off, Block, a message sent): replies already on their way
+     are dropped, and the next look asks for the whole window */
+  function refetch() { gens.feed++; busy.feed = false; if (feed) feed.seen = null; return loadFeed(); }
   /* the shapes this phone draws; anything else is a malformed answer and the rooms hide */
   function okGroup(x) { return !!x && typeof x === 'object' && typeof x.id === 'string' && typeof x.name === 'string'; }
   function okRoom(x) { return !!x && typeof x === 'object' && typeof x.id === 'string' && typeof x.name === 'string'; }
@@ -202,7 +208,9 @@
   }
   /* reading stopped (signed out, card gone or hidden, paused, under 18): no messages, no writing, no late replies */
   var DENIED = { signin: 1, card: 1, hidden: 1, paused: 1, adult: 1, off: 1 };
-  function dropFeed() { view = null; feed = null; gens.feed++; busy.feed = false; }
+  function closeRoomSheet() { if (doc.getElementById('rmSheet') && R.sheetOpen && R.sheetOpen()) R.closeSheet(); }
+  /* the open room goes, with any sheet of the rooms (a report, a care or hold card, Room chat) and any reply still on its way */
+  function dropFeed() { view = null; feed = null; gens.feed++; busy.feed = false; closeRoomSheet(); }
   function forget() { if (groups || rooms || view || feed) { groups = null; rooms = null; dropFeed(); gens.groups++; gens.rooms++; busy = {}; paint(); } }
 
   /* one request for one account, with one deadline; cancelled if another account is signed in before it leaves or when
@@ -263,9 +271,9 @@
     var v = visit(), u = uid(), room = view;
     if (!v || !allowed() || !room || !rooms || !rooms.read) return Promise.resolve();
     if (busy.feed) return Promise.resolve();
-    /* the cursor is the newest revision she has: a message shown after a check, or changed, comes back with a new one */
-    var g = ++gens.feed, had = feed && feed.room === room && feed.visit === v.visit ? feed : null, after = had && had.rev ? had.rev : null; busy.feed = true;
-    return rpc('plaza_room_feed', { p_server: v.server, p_visit: v.visit, p_room: room, p_after: after }, u).then(function (j) {
+    /* she sends the fingerprint of the window she has: the server answers `same` with no rows, or the whole window as it is now */
+    var g = ++gens.feed, had = feed && feed.room === room && feed.visit === v.visit ? feed : null, seen = had && had.seen ? had.seen : null; busy.feed = true;
+    return rpc('plaza_room_feed', { p_server: v.server, p_visit: v.visit, p_room: room, p_seen: seen }, u).then(function (j) {
       var now = visit();
       if (g !== gens.feed || uid() !== u || view !== room || !now || now.visit !== v.visit || minor()) return;
       if (!j || typeof j.ok !== 'boolean') { malformed(); return; }
@@ -275,10 +283,10 @@
         else if (feed) feed.why = j.why;
         paint(); return;
       }
-      if (!Array.isArray(j.ids) || !Array.isArray(j.messages) || !j.messages.every(okMsg) || (j.entry != null && typeof j.entry !== 'string')) { malformed(); return; }
-      var rows = mergeFeed(had ? had.rows : [], j, []), rev = Math.max((had && had.rev) || 0, Number(j.rev) || 0);
-      if (rows.length < Math.min(j.ids.length, SHOWN)) rev = 0; /* a message came back into view below the cursor (an unblock): the whole window next time */
-      feed = { room: room, visit: v.visit, rows: rows, msgs: unmuted(rows), rev: rev, joined: !!j.joined && !!j.entry, entry: j.joined && j.entry ? j.entry : null,
+      if (!Array.isArray(j.ids) || !Array.isArray(j.messages) || !j.messages.every(okMsg) || typeof j.seen !== 'string' || (j.entry != null && typeof j.entry !== 'string')) { malformed(); return; }
+      var same = j.same === true && !!had && had.seen === j.seen, rows = same ? had.rows : mergeFeed([], j, []);
+      if (!same && rows.length !== Math.min(j.ids.length, SHOWN)) { malformed(); return; } /* one snapshot on the server: every id has its row */
+      feed = { room: room, visit: v.visit, rows: rows, msgs: unmuted(rows), seen: j.seen, joined: !!j.joined && !!j.entry, entry: j.joined && j.entry ? j.entry : null,
         people: j.people, capacity: j.capacity, open: j.open !== false, mode: j.mode === 'live' ? 'live' : 'review' };
       paint();
     }, failed).catch(malformed).then(function () { if (g === gens.feed) busy.feed = false; });
@@ -410,7 +418,8 @@
       var t = li.querySelector('[data-at]'); if (t) t.textContent = ago(t.getAttribute('data-at'));
     });
     Object.keys(have).forEach(function (id) { if (!keep[id]) have[id].remove(); });
-    if (nearBottom || ol.children.length > before) ol.scrollTop = ol.scrollHeight;
+    if (nearBottom || before === 0 || stick) ol.scrollTop = ol.scrollHeight; /* someone reading further up stays where she is */
+    stick = false;
   }
   function paint() { paintGroups(); paintRooms(); if (root.OvuToday && root.OvuToday.noteRooms) root.OvuToday.noteRooms(); }
 
@@ -445,7 +454,16 @@
     var text = box.value, room = view, r = roomById(room), p = textProblem(text), v = visit();
     if (msg) msg.textContent = '';
     if (p) { if (msg) msg.textContent = PROBLEMS[p]; return; }
-    if (!rooms || !rooms.talk) { askChat(function () { send(); }); return; }
+    if (!rooms || !rooms.talk) {
+      /* a yes that arrives later sends only this message, from this room, still unchanged in the box (Codex round 2, B1) */
+      var pend = { uid: uid(), visit: v && v.visit, room: room, text: text };
+      askChat(function () {
+        var b = els.rooms && els.rooms.querySelector('#rmText'), now = visit();
+        if (allowed() && uid() === pend.uid && now && now.visit === pend.visit && view === pend.room && b && b.value === pend.text) send();
+        else R.toast('Room chat is on. Tap Send when you are ready.', 'forum');
+      });
+      return;
+    }
     /* what this message is for, fixed now: the account, the visit, the room and her entry to it. A sheet confirmed later
        sends only if all four still hold (Codex diff review, 22 Oct, item 2) */
     var ctx = { uid: uid(), visit: v && v.visit, room: room, entry: entryFor(room), text: text };
@@ -474,8 +492,9 @@
       if (drafts[ctx.room] === ctx.text) drafts[ctx.room] = '';
       var b = here && els.rooms.querySelector('#rmText'); if (b && b.value === ctx.text) { b.value = ''; left(); }
       if (here && feed && feed.room === ctx.room && feed.visit === ctx.visit && j.message) {
-        setRows(mergeFeed(feed.rows, { ids: feed.rows.map(function (m) { return m.id; }).concat([j.message.id]), messages: [j.message] }, [])); paint();
+        setRows(mergeFeed(feed.rows, { ids: feed.rows.map(function (m) { return m.id; }).concat([j.message.id]), messages: [j.message] }, [])); stick = true; paint();
       }
+      if (here) refetch();
       if (j.held) R.toast(j.held_why === 'review' ? 'Sent. It shows once someone on the Rhythme team has read it.' : 'Sent for a check. Only you can see it until someone on the Rhythme team has read it.', 'hourglass_top');
     }, function (e) { if (!(e && e.cancelled)) { failed(e); if (still(ctx) && msg) msg.textContent = 'Could not reach the rooms. Your words are still here; try again.'; } }).catch(malformed).then(function () { if (btn) btn.disabled = false; });
   }
@@ -508,6 +527,7 @@
     sh.querySelector('#rmChatNo').addEventListener('click', function () { R.closeSheet(); });
     sh.querySelector('#rmChatOn').addEventListener('click', function () {
       var ok = sh.querySelector('#rmChatOk').checked, m = sh.querySelector('#rmChatMsg');
+      if (!allowed() || uid() !== u || !rooms || !rooms.read) { R.closeSheet(); return; }
       if (!ok) { m.textContent = WHY.consent; return; }
       rpc('plaza_chat_on', { p_notice: noticeV(), p_hash: wordsHash || null, p_device: device() || null, p_opt_in: true, p_expect: card, p_seen: seen }, u).then(function (j) {
         if (uid() !== u) return;
@@ -525,14 +545,16 @@
     return rpc('plaza_chat_off', { p_notice: noticeV(), p_device: device() || null }, u).then(function (j) {
       if (uid() !== u || !j || !j.ok) return;
       try { if (root.OvuConsent && root.OvuConsent.withdraw) root.OvuConsent.withdraw('plaza_chat', 'you', { sent: true }); } catch (e) { }
-      if (rooms) rooms.talk = false;
-      if (feed) setRows(feed.rows.filter(function (m) { return !m.mine; }));
+      if (rooms) { rooms.talk = false; if (j.chat_event) rooms.chat_event = j.chat_event; }
+      if (feed) { setRows(feed.rows.filter(function (m) { return !m.mine; })); refetch(); }
       paint(); R.toast('Room chat is off. Your messages were deleted.', 'forum');
     });
   }
   function messageMenu(id) {
     var m = feed && feed.msgs.filter(function (x) { return String(x.id) === String(id); })[0]; if (!m || m.mine) return;
-    var u = uid();
+    var u = uid(), room0 = feed.room;
+    /* every button checks she may still read this room on this account; a refusal or an age change closes the sheet */
+    function still0() { if (allowed() && uid() === u && feed && feed.room === room0 && rooms && rooms.read) return true; R.closeSheet(); return false; }
     var sh = rmSheet('roomMsg', m.name || 'A message', 'Report, mute or block', 'flag',
       '<blockquote class="rmquote"></blockquote><p class="frcue"><span class="ms" aria-hidden="true">spa</span>Thank you for looking after the plaza.</p>' +
       '<fieldset class="rmreasons"><legend>What is wrong?</legend>' + REASONS.map(function (x, i) { return '<label><input type="radio" name="rmReason" value="' + x[0] + '"' + (i ? '' : ' checked') + '> ' + esc(x[1]) + '</label>'; }).join('') + '</fieldset>' +
@@ -542,6 +564,7 @@
     sh.querySelector('.rmquote').textContent = m.body;
     var say_ = function (t) { sh.querySelector('#rmMenuMsg').textContent = t; };
     sh.querySelector('#rmReport').addEventListener('click', function () {
+      if (!still0()) return;
       var reason = (sh.querySelector('input[name="rmReason"]:checked') || {}).value, blk = sh.querySelector('#rmAlsoBlock').checked;
       rpc('plaza_report_message', { p_message: Number(m.id), p_reason: reason, p_block: blk }, u).then(function (j) {
         if (uid() !== u) return;
@@ -550,16 +573,18 @@
       }, function (e) { if (!(e && e.cancelled)) say_('Could not reach the rooms. Check the connection and try again.'); });
     });
     sh.querySelector('#rmMute').addEventListener('click', function () {
+      if (!still0()) return;
       var list = mutedList().slice(); if (list.indexOf(m.handle) < 0) list.push(m.handle);
       S.setState({ roomsMuted: { uid: u, handles: list.slice(-200) } });
       if (feed) setRows(feed.rows);
       R.closeSheet(); paint(); R.toast('Muted on this phone. She is not told.', 'volume_off');
     });
     sh.querySelector('#rmBlock').addEventListener('click', function () {
+      if (!still0()) return;
       rpc('social_block', { p_handle: m.handle }, u).then(function (j) {
         if (uid() !== u) return;
         if (j && j.ok === false) { say_(whyText(j)); return; }
-        R.closeSheet(); R.toast('Blocked. She is not told.', 'block'); if (feed) setRows(feed.rows.filter(function (x) { return x.mine || x.handle !== m.handle; })); paint(); loadFeed();
+        R.closeSheet(); R.toast('Blocked. She is not told.', 'block'); if (feed) setRows(feed.rows.filter(function (x) { return x.mine || x.handle !== m.handle; })); paint(); refetch();
       }, function (e) { if (!(e && e.cancelled)) say_('Could not reach the rooms. Check the connection and try again.'); });
     });
   }
@@ -594,7 +619,7 @@
       var lastVisit = null;
       root.OvuPlaza.onChange(function () {
         var v = visit(), key = v ? v.visit : null;
-        if (key !== lastVisit) { lastVisit = key; gens.rooms++; gens.feed++; busy.rooms = busy.feed = false; rooms = null; view = null; feed = null; paint(); if (key) kick(); }
+        if (key !== lastVisit) { lastVisit = key; gens.rooms++; busy.rooms = false; rooms = null; dropFeed(); paint(); if (key) kick(); }
         else paintGroups();
       });
     }
@@ -604,6 +629,6 @@
   R.on('boot', mount);
   X.attach = attach; X.kick = kick; X.chatOff = chatOff; X.openRoom = openRoom; X.probe = probe; /* Plaza friends asks before it draws its Room chat row */
   X.available = function () { return !missing && !broken && seen && !minor(); };
-  X.state = function () { return { missing: missing, broken: broken, groups: groups ? groups.slice() : null, rooms: rooms, view: view, feed: feed ? { room: feed.room, joined: feed.joined, entry: feed.entry, msgs: feed.msgs.slice(), rev: feed.rev, mode: feed.mode } : null, timers: timers.length }; };
+  X.state = function () { return { missing: missing, broken: broken, groups: groups ? groups.slice() : null, rooms: rooms, view: view, feed: feed ? { room: feed.room, joined: feed.joined, entry: feed.entry, msgs: feed.msgs.slice(), seen: feed.seen, mode: feed.mode } : null, timers: timers.length }; };
   X.poll = function () { lastKick = 0; return Promise.all([loadGroups(), loadRooms()]).then(function () { return loadFeed(); }); }; /* what the timers do, for the smoke suite */
 })(typeof window !== 'undefined' ? window : this);

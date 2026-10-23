@@ -336,12 +336,34 @@ def room_scenarios(c):
     return seen
 
 
+def commit_order(c):
+    """An approval that takes its revision first but commits after a newer message: a reader who looked in between still
+    gets the shown message on her next look (Codex diff review round 2, item 3). No lock is involved: the sessions
+    interleave by commit order alone, which a revision cursor misses and the window fingerprint does not."""
+    O = person(c, 'Ona')
+    c.execute("insert into staff.admin_accounts (user_id, email, role) values (%s, 'owner-order@example.invalid', 'owner')", [O['id']])
+    A = chatter(c, 'Aki', 'everyone', 'everyone-chat'); B = chatter(c, 'Ben', 'everyone', 'everyone-chat'); Rd = chatter(c, 'Rio', 'everyone')
+    s0 = Session(); m = s0.call(A['id'], 'select public.plaza_say(%s, %s, false)', [A['entry'], 'waiting first']); s0.c.commit(); s0.c.close()
+    mid = int(m['message']['id'])
+    c.execute("update public.plaza_flags set value = 'live' where key = 'mode'")
+    s1 = Session(); d = s1.call(O['id'], 'select public.admin_plaza_decide(%s, %s)', [mid, 'show'])  # open: its revision is taken, not committed
+    s2 = Session(); s2.call(B['id'], 'select public.plaza_say(%s, %s, false)', [B['entry'], 'newer and shown']); s2.c.commit(); s2.c.close()
+    s3 = Session(); f1 = s3.call(Rd['id'], 'select public.plaza_room_feed(%s, %s, %s, null)', ['everyone', Rd['visit'], 'everyone-chat']); s3.c.commit()
+    s1.c.commit(); s1.c.close()
+    f2 = s3.call(Rd['id'], 'select public.plaza_room_feed(%s, %s, %s, %s)', ['everyone', Rd['visit'], 'everyone-chat', f1.get('seen')]); s3.c.commit(); s3.c.close()
+    c.execute("update public.plaza_flags set value = 'review' where key = 'mode'")
+    rows = [int(x['id']) for x in (f2.get('messages') or [])]
+    return (d.get('ok') is True and mid not in f1.get('ids', []) and mid in f2.get('ids', []) and mid in rows, {'decide': d, 'first': f1.get('ids'), 'second': f2.get('ids'), 'rows': rows})
+
+
 def main_rooms(mutate, dry):
     print('Plaza rooms and room chat races on a local copy (two real sessions each)')
     c = fresh(rooms=True)
     for name, (ok, detail, waited) in room_scenarios(c).items():
         check('race: ' + name.replace('_', ' '), ok, detail)
         check('race: ' + name.replace('_', ' ') + ', the second session waited on a lock', waited, detail)
+    ok, detail = commit_order(c)
+    check('order: an approval that commits after a newer message still reaches a reader who looked in between', ok, detail)
     c.close()
     if mutate:
         print('the same races with social.lock() a no-op and the membership lock taken out of staff.plaza_sweep()')

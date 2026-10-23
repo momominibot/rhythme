@@ -143,8 +143,8 @@ create table if not exists public.plaza_room_presence (
 create index if not exists plaza_room_presence_room on public.plaza_room_presence (room);
 
 -- a message belongs to her plaza card, so withdrawing Plaza friends, 18+ or a removed card deletes it with the card.
--- `rev` is new on insert and on every change of status (shown, held, hidden): phones ask for rows with a higher rev than
--- they have seen, so a message shown after newer ones were written still reaches every reader (Codex diff review, 3)
+-- `rev` is new on insert and on every change of status (shown, held, hidden); the feed's fingerprint covers each visible
+-- id with its rev, so any change to the window, in whatever order it commits, reaches every reader (Codex diff review)
 create sequence if not exists public.plaza_messages_rev_seq;
 create table if not exists public.plaza_messages (
   id bigserial primary key,
@@ -196,6 +196,12 @@ insert into public.plaza_hold_phrases (phrase, kind) values
   ('vitex', 'med'), ('berberine', 'med'), ('semaglutide', 'med'), ('ozempic', 'med'), ('wegovy', 'med'), ('tirzepatide', 'med'),
   ('mounjaro', 'med'), ('sertraline', 'med'), ('fluoxetine', 'med'), ('antidepressant', 'med'), ('antidepressants', 'med'),
   ('the pill', 'med'), ('supplement', 'med'), ('supplements', 'med'), ('pills', 'med'), ('tablets', 'med'), ('painkillers', 'med'),
+  ('insulin', 'med'), ('antibiotic', 'med'), ('antibiotics', 'med'), ('medication', 'med'), ('medications', 'med'), ('medicine', 'med'),
+  ('medicines', 'med'), ('meds', 'med'), ('drug', 'med'), ('drugs', 'med'), ('dose', 'med'), ('doses', 'med'), ('steroid', 'med'),
+  ('steroids', 'med'), ('birth control', 'med'), ('contraceptive', 'med'), ('contraceptives', 'med'), ('hormones', 'med'),
+  ('vitamin', 'med'), ('vitamins', 'med'), ('melatonin', 'med'), ('magnesium', 'med'), ('folic acid', 'med'), ('ashwagandha', 'med'),
+  ('cbd', 'med'), ('antihistamine', 'med'), ('antihistamines', 'med'), ('laxative', 'med'), ('laxatives', 'med'), ('prednisone', 'med'),
+  ('levothyroxine', 'med'), ('misoprostol', 'med'), ('mifepristone', 'med'),
   ('i''m pregnant', 'news'), ('im pregnant', 'news'), ('i am pregnant', 'news'), ('we''re pregnant', 'news'), ('we are pregnant', 'news'),
   ('i''m expecting', 'news'), ('i am expecting', 'news'), ('we''re expecting', 'news'), ('we are expecting', 'news'), ('bfp', 'news'),
   ('big fat positive', 'news'), ('got my positive', 'news'), ('it''s a girl', 'news'), ('it''s a boy', 'news'), ('its a girl', 'news'),
@@ -281,7 +287,7 @@ begin
   if char_length(t) > 280 then return 'long'; end if;
   low := replace(lower(translate(t, '’‘', '''''')), 'findahelpline.com', ' '); -- the one address the help card itself names
   if low ~ '[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}' or low ~ '(^|[^a-z0-9])@[a-z0-9_.]{2,}' then return 'contact'; end if;
-  if low ~ '(https?:|www\.|[a-z0-9-]+\.(com|net|org|io|ly|gg|app|info|xyz|link|site|online|shop|store|biz)\y|[a-z0-9-]{3,}\.(co|me|sg|uk|au|ph|my|in|id|us|ca|de|fr|tv|ai|so|to|cc)\y)' then return 'link'; end if;
+  if low ~ '(https?:|www\.|[a-z0-9-]+\.[a-z]{2,}/[a-z0-9]|[a-z0-9-]+\.(com|net|org|io|ly|gg|app|dev|info|xyz|link|site|online|shop|store|biz|health|care|clinic|life|live|world|today|blog|page|club|fun|art|space|tech|news)\y|[a-z0-9-]{3,}\.(co|me|sg|uk|au|ph|my|in|id|us|ca|de|fr|tv|ai|so|to|cc|nz|hk|jp)\y)' then return 'link'; end if;
   for run in select m[1] from regexp_matches(low, '(\+?[0-9][0-9 ().-]{6,}[0-9])', 'g') as m loop
     if char_length(regexp_replace(run, '[^0-9]', '', 'g')) >= 8 and run !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' then return 'contact'; end if;
   end loop;
@@ -305,7 +311,7 @@ begin
      or f ~ ' [0-9]+ ?(mg|mcg|iu|ml|g|tablets?|pills?|capsules?|caps|drops?|puffs?|units?) '
      or f ~ ' every [0-9]+ ?(hours?|hrs?|h|days?) ' or f ~ ' ([0-9]+|once|twice|three|four) times? (a|per) day ' or f ~ ' (once|twice) (a|per) day '
      or (exists (select 1 from public.plaza_hold_phrases h where h.kind = 'med' and position(' ' || h.phrase || ' ' in f) > 0)
-         and f ~ ' (take|taking|start|starting|stop|stopping|try|use|double|increase|up|skip|quit|buy|swap|switch) ') then return 'advice'; end if;
+         and f ~ ' (take|taking|start|starting|stop|stopping|try|use|double|increase|up|skip|quit|buy|swap|switch|avoid|reduce|lower|halve|drop|cut|add) ') then return 'advice'; end if;
   if coalesce(p_no_news, false) and exists (select 1 from public.plaza_hold_phrases h where h.kind = 'news' and position(' ' || h.phrase || ' ' in f) > 0) then return 'news'; end if;
   return null;
 end $$;
@@ -396,7 +402,7 @@ begin
     'card', (select s.handle from public.social_profiles s where s.user_id = uid),
     'rooms', (select coalesce(jsonb_agg(jsonb_build_object('id', r.id, 'name', r.name, 'blurb', r.blurb, 'kind', r.kind, 'capacity', r.capacity,
         'open', r.open and s.open and plaza.chat_on(), 'no_news', r.no_news, 'people', plaza.room_count(r.id),
-        'last_at', (select max(m.at) from public.plaza_messages m where m.room = r.id and m.status = 'shown' and m.at > clock_timestamp() - interval '24 hours')) order by r.sort), '[]'::jsonb)
+        'last_at', (select max(m.at) from public.plaza_messages m where m.room = r.id and m.status = 'shown' and plaza.shows(m, uid))) order by r.sort), '[]'::jsonb)
       from public.plaza_rooms r join public.plaza_servers s on s.id = r.server where r.server = p_server));
 end $$;
 
@@ -441,12 +447,14 @@ begin
   return jsonb_build_object('ok', true);
 end $$;
 
--- a room's latest messages, read-only, for anyone who may read in that group (a peek or the room she is in). `p_after`
--- is the highest rev the phone has: rows created or changed since come back in full; `ids` always lists the latest
--- visible ids, so a phone drops what was hidden, blocked, withdrawn or expired since.
-create or replace function public.plaza_room_feed(p_server text, p_visit uuid, p_room text, p_after bigint default null) returns jsonb
+-- a room's latest messages, read-only, for anyone who may read in that group (a peek or the room she is in). Each look
+-- reads the whole visible window (the latest 40) in one statement, so ids, rows and fingerprint share one snapshot.
+-- `seen` fingerprints the window (each id with its rev): a phone that sends the one it has gets `same` and no rows when
+-- nothing changed, and the whole window, every row as it is now, when anything did (a new message, one shown after a
+-- check, hidden, blocked, withdrawn or expired), in whatever order those changes committed (Codex diff review round 2)
+create or replace function public.plaza_room_feed(p_server text, p_visit uuid, p_room text, p_seen text default null) returns jsonb
 language plpgsql security definer set search_path = '' as $$
-declare uid uuid := auth.uid(); why text; r public.plaza_rooms%rowtype; ids bigint[]; e uuid;
+declare uid uuid := auth.uid(); why text; r public.plaza_rooms%rowtype; e uuid; v_rows jsonb; v_ids jsonb; v_seen text;
 begin
   if uid is null then raise exception 'sign in first' using errcode = '42501'; end if;
   perform social.lock(uid); -- a withdrawal or pause of her account cannot land between these checks and the rows
@@ -456,15 +464,15 @@ begin
   if why is not null then return jsonb_build_object('ok', false, 'why', why); end if;
   select * into r from public.plaza_rooms where id = p_room and server = p_server;
   if r.id is null then return jsonb_build_object('ok', false, 'why', 'closed'); end if;
-  select array_agg(x.id order by x.id) into ids from (
-    select m.id from public.plaza_messages m where m.room = r.id and plaza.shows(m, uid) order by m.id desc limit 40) x;
+  with w as (select m from public.plaza_messages m where m.room = r.id and plaza.shows(m, uid) order by m.id desc limit 40)
+  select coalesce(jsonb_agg(plaza.row(w.m, uid) order by (w.m).id), '[]'::jsonb), coalesce(jsonb_agg((w.m).id order by (w.m).id), '[]'::jsonb),
+         md5(coalesce(string_agg((w.m).id::text || '.' || (w.m).rev::text, ',' order by (w.m).id), ''))
+    into v_rows, v_ids, v_seen from w;
   select x.entry into e from public.plaza_room_presence x where x.user_id = uid and x.room = r.id and x.server = p_server and x.visit = p_visit;
   return jsonb_build_object('ok', true, 'room', r.id, 'people', plaza.room_count(r.id), 'capacity', r.capacity, 'mode', case when plaza.live() then 'live' else 'review' end,
     'open', r.open and plaza.chat_on() and coalesce((select s.open from public.plaza_servers s where s.id = p_server), false),
-    'joined', e is not null, 'entry', e, 'ids', to_jsonb(coalesce(ids, '{}')),
-    'rev', (select max(m.rev) from public.plaza_messages m where m.id = any (coalesce(ids, '{}'))),
-    'messages', (select coalesce(jsonb_agg(plaza.row(m, uid) order by m.id), '[]'::jsonb) from public.plaza_messages m
-                  where m.id = any (coalesce(ids, '{}')) and m.rev > coalesce(p_after, 0)));
+    'joined', e is not null, 'entry', e, 'ids', v_ids, 'seen', v_seen, 'same', coalesce(v_seen = p_seen, false),
+    'messages', case when v_seen = p_seen then '[]'::jsonb else v_rows end);
 end $$;
 
 -- say something in the room her entry names. p_hold: her phone's warning-sign rules matched and she chose to send it for
@@ -531,16 +539,16 @@ begin
 end $$;
 create or replace function public.plaza_chat_off(p_notice integer default 1, p_device text default null) returns jsonb
 language plpgsql security definer set search_path = '' as $$
-declare uid uuid := auth.uid();
+declare uid uuid := auth.uid(); ev bigint;
 begin
   if uid is null then raise exception 'sign in first' using errcode = '42501'; end if;
   perform social.lock(uid);
-  if public.consent_allows(uid, 'plaza_chat') then
-    insert into public.consent_events (user_id, purpose, action, notice_version, method, device_id, client_at)
-      values (uid, 'plaza_chat', 'withdraw', greatest(coalesce(p_notice, 1), 1), 'you', left(coalesce(p_device, ''), 64), now());
-  end if;
+  -- every Off is recorded, also when Room chat was already off, so a Room chat form opened before it is stale
+  insert into public.consent_events (user_id, purpose, action, notice_version, method, device_id, client_at)
+    values (uid, 'plaza_chat', 'withdraw', greatest(coalesce(p_notice, 1), 1), 'you', left(coalesce(p_device, ''), 64), now())
+    returning id into ev;
   delete from public.plaza_messages where author = uid; -- also when no grant was on record, so nothing of hers is left
-  return jsonb_build_object('ok', true);
+  return jsonb_build_object('ok', true, 'chat_event', ev);
 end $$;
 
 -- report a message she can see in her group now; each account counts once; three different people hide it at once
@@ -646,11 +654,11 @@ revoke all on function plaza.guard_chat_grant(), plaza.chat_on(), plaza.live(), 
 revoke all on function staff.plaza_queue(text), staff.plaza_decide(bigint, text, uuid) from public, anon, authenticated;
 grant execute on function staff.plaza_queue(text), staff.plaza_decide(bigint, text, uuid) to rhythme_staff_fn;
 revoke all on function public.plaza_rooms_list(text, uuid), public.plaza_room_join(text, uuid, text), public.plaza_room_leave(uuid),
-  public.plaza_room_feed(text, uuid, text, bigint), public.plaza_say(uuid, text, boolean), public.plaza_chat_on(integer, text, text, boolean, uuid, bigint),
+  public.plaza_room_feed(text, uuid, text, text), public.plaza_say(uuid, text, boolean), public.plaza_chat_on(integer, text, text, boolean, uuid, bigint),
   public.plaza_chat_off(integer, text), public.plaza_report_message(bigint, text, boolean), public.plaza_join(text),
   public.admin_plaza_messages(text), public.admin_plaza_decide(bigint, text) from public, anon;
 grant execute on function public.plaza_rooms_list(text, uuid), public.plaza_room_join(text, uuid, text), public.plaza_room_leave(uuid),
-  public.plaza_room_feed(text, uuid, text, bigint), public.plaza_say(uuid, text, boolean), public.plaza_chat_on(integer, text, text, boolean, uuid, bigint),
+  public.plaza_room_feed(text, uuid, text, text), public.plaza_say(uuid, text, boolean), public.plaza_chat_on(integer, text, text, boolean, uuid, bigint),
   public.plaza_chat_off(integer, text), public.plaza_report_message(bigint, text, boolean), public.plaza_join(text),
   public.admin_plaza_messages(text), public.admin_plaza_decide(bigint, text) to authenticated;
 
@@ -663,7 +671,7 @@ select cron.schedule('rhythme-plaza-chat-sweep', '7 * * * *', 'select plaza.swee
 --   drop trigger if exists consent_plaza_chat_grant_guard on public.consent_events;
 --   drop function if exists public.admin_plaza_decide(bigint, text), public.admin_plaza_messages(text), staff.plaza_decide(bigint, text, uuid),
 --     staff.plaza_queue(text), public.plaza_report_message(bigint, text, boolean), public.plaza_chat_off(integer, text),
---     public.plaza_chat_on(integer, text, text, boolean, uuid, bigint), public.plaza_say(uuid, text, boolean), public.plaza_room_feed(text, uuid, text, bigint),
+--     public.plaza_chat_on(integer, text, text, boolean, uuid, bigint), public.plaza_say(uuid, text, boolean), public.plaza_room_feed(text, uuid, text, text),
 --     public.plaza_room_leave(uuid), public.plaza_room_join(text, uuid, text), public.plaza_rooms_list(text, uuid);
 --   drop schema if exists plaza cascade;
 --   drop sequence if exists public.plaza_messages_rev_seq (after the table);

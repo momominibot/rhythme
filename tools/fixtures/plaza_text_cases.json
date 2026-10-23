@@ -112,6 +112,26 @@
   {
    "text": "x.com/mei",
    "problem": "link"
+  },
+  {
+   "text": "t.me/alice",
+   "problem": "link"
+  },
+  {
+   "text": "t.co/hello",
+   "problem": "link"
+  },
+  {
+   "text": "example.health",
+   "problem": "link"
+  },
+  {
+   "text": "I need some self care today",
+   "problem": null
+  },
+  {
+   "text": "half/half and 1/2 a day",
+   "problem": null
   }
  ],
  "hold": [
@@ -222,6 +242,36 @@
   },
   {
    "text": "my doctor said to stop worrying",
+   "noNews": false,
+   "hold": null
+  },
+  {
+   "text": "Take insulin before meals",
+   "noNews": false,
+   "hold": "advice"
+  },
+  {
+   "text": "Stop taking antibiotics",
+   "noNews": false,
+   "hold": "advice"
+  },
+  {
+   "text": "You should try melatonin",
+   "noNews": false,
+   "hold": "advice"
+  },
+  {
+   "text": "Avoid ibuprofen on an empty stomach",
+   "noNews": false,
+   "hold": "advice"
+  },
+  {
+   "text": "my meds make me sleepy",
+   "noNews": false,
+   "hold": null
+  },
+  {
+   "text": "I stopped the pill last year",
    "noNews": false,
    "hold": null
   }

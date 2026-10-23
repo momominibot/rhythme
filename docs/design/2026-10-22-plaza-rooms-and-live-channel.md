@@ -217,3 +217,26 @@ who scrolled up to the bottom; the staff Plaza reports notice still says staff n
 
 Browser suite on this machine at load 30 to 48: 493 passed, 2 failed, both outside the rooms (the wider-world map
 opening view, and Home while the room starts); the clean CI run decides those.
+
+## 12. Round 2 answered (23 Oct; the owner's go-ahead past gate 6 came through the parent session)
+
+| Round 2 item | What changed |
+|---|---|
+| A3 commit order | Each look reads the whole visible window (latest 40) in one statement and returns its fingerprint (each id with its rev); a phone that hands back the fingerprint it has gets `same` and no rows, otherwise the whole window as it is now. A race in `tools/db/race_test.py` (an approval that takes its revision first but commits after a newer message) passes; the same race against the round-1 cursor loses the message |
+| A4, A8 sheets | Closing the room closes any sheet of the rooms; every button of the message menu and Room chat checks she may still read that room on this account |
+| A6 plaza notice | Says, always, that a held or reported room message shows staff its card, group and room |
+| A7 more instructions | A wider medicine list (insulin, antibiotics, medication, meds, vitamins, melatonin, ...) and instruction words (avoid, reduce, lower, halve, drop, cut, add) |
+| A10 more links | A name and an ending followed by a path is a link (t.me/alice, t.co/hello); more endings (health, care, clinic, dev, ...) |
+| B1 late yes | A Room chat yes that arrives later sends only the message she tapped Send for, from that room, unchanged; otherwise "Tap Send when you are ready" |
+| B2 Off while off | Every Off is recorded, so a Room chat form opened before it is stale |
+| B3 stale replies | After Off, Block or a send, replies already on their way are dropped and the next look asks for the whole window |
+| B4 queue refresh | An open staff Queue looks again every 20 s and when the page is shown again, and redraws only when something changed |
+| B5 decision message | A failed Show or Hide keeps its reason on screen across redraws |
+| B6 scrolling | A new message follows the bottom only when she is there, on opening, or after her own message |
+| B7 snapshots | Ids, rows and fingerprint come from one statement |
+| B8 last message time | Counts only messages she could read |
+| B9 staff notice | The Plaza reports card says a room message report carries its group and room |
+
+Checks after round 2: dry run 76/76 locally (live run after round 3, on the final text); races 11 checks, 23 assertions,
+all safe, with the commit-order race shown to lose the message under the round-1 cursor; core 1834/0; rooms and staff
+smoke 40/40 three runs in a row, the new checks each failing on the previous client or a one-line mutation.
