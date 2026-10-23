@@ -3,19 +3,18 @@
  *  - Today keeps the check-in exactly as it was (room.js draws it).
  *  - Channel is her plaza group's page. It opens once she has joined a group in the plaza; the group stays remembered on
  *    this device until she taps Leave, so the channel is there at home too, with an honest line that she is only counted
- *    while she stands in the plaza. It shows who is there, today's prompt from the noticeboard and Plaza friends. Typed
- *    chat is not built: friends send kind notes from a set list, and free text waits for the moderation plan in
- *    docs/design/2026-10-21-today-tabs-and-channel-chat.md.
+ *    while she stands in the plaza. It shows who is there, today's prompt from the noticeboard and Plaza friends, and
+ *    (ovu-rooms.js, 22 Oct) every group with how many are there now and, in the plaza, its rooms and their chat.
  *  - Inventory lists what she owns, all read from this device's state: hearts, Dream Street things, pets and their drawer,
  *    outfits, the farm basket and shed, the greenhouse, the kitchen, the harbour book and the lane. Nothing here costs or
  *    earns hearts, and nothing is sent anywhere.
  * The models (channelModel, inventoryModel) are pure and tested in tools/test-core.js; the room part draws them. */
 (function (root) {
   'use strict';
-  /* the four plaza groups by stage of life (docs/design/2026-10-19-plaza-servers-and-hosts.md); the live list from the
+  /* the plaza groups by stage of life (docs/design/2026-10-22-plaza-rooms-and-live-channel.md); the live list from the
      server wins when it is known, these names cover the remembered group while she is away from the plaza */
-  var GROUPS = { everyone: 'Everyone', 'trying-to-conceive': 'Trying to conceive', pcos: 'PCOS', menopause: 'Menopause' };
-  var ICONS = { everyone: 'groups', 'trying-to-conceive': 'favorite', pcos: 'water_drop', menopause: 'spa' };
+  var GROUPS = { everyone: 'Everyone', pcos: 'PCOS and endometriosis', 'trying-to-conceive': 'Trying to conceive', 'after-a-loss': 'After a loss', 'new-mothers': 'New mothers', menopause: 'Perimenopause and menopause' };
+  var ICONS = { everyone: 'groups', 'trying-to-conceive': 'favorite', pcos: 'water_drop', menopause: 'spa', 'after-a-loss': 'local_florist', 'new-mothers': 'crib' };
   var PANTRY = { egg: ['Egg', 'Eggs'], milk: ['Bottle of milk', 'Bottles of milk'], onsenegg: ['Onsen egg', 'Onsen eggs'] };
   /* every row carries a picture (Jamie, 22 Oct: "no words... category tab then picture of the inventory - fresh egg / hot
      spring cooked egg"): the room's own art where it exists, assets/room/inventory for the pantry, seeds and the shelf */
@@ -44,10 +43,11 @@
     ctx = ctx || {};
     if (!ctx.signedIn) return { state: 'signedout', icon: 'groups', title: 'Your channel', text: 'Sign in from You, then join a group in the plaza. Each group has its own channel.', actions: [{ id: 'signin', label: 'Sign in from You', icon: 'person' }] };
     var id = ctx.joined && ctx.joined.id ? ctx.joined.id : ctx.remembered || null;
-    if (!id) return { state: 'nogroup', icon: 'groups', title: 'Your channel', text: 'Join a group in the plaza to open its channel: Everyone, Trying to conceive, PCOS or Menopause.', actions: [ctx.inPlaza ? { id: 'groups', label: 'Choose a group', icon: 'groups' } : { id: 'plaza', label: 'Walk to the plaza', icon: 'directions_walk' }] };
+    if (!id) return { state: 'nogroup', icon: 'groups', title: 'Your channel', text: 'Join a group in the plaza to open its channel and its rooms. There is one for everyone, and groups by stage of life.', actions: [ctx.inPlaza ? { id: 'groups', label: 'Choose a group', icon: 'groups' } : { id: 'plaza', label: 'Walk to the plaza', icon: 'directions_walk' }] };
     var live = !!(ctx.joined && ctx.joined.id);
     var name = live && ctx.joined.name ? ctx.joined.name : groupName(id, ctx.servers);
-    var text = live ? (ctx.offline ? 'Reconnecting to the group' : hereText(ctx.joined.people)) : 'You are in this group. You are counted, and see who else is here, while you stand in the plaza.';
+    /* three states, named apart (Codex design review, 22 Oct): in the plaza now, or a saved group while she is away */
+    var text = live ? (ctx.offline ? 'In the plaza · reconnecting to the group' : 'In the plaza · ' + hereText(ctx.joined.people)) : 'Saved group. You are counted, and can join its rooms, while you stand in the plaza.';
     var actions = [{ id: 'board', label: 'Open the board', icon: 'push_pin' }, { id: 'friends', label: 'Plaza friends', icon: 'diversity_1', badge: n0(ctx.badge) }];
     if (!live) actions.push({ id: 'plaza', label: 'Walk to the plaza', icon: 'directions_walk' });
     return { state: 'joined', id: id, live: live, icon: groupIcon(id), title: name, text: text, prompt: String(ctx.prompt || ''), friends: String(ctx.friends || ''), badge: n0(ctx.badge), actions: actions };
@@ -126,7 +126,8 @@
     var P = root.OvuPlaza, F = root.OvuFriends, C = root.OvuCommunity, u = session();
     var ps = P && P.state ? P.state() : { signedIn: !!u, joined: null, servers: null, offline: false };
     var rem = S.state().plaza, fs = friendsState();
-    return { signedIn: !!u, inPlaza: inPlaza(), joined: ps.joined, remembered: rem && rem.server && u && rem.uid === u.id ? rem.server : null, servers: ps.servers, offline: ps.offline,
+    var X = root.OvuRooms, xs = X && X.state ? X.state() : null; /* away from the plaza, the rooms module's group list names the saved group */
+    return { signedIn: !!u, inPlaza: inPlaza(), joined: ps.joined, remembered: rem && rem.server && u && rem.uid === u.id ? rem.server : null, servers: ps.servers || (xs && xs.groups) || null, offline: ps.offline,
       friends: F && F.summary ? F.summary(fs || { signedIn: !!u }) : '', badge: badgeCount(), prompt: C && C.promptFor ? C.promptFor(S.today()) : '' };
   }
   function inventoryCtx() {
@@ -163,17 +164,31 @@
   function button(a, primary) {
     return '<button type="button" class="btn ' + (primary ? 'primary' : 'soft') + '" data-today="' + esc(a.id) + '"><span class="ms" aria-hidden="true">' + esc(a.icon) + '</span>' + esc(a.label) + (a.badge ? ' <span class="chbadge" aria-label="' + a.badge + ' new">' + a.badge + '</span>' : '') + '</button>';
   }
+  /* what the note under the channel says: the rooms' own words once they exist on the server, the old line until then */
+  function noteText() {
+    var X = root.OvuRooms, on = !!(X && X.available && X.available());
+    return on ? 'Rooms are peer support, not medical advice. Nothing you write here reaches your diary. Rhythme staff see counts, cards, reports and messages held for a check, never your diary.'
+      : 'Typed chat is not open yet. Friends send kind notes from a set list, and nothing you write here travels anywhere. Rhythme staff see counts, cards and reports, never your diary.';
+  }
+  /* the pane is built once: the rooms module owns #chGroups and #chRooms (ovu-rooms.js), so the box she types in is never
+     replaced by a redraw of the rest; only the head and the foot are drawn from the model */
   function renderChannel(el) {
     var m = channelModel(channelCtx());
-    var h = '<h2>Channel</h2><div class="chhead"><span class="ms" aria-hidden="true">' + esc(m.icon) + '</span><div><b>' + esc(m.title) + '</b><small>' + esc(m.text) + '</small></div></div>';
+    if (!el.querySelector('.chmain')) {
+      el.innerHTML = '<h2>Channel</h2><div id="chGroups" class="chgroups" hidden></div><div class="chmain"></div><div id="chRooms" class="chrooms" hidden></div><div class="chfoot"></div>';
+    }
+    el.querySelector('.chmain').innerHTML = '<div class="chhead"><span class="ms" aria-hidden="true">' + esc(m.icon) + '</span><div><b>' + esc(m.title) + '</b><small>' + esc(m.text) + '</small></div></div>';
+    var h = '';
     if (m.state === 'joined') {
       h += '<div class="chprompt"><span class="lbl">Today’s prompt on the noticeboard</span><p>' + esc(m.prompt) + '</p></div>';
       h += '<div class="chfriends"><span class="ms" aria-hidden="true">diversity_1</span><div><b>Plaza friends</b><small>' + esc(m.friends) + '</small></div></div>';
-      h += '<p class="note">Typed chat is not open yet. Friends send kind notes from a set list, and nothing you write here travels anywhere. Rhythme staff see counts, cards and reports, never your diary.</p>';
+      h += '<p class="note chnote">' + esc(noteText()) + '</p>';
     }
     var acts = m.actions.filter(function (a) { return can(a.id); });
     h += acts.length ? '<div class="row chrow">' + acts.map(function (a, i) { return button(a, i === 0); }).join('') + '</div>' : '';
-    el.innerHTML = h;
+    el.querySelector('.chfoot').innerHTML = h;
+    if (root.OvuRooms && root.OvuRooms.attach && session()) root.OvuRooms.attach(el.querySelector('#chGroups'), el.querySelector('#chRooms'));
+    else { el.querySelector('#chGroups').hidden = true; el.querySelector('#chRooms').hidden = true; }
   }
   /* the inventory: her hearts, a row of category tabs, and the chosen category as pictures with counts (Jamie, 22 Oct) */
   var invTab = null;
@@ -239,4 +254,5 @@
   }
   R.on('boot', mount);
   T.show = show; T.render = render; T.tab = function () { return tab; }; T.channelCtx = channelCtx; T.inventoryCtx = inventoryCtx;
+  T.noteRooms = function () { var n = doc.querySelector('#deckChannel .chnote'); if (n) n.textContent = noteText(); };
 })(typeof window !== 'undefined' ? window : this);

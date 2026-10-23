@@ -2871,6 +2871,7 @@ function scenes(todayIso) {
     if (name === 'admin_feed') return new Promise(function (res, rej) { pendingFeed.push({ args: body, res: function (rows) { res({ ok: true, status: 200, text: function () { return Promise.resolve(JSON.stringify(rows)); } }); }, rej: function () { res({ ok: false, status: 500, text: function () { return Promise.resolve('{"message":"down"}'); } }); } }); });
     return Promise.resolve({ ok: true, status: 200, text: function () { return Promise.resolve(JSON.stringify(answers[name] || {})); } });
   };
+  if (!w.addEventListener) w.addEventListener = function () { }; /* a window has one: admin.js listens for another tab's sign-in */
   vm.runInContext(fs.readFileSync(path.join(root, 'admin.js'), 'utf8'), vm.createContext(w), { filename: 'admin.js' });
   var T = w.__ADMIN_TEST__.api; T.setTab('none');
   var tick = function () { return new Promise(function (r) { setTimeout(r, 0); }); };
@@ -2912,6 +2913,7 @@ function scenes(todayIso) {
     if (name === 'admin_feed') return new Promise(function (res) { pendingFeed.push({ args: body, res: function (rows) { res({ ok: true, status: 200, text: function () { return Promise.resolve(JSON.stringify(rows)); } }); } }); });
     return Promise.resolve({ ok: true, status: 200, text: function () { return Promise.resolve(JSON.stringify({ latest_run: null, held_runs: 1 })); } });
   };
+  if (!w.addEventListener) w.addEventListener = function () { }; /* a window has one: admin.js listens for another tab's sign-in */
   vm.runInContext(fs.readFileSync(path.join(root, 'admin.js'), 'utf8'), vm.createContext(w), { filename: 'admin.js' });
   var T = w.__ADMIN_TEST__.api; T.setTab('none');
   var tick = function () { return new Promise(function (r) { setTimeout(r, 0); }); };
@@ -2941,6 +2943,7 @@ function scenes(todayIso) {
     if (name === 'admin_feed') return new Promise(function (res) { pendingFeed.push({ args: body, res: function (rows) { res({ ok: true, status: 200, text: function () { return Promise.resolve(JSON.stringify(rows)); } }); }, rej: function () { res({ ok: false, status: 500, text: function () { return Promise.resolve('{"message":"down"}'); } }); } }); });
     return Promise.resolve({ ok: true, status: 200, text: function () { return Promise.resolve(JSON.stringify({ latest_run: null, held_runs: 1 })); } });
   };
+  if (!w.addEventListener) w.addEventListener = function () { }; /* a window has one: admin.js listens for another tab's sign-in */
   vm.runInContext(fs.readFileSync(path.join(root, 'admin.js'), 'utf8'), vm.createContext(w), { filename: 'admin.js' });
   var T = w.__ADMIN_TEST__.api; T.setTab('none');
   var tick = function () { return new Promise(function (r) { setTimeout(r, 0); }); };
@@ -2970,6 +2973,7 @@ function scenes(todayIso) {
     var h = { feed: [], ov: [] };
     var pend = function (list, body) { return new Promise(function (res) { list.push({ args: body, res: function (v) { res({ ok: true, status: 200, text: function () { return Promise.resolve(JSON.stringify(v)); } }); }, rej: function () { res({ ok: false, status: 500, text: function () { return Promise.resolve('{"message":"down"}'); } }); } }); }); };
     w.fetch = function (u, o) { var name = String(u).split('/rpc/')[1], body = JSON.parse(o.body || '{}'); if (name === 'admin_feed') return pend(h.feed, body); if (name === 'admin_overview') return pend(h.ov, body); return Promise.resolve({ ok: true, status: 200, text: function () { return Promise.resolve('[]'); } }); };
+    if (!w.addEventListener) w.addEventListener = function () { }; /* a window has one: admin.js listens for another tab's sign-in */
     vm.runInContext(fs.readFileSync(path.join(root, 'admin.js'), 'utf8'), vm.createContext(w), { filename: 'admin.js' });
     h.T = w.__ADMIN_TEST__.api; h.T.setTab('none');
     return h;
@@ -5381,6 +5385,63 @@ var summarised = false;
   check('the Listen sheet lists through the order with one seed per sheet, a Shuffle button, and a small label before the locked group', /POD\.order\(d\.episodes, on, podSeed\)/.test(rs) && /id="podShuffle"/.test(rs) && /With Rhythme Plus/.test(rs) && /podSeed = Date\.now\(\) \^/.test(rs));
 })();
 
+(function plazaRooms() {
+  console.log('2k21r. plaza rooms and room chat (22 Oct): the phone and the server keep one set of rules; the words stay world-wide and calm');
+  var w = { document: undefined }; w.window = w;
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-rooms.js'), 'utf8'), vm.createContext(w), { filename: 'ovu-rooms.js' });
+  var X = w.OvuRooms, cases = JSON.parse(fs.readFileSync(path.join(root, 'tools', 'fixtures', 'plaza_text_cases.json'), 'utf8'));
+  var mig = fs.readFileSync(path.join(root, 'supabase', 'migrations', '20261022120000_plaza_rooms_chat.sql'), 'utf8'), dry = fs.readFileSync(path.join(root, 'tools', 'db', 'plaza_rooms_dryrun.sql'), 'utf8');
+  var sq = function (t) { return "'" + t.replace(/'/g, "''") + "'"; };
+  var badText = cases.text.filter(function (c) { return X.textProblem(c.text) !== c.problem; }).map(function (c) { return c.text.slice(0, 30) + ' -> ' + X.textProblem(c.text); });
+  check('every text case reads the same on the phone as the fixture says (' + cases.text.length + ' cases)' + (badText.length ? ': ' + badText.join(' | ') : ''), !badText.length);
+  var badHold = cases.hold.filter(function (c) { return X.holdWhy(c.text, c.noNews) !== c.hold; }).map(function (c) { return c.text + ' -> ' + X.holdWhy(c.text, c.noNews); });
+  check('every hold case reads the same on the phone as the fixture says (' + cases.hold.length + ' cases)' + (badHold.length ? ': ' + badHold.join(' | ') : ''), !badHold.length);
+  var inDry = function (c, fn, extra) { var lit = c.text.length > 100 ? "repeat('a', " + c.text.length + ")" : sq(c.text); return dry.indexOf(fn + '(' + lit + extra) > -1; };
+  var missText = cases.text.filter(function (c) { return !inDry(c, 'plaza.text_problem', ')' + (c.problem ? " = '" + c.problem + "'" : ' is null')); }).map(function (c) { return c.text.slice(0, 30); });
+  var missHold = cases.hold.filter(function (c) { return !inDry(c, 'plaza.hold_why', ', ' + c.noNews + ')' + (c.hold ? " = '" + c.hold + "'" : ' is null')); }).map(function (c) { return c.text; });
+  check('the server dry run checks the very same cases with the same answers' + (missText.concat(missHold).length ? ': missing ' + missText.concat(missHold).join(' | ') : ''), !missText.length && !missHold.length);
+  /* the phone's phrase and word lists equal the rows the migration inserts */
+  var rows = function (table) { var m = new RegExp('insert into public\\.' + table + ' \\([^)]*\\) values([\\s\\S]*?)\\non conflict').exec(mig); var out = []; if (m) m[1].replace(/\('((?:[^']|'')*)', '(\w+)'\)/g, function (_, a, b) { out.push([a.replace(/''/g, "'"), b]); }); return out; };
+  var hp = rows('plaza_hold_phrases'), pw = rows('plaza_words');
+  var phoneHold = []; Object.keys(X.HOLD).forEach(function (k) { X.HOLD[k].forEach(function (p) { phoneHold.push([p, k]); }); });
+  var key = function (l) { return l.map(function (x) { return x[1] + ':' + x[0]; }).sort().join('|'); };
+  check('the hold phrases on the phone equal the migration\'s rows (' + hp.length + ')', hp.length > 50 && key(hp) === key(phoneHold));
+  check('the message word list on the phone equals the migration\'s rows (' + pw.length + '), and health words stay allowed', pw.length > 10 && key(pw) === key(Object.keys(X.MSG_WORDS).map(function (k) { return [k, X.MSG_WORDS[k]]; }))
+    && ['sex', 'rape', 'suicide', 'kill', 'shit', 'fuck', 'instagram', 'tiktok'].every(function (t) { return !X.MSG_WORDS[t]; }));
+  check('room counts say who joined, full rooms and closed ones; the strip says who is here now', X.roomCount({ people: 0, capacity: 12 }) === 'Nobody joined yet' && X.roomCount({ people: 5, capacity: 12 }) === '5 joined'
+    && X.roomCount({ people: 12, capacity: 12 }) === '12 of 12 joined, full' && X.roomCount({ open: false }) === 'Closed for now' && X.hereNow(0) === 'Nobody here now' && X.hereNow(7) === '7 here now');
+  check('a full room names the rooms in the group with space, or asks her to try again', X.fullText({ name: 'Vent', suggest: [{ name: 'Chat' }, { name: 'Wins' }] }) === 'Vent is full right now. Chat and Wins have space.'
+    && X.fullText({ name: 'Wins', suggest: [{ name: 'Chat' }] }) === 'Wins is full right now. Chat has space.' && X.fullText({ name: 'Quiet room', suggest: [] }) === 'Quiet room is full right now. Try again in a little while.');
+  var have = [{ id: 1, body: 'a', handle: 'h1' }, { id: 2, body: 'b', handle: 'h2' }, { id: 3, body: 'c', handle: 'h3', mine: true }];
+  var merged = X.mergeFeed(have, { ids: [1, 3, 4, 5], messages: [{ id: 4, body: 'd', handle: 'h2' }, { id: 5, body: 'e', handle: 'h4' }] }, ['h4']);
+  check('the feed keeps only the server\'s latest visible ids (a hidden, blocked or expired message leaves), adds new rows in order, and leaves out people muted on this phone (never her own)', merged.map(function (m) { return m.id; }).join() === '1,3,4'
+    && X.mergeFeed(have, { ids: [], messages: [] }, []).length === 0 && X.mergeFeed([], { ids: [3], messages: [{ id: 3, handle: 'h4', mine: true }] }, ['h4']).length === 1);
+  check('every group has its door sign on disk, and a group the phone does not know gets none (a plain icon)', Object.keys(X.DOORS).length === 6 && Object.keys(X.DOORS).every(function (id) { return fs.existsSync(path.join(root, X.doorImg(id))); }) && X.doorImg('night-owls') === null);
+  var words = [X.HELP, X.REMINDER, X.DOCTOR, X.WORDS, X.MODE.review, X.MODE.live].concat(Object.keys(X.NOTES).map(function (k) { return X.NOTES[k]; }), Object.keys(X.WHY).map(function (k) { return X.WHY[k]; }),
+    Object.keys(X.PROBLEMS).map(function (k) { return X.PROBLEMS[k]; }), X.REASONS.map(function (r) { return r[1]; }));
+  var src = fs.readFileSync(path.join(root, 'ovu-rooms.js'), 'utf8');
+  check('help is world-wide (local emergency number, nearest emergency department, findahelpline.com), never one country\'s numbers', /local emergency number/.test(X.HELP) && /nearest emergency department/.test(X.HELP) && /findahelpline\.com/.test(X.HELP) && /local emergency number/.test(X.REMINDER)
+    && words.every(function (t) { return !/\b(995|999|911|112|1767|1771|SOS)\b/.test(t); }));
+  check('no em dash, no emoji and no vendor or model name in the module; every room kind has its note and icon; the quiet room keeps news and advice out', src.indexOf('—') < 0 && !/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(src)
+    && words.every(function (t) { return !/\b(AI|GPT|Claude|Doubao|Supabase|Seedream|model)\b/.test(t); }) && ['chat', 'wins', 'vent', 'doctor', 'topic', 'quiet'].every(function (k) { return X.NOTES[k] && X.KIND_ICON[k]; })
+    && /No pregnancy or birth news, no advice/.test(X.NOTES.quiet));
+  check('the Room chat words say what is shown to whom, 24 hours, the hour after, held messages and reports (90 days, then a year), not medical advice, not watched around the clock, and that off deletes', /people in that group/.test(X.WORDS) && /24 hours/.test(X.WORDS)
+    && /within an hour/.test(X.WORDS) && /wait for a person/.test(X.WORDS) && /90 days/.test(X.WORDS) && /then for a year/.test(X.WORDS) && /not medical advice/.test(X.WORDS) && /around the clock/.test(X.WORDS) && /messages are then deleted/.test(X.WORDS));
+  check('the module stands down without a room page: only the pure rules exist', typeof X.attach === 'undefined' && typeof X.state === 'undefined');
+  var html = fs.readFileSync(path.join(root, 'room.html'), 'utf8'), today = fs.readFileSync(path.join(root, 'ovu-today.js'), 'utf8'), css = fs.readFileSync(path.join(root, 'room.css'), 'utf8');
+  check('room.html loads the rooms after Plaza friends and before the Today card; the Channel pane keeps the rooms\' two places across redraws; the styles exist', html.indexOf('ovu-friends.js') < html.indexOf('ovu-rooms.js') && html.indexOf('ovu-rooms.js') < html.indexOf('ovu-today.js')
+    && /id="chGroups"/.test(today) && /id="chRooms"/.test(today) && /if \(!el\.querySelector\('\.chmain'\)\)/.test(today) && /\.rmgroups\{/.test(css) && /\.rmmsgs\{/.test(css) && /\.rmhelp\{/.test(css));
+  check('the server keeps reading open only to a shown card in the group now, writing behind Room chat, a review mode by default, and an hourly clean-up', /when exists \(select 1 from public\.social_profiles s where s\.user_id = p_uid and s\.hidden\) then 'hidden'/.test(mig)
+    && /if not public\.consent_allows\(uid, 'plaza_chat'\) then return jsonb_build_object\('ok', false, 'why', 'notice'\)/.test(mig) && /\('mode', 'review'\)/.test(mig) && /cron\.schedule\('rhythme-plaza-chat-sweep', '7 \* \* \* \*'/.test(mig));
+  /* no live mode in this migration: word rules cannot catch every way of telling someone to stop a medicine, so every
+     message waits for a person (Codex diff review round 4, A7); a withdrawal reaches the rooms at once (B2) */
+  var consentSrc = fs.readFileSync(path.join(root, 'ovu-consent.js'), 'utf8');
+  var tldSql = /create or replace function plaza\.tlds\(\) returns text[\s\S]*?select '([^']*)'::text/.exec(mig);
+  check('the phone and the server know the same web-address endings (IANA list, ' + X.TLDS.trim().split(' ').length + ' of three letters or more)', !!tldSql && tldSql[1] === X.TLDS && X.TLDS.split(' ').length > 1000 && / scot | help | com | health /.test(X.TLDS) && !/ thanks /.test(X.TLDS));
+  check('the migration holds the rooms in review mode with a check (live needs its own migration), and a consent withdrawal reaches the rooms at once', /constraint plaza_flags_review_only check \(key <> 'mode' or value = 'review'\)/.test(mig)
+    && /root\.OvuRoom\.emit\('consent', purposeId, ev\.action\)/.test(consentSrc) && /R\.on\('consent'/.test(src));
+})();
+
 (function todayTabs() {
   console.log('2k21. the Today card’s three tabs (21 Oct): Today, Channel once she has joined a plaza group, Inventory from her own state');
   var w = { document: undefined }; w.window = w;
@@ -5389,12 +5450,12 @@ var summarised = false;
   var so = T.channelModel({ signedIn: false });
   check('signed out: the channel asks her to sign in from You and offers nothing else', so.state === 'signedout' && so.actions.length === 1 && so.actions[0].id === 'signin' && /Sign in from You/.test(so.text) && /join a group/.test(so.text));
   var ng = T.channelModel({ signedIn: true, inPlaza: false }), ngp = T.channelModel({ signedIn: true, inPlaza: true });
-  check('signed in with no group: walk to the plaza, or choose a group when she already stands there; the four groups are named', ng.state === 'nogroup' && ng.actions[0].id === 'plaza' && ngp.actions[0].id === 'groups' && /Everyone, Trying to conceive, PCOS or Menopause/.test(ng.text));
+  check('signed in with no group: walk to the plaza, or choose a group when she already stands there; the groups are described, not listed (their names come from the server)', ng.state === 'nogroup' && ng.actions[0].id === 'plaza' && ngp.actions[0].id === 'groups' && /one for everyone, and groups by stage of life/.test(ng.text) && /rooms/.test(ng.text));
   var rem = T.channelModel({ signedIn: true, inPlaza: false, joined: null, remembered: 'pcos', servers: null, friends: 'No friends yet', badge: 0, prompt: 'What helped today?' });
-  check('a remembered group opens its channel away from the plaza: its name from the local list, the counted-while-there line, the prompt, Plaza friends, and a walk button', rem.state === 'joined' && rem.title === 'PCOS' && rem.icon === 'water_drop' && !rem.live && /counted/.test(rem.text) && /while you stand in the plaza/.test(rem.text) && rem.prompt === 'What helped today?' && rem.friends === 'No friends yet' && rem.actions.map(function (a) { return a.id; }).join() === 'board,friends,plaza');
+  check('a remembered group opens its channel away from the plaza: its name from the local list, the counted-while-there line, the prompt, Plaza friends, and a walk button', rem.state === 'joined' && rem.title === 'PCOS and endometriosis' && /^Saved group/.test(rem.text) && rem.icon === 'water_drop' && !rem.live && /counted/.test(rem.text) && /while you stand in the plaza/.test(rem.text) && rem.prompt === 'What helped today?' && rem.friends === 'No friends yet' && rem.actions.map(function (a) { return a.id; }).join() === 'board,friends,plaza');
   var live = T.channelModel({ signedIn: true, inPlaza: true, joined: { id: 'menopause', name: 'Menopause (server name)', people: 4 }, remembered: 'pcos', servers: [{ id: 'menopause', name: 'Menopause' }], friends: '2 friends · 1 new', badge: 1, prompt: 'p' });
   var one = T.channelModel({ signedIn: true, inPlaza: true, joined: { id: 'everyone', people: 1 } }), off = T.channelModel({ signedIn: true, inPlaza: true, joined: { id: 'everyone', people: 3 }, offline: true });
-  check('counted in a group now: the live group wins over the remembered one, the count includes her, the badge rides on Plaza friends, and no walk button', live.state === 'joined' && live.live && live.title === 'Menopause (server name)' && live.text === '4 people here, with you' && live.badge === 1 && live.actions.length === 2 && live.actions[1].badge === 1 && one.text === 'Just you here for now' && one.title === 'Everyone' && /Reconnecting/.test(off.text));
+  check('counted in a group now: the live group wins over the remembered one, the count includes her, the badge rides on Plaza friends, and no walk button', live.state === 'joined' && live.live && live.title === 'Menopause (server name)' && live.text === 'In the plaza · 4 people here, with you' && live.badge === 1 && live.actions.length === 2 && live.actions[1].badge === 1 && one.text === 'In the plaza · Just you here for now' && one.title === 'Everyone' && /In the plaza · reconnecting/.test(off.text));
   check('group names: the server list wins, the local list covers the four groups, and an unknown id reads as words', T.groupName('pcos', [{ id: 'pcos', name: 'PCOS circle' }]) === 'PCOS circle' && T.groupName('trying-to-conceive') === 'Trying to conceive' && T.groupName('night-owls') === 'Night owls' && T.hereText(0) === 'Just you here for now' && T.hereText(2) === '2 people here, with you');
   var items = [{ id: 'lamp', name: 'Crescent floor lamp', kind: 'furniture' }, { id: 'beanbag', name: 'Bunny beanbag', kind: 'furniture' }, { id: 'house', name: 'Two-storey dream house', kind: 'home' }, { id: 'cat', name: 'Kitten', kind: 'pet' }, { id: 'dog', name: 'Puppy', kind: 'pet' }, { id: 'acc-bow', name: 'Satin bow', kind: 'accessory' }, { id: 'acc-hat', name: 'Party hat', kind: 'accessory' }, { id: 'treat-fish', name: 'Fish biscuits', kind: 'treat' }, { id: 'treat-cake', name: 'Pupcake', kind: 'treat' }];
   var inv = T.inventoryModel({ staplePics: { rice: 'staple-rice' }, hearts: 230, earned: 410, items: items, owned: ['lamp', 'beanbag', 'house', 'cat', 'acc-bow', 'acc-hat', 'ghost'], placed: { lamp: true, cat: true }, treats: { 'treat-fish': 3, 'treat-cake': 0 }, wear: { cat: 'acc-bow' }, petNames: { cat: 'Mochi' }, homeId: 'house',
