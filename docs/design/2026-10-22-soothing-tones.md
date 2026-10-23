@@ -225,28 +225,36 @@ quiet upper partials raise the centroid a little while making the sound less bar
 
 | case | peak dBFS old > new (ceiling -21.1) | LUFS-like old > new | centroid Hz old > new | above 2 kHz old > new | swing dB old > new | beat Hz old > new | new left/right dB | new at 44.1 kHz peak, L/R |
 |---|---|---|---|---|---|---|---|---|
-| tone-174 | -18.1 > -21.3 | -22.8 > -24.8 | 181 > 180 | 0% > 0% | 8.9 > 3.2 | 0.61 > 0.10 | -26.9 / -26.5 | -23.3, -30.1 / -29.0 |
-| tone-285 | -18.1 > -22.5 | -22.6 > -25.8 | 296 > 292 | 0% > 0% | 8.8 > 3.2 | 1.00 > 0.10 | -28.4 / -27.6 | -23.1, -28.1 / -28.3 |
-| tone-396 | -18.1 > -24.3 | -22.5 > -27.5 | 411 > 409 | 0% > 0% | 8.7 > 3.1 | 1.39 > 0.10 | -29.8 / -29.8 | -24.6, -31.6 / -30.5 |
-| tone-417 | -18.1 > -23.6 | -22.5 > -26.8 | 433 > 422 | 0% > 0% | 8.6 > 3.2 | 1.46 > 0.10 | -29.2 / -29.0 | -24.9, -31.0 / -30.7 |
-| tone-528 | -18.1 > -22.6 | -22.4 > -26.2 | 548 > 531 | 0% > 0% | 8.5 > 3.1 | 1.85 > 0.10 | -28.3 / -28.8 | -24.1, -30.6 / -30.7 |
-| tone-639 | -18.1 > -23.2 | -22.4 > -27.2 | 663 > 632 | 0% > 0% | 8.3 > 3.0 | 2.24 > 0.10 | -29.4 / -29.8 | -24.0, -30.1 / -30.6 |
-| tone-741 | -18.1 > -23.1 | -22.3 > -26.6 | 769 > 741 | 0% > 0% | 8.1 > 3.1 | 2.59 > 0.10 | -29.4 / -28.9 | -23.6, -29.5 / -30.0 |
-| tone-852 | -18.1 > -24.5 | -22.1 > -28.2 | 884 > 841 | 0% > 0% | 7.9 > 3.0 | 2.98 > 0.10 | -30.7 / -30.9 | -23.4, -29.9 / -30.4 |
-| tone-963 | -18.1 > -23.9 | -22.0 > -27.3 | 1000 > 947 | 0% > 0% | 7.6 > 3.2 | 3.37 > 0.10 | -30.0 / -30.0 | -24.5, -30.4 / -31.8 |
-| bed-rain | -29.7 > -32.0 | -35.5 > -41.6 | 5030 > 1414 | 83% > 23% | 0.6 > 2.9 | 4.25 > 0.05 | -45.4 / -45.3 | -32.5, -45.4 / -45.3 |
-| bed-stream | -25.4 > -28.5 | -38.6 > -41.4 | 270 > 221 | 0% > 0% | 6.4 > 6.6 | 0.30 > 0.30 | -42.4 / -41.9 | -28.0, -40.9 / -41.9 |
-| bed-waves | -26.0 > -29.5 | -41.3 > -45.0 | 190 > 149 | 0% > 0% | 22.8 > 24.2 | 0.09 > 0.09 | -45.7 / -45.2 | -28.6, -44.1 / -45.1 |
+| tone-174 | -18.1 > -23.8 | -22.8 > -27.3 | 181 > 180 | 0% > 0% | 8.9 > 3.2 | 0.61 > 0.10 | -29.4 / -29.1 | -25.9, -32.6 / -31.6 |
+| tone-285 | -18.1 > -25.1 | -22.6 > -28.3 | 296 > 292 | 0% > 0% | 8.8 > 3.2 | 1.00 > 0.10 | -31.0 / -30.2 | -25.6, -30.7 / -30.9 |
+| tone-396 | -18.1 > -26.9 | -22.5 > -30.0 | 411 > 409 | 0% > 0% | 8.7 > 3.1 | 1.39 > 0.10 | -32.3 / -32.3 | -27.2, -34.2 / -33.1 |
+| tone-417 | -18.1 > -26.2 | -22.5 > -29.4 | 433 > 422 | 0% > 0% | 8.6 > 3.2 | 1.46 > 0.10 | -31.8 / -31.6 | -27.5, -33.6 / -33.3 |
+| tone-528 | -18.1 > -25.2 | -22.4 > -28.8 | 548 > 531 | 0% > 0% | 8.5 > 3.1 | 1.85 > 0.10 | -30.9 / -31.4 | -26.8, -33.2 / -33.3 |
+| tone-639 | -18.1 > -25.8 | -22.4 > -29.8 | 663 > 632 | 0% > 0% | 8.3 > 3.0 | 2.24 > 0.10 | -32.1 / -32.4 | -26.6, -32.7 / -33.2 |
+| tone-741 | -18.1 > -25.7 | -22.3 > -29.1 | 769 > 741 | 0% > 0% | 8.1 > 3.1 | 2.59 > 0.10 | -32.0 / -31.5 | -26.2, -32.1 / -32.6 |
+| tone-852 | -18.1 > -27.1 | -22.1 > -30.6 | 884 > 841 | 0% > 0% | 7.9 > 3.0 | 2.98 > 0.10 | -33.3 / -33.5 | -26.0, -32.5 / -33.0 |
+| tone-963 | -18.1 > -26.5 | -22.0 > -29.6 | 1000 > 947 | 0% > 0% | 7.6 > 3.2 | 3.37 > 0.10 | -32.6 / -32.6 | -27.1, -33.0 / -34.4 |
+| bed-rain | -29.7 > -32.0 | -35.5 > -41.3 | 5030 > 1414 | 83% > 23% | 0.6 > 2.9 | 4.25 > 0.05 | -45.4 / -45.3 | -32.0, -44.9 / -45.5 |
+| bed-stream | -25.4 > -27.8 | -38.6 > -40.8 | 270 > 221 | 0% > 0% | 6.4 > 6.6 | 0.30 > 0.30 | -41.3 / -41.9 | -28.0, -40.9 / -41.9 |
+| bed-waves | -26.0 > -28.4 | -41.3 > -44.4 | 190 > 149 | 0% > 0% | 22.8 > 24.1 | 0.09 > 0.09 | -44.5 / -45.2 | -28.6, -44.1 / -45.1 |
+
+| scripted case | peak dBFS at 48 kHz | at 44.1 kHz | ceiling in play | end |
+|---|---|---|---|---|
+| switch-pitch-bed-pitch | -24.0 | -26.2 | -21.1 | silent |
+| slider-up-down-zero-in-fade | -13.8 | -15.2 | -9.1 (slider to one) | silent |
+| switch-off-in-fade | -25.6 | -27.2 | -21.1 | silent |
+| bed-slider-zero-in-fade-in | -32.6 | -34.1 | -21.1 | silent |
 
 Every new render: true peak equals the sample peak, first sample 0, start and Stop steps below the steady maximum, wobble
 share 0.00 for every tone (the old voice: 0.71 to 0.77 from 528 Hz up), the last half second silent (-180 dB) at both
-rates. The old tones left -77 dB in the last half second (their fade never reached zero). The new tones sit 2 to 6 dB
-quieter in loudness than the old at the same slider because the old voice ran 3 dB over its own ceiling and the new one
-keeps a margin under it; the slider still goes to one. At volume 1 the peaks are -9.3 (174 Hz) and -12.2 dBFS (963 Hz)
-against a -9.1 ceiling; at volume 0 the output is silence. The swing of about 3 dB is the 0.1 Hz breath (under a decibel)
-plus the slow shimmer of the twins; its dominant rate is the breath. Level varies by about 3.5 dB across the nine pitches
-(the room's seeded response, the hum and the filter differ per pitch), where the old voice was identical on every pitch.
-
+rates. The old tones left -77 dB in the last half second (their fade never reached zero). The new tones sit 5 to 8 dB
+quieter in loudness than the old at the same slider: the old voice ran 3 dB over its own ceiling, and the new one keeps
+its sum of amplitudes to one so the ceiling is a true bound, which puts its measured peaks 3 to 6 dB under it because
+the sines rarely align; the slider still goes to one (peaks -9.3 at 174 Hz and -12.2 dBFS at 963 Hz against a -9.1
+ceiling; silence at volume 0). If that reads as too quiet in the cave, the ceiling (one number, CEILING) is Jamie's
+lever. The swing of about 3 dB is the 0.1 Hz breath (under a decibel) plus the slow shimmer of the twins; its dominant
+rate is the breath. Level varies by about 3.5 dB across the nine pitches (the room's seeded response, the hum and the
+filter differ per pitch), where the old voice was identical on every pitch.
 
 `tools/test-core.js` 2k5b: the partial table (ratios, the fundamental loudest, every partial a centre sine with quiet
 twins, all beats between 0.1 and 1 Hz, the fundamental's worst swing under 3 dB), the hum rule, the cutoff rule, the
