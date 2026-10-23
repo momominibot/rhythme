@@ -8,12 +8,16 @@
   var app = doc.getElementById('app');
   var plaza = null, plazaOk = 0, plazaBad = false, plazaBusy = false, plazaGen = 0; /* admin_plaza: people in each group now, and the daily joins and peak (counts only) */
   var me = null, tab = 'today', ov = null, feed = [], feedTop = 0, findings = null, proposals = null, admins = null, audit = null, timers = [];
-  var review = null, reviewGen = 0, authGen = 0, bootUser = null, propGen = 0, bootGen = 0; /* the team review status; authGen moves on any account change so late replies for the old account are dropped */
+  var review = null, reviewGen = 0, propGen = 0; /* the team review status; each loader's own generation drops a reply older than the latest request */
   var reviewAt = 0, reviewBad = false; /* when the status last answered (local clock), and whether the latest try failed */
   var refreshing = null, refreshMsg = ''; /* one Refresh at a time: {id, state: 'pending' | 'uncertain'}; an uncertain one is retried with the same id so the server replays it */
   var feedLoaded = false, feedBad = false; /* a feed that failed to load is never shown as an empty feed */
-  var reports = null, reportsAll = false, reportsBad = false, reportsMissing = false; /* admin_social_reports: Plaza friends reports, cards only (no account ids, emails or groups) */
-  var REASONS = { unkind: 'Unkind or upsetting', spam: 'Spam or selling', pretending: 'Pretending to be someone else', under18: 'Seems to be under 18', worried: 'Worried about her safety', other: 'Something else' };
+  var reports = null, reportsAll = false, reportsBad = false, reportsMissing = false, reportsGen = 0, reportsNote = null; /* admin_social_reports: Plaza friends reports, cards only (no account ids, emails or groups) */
+  var REASONS = { unkind: 'Unkind or upsetting', spam: 'Spam or selling', pretending: 'Pretending to be someone else', under18: 'Seems to be under 18', worried: 'Worried about her safety', other: 'Something else', advice: 'Unsafe health advice', news: 'Pregnancy or birth news in a quiet room' };
+  /* why a room message waits for a person (supabase/migrations/20261022120000_plaza_rooms_chat.sql) */
+  var HELD = { review: 'Review mode: every message is read first', care: 'Words of self-harm or crisis', advice: 'Tells someone what to take, stop or buy, or a dose', news: 'Pregnancy or birth news in a quiet room', asked: 'Her phone asked for a check (its warning-sign rules matched)', reports: 'Hidden after three reports' };
+  var roomMsgs = null, roomMsgsBad = false, roomMsgsMissing = false, roomMsgsBusy = false, roomMsgsGen = 0; /* admin_plaza_messages: room messages waiting for a person; Busy is the look on its way */
+  var roomMsgsNote = null; /* the last Show or Hide outcome, kept across redraws until the next decision: {text, bad} */
   /* the team (Jamie, 21 Oct: "my agents in there, give them cute names to report the data and I will have one agent to
    * orchestrate"): four little clouds who each own one stream and say what they measured in their own words, and Nimbus,
    * the big cloud who gathers their reports. Names are for the page; the server knows them by their stream. */
@@ -34,15 +38,21 @@
   function num(v) { return v == null ? '–' : (Math.round(Number(v) * 10) / 10).toLocaleString('en-SG'); }
 
   /* ---------- server ---------- */
+  /* every request belongs to the account signed in when it left: a reply that comes back after another account signed in
+     (here or in another tab) is dropped, so one account's queue never shows under the next (Codex diff review, 22 Oct) */
+  var acct = null, acctGen = 0;
+  function who() { var s = A && A.session && A.session(); return s && s.user ? s.user.id : null; }
+  function cancelled() { var e = new Error('cancelled'); e.cancelled = true; return e; }
   function rpc(name, args) {
-    var g = authGen;
+    var a = who(), g = acctGen;
     return Promise.resolve(A.token()).then(function (t) {
-      if (g !== authGen) throw new Error('account changed');
       if (!t) throw new Error('signed out');
+      if (who() !== a || acctGen !== g) throw cancelled();
       return fetch(CFG.supabaseUrl + '/rest/v1/rpc/' + name, { method: 'POST', headers: { apikey: CFG.supabaseKey, Authorization: 'Bearer ' + t, 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(args || {}) })
-        .then(function (r) { return r.text().then(function (txt) { var j = null; try { j = txt ? JSON.parse(txt) : null; } catch (e) { } if (g !== authGen) throw new Error('account changed'); if (!r.ok) throw new Error((j && (j.message || j.hint || j.error)) || ('request failed (' + r.status + ')')); return j; }); });
+        .then(function (r) { return r.text().then(function (txt) { var j = null; try { j = txt ? JSON.parse(txt) : null; } catch (e) { } if (who() !== a || acctGen !== g) throw cancelled(); if (!r.ok) throw new Error((j && (j.message || j.hint || j.error)) || ('request failed (' + r.status + ')')); return j; }); });
     });
   }
+  function queueAgain() { if (tab === 'queue' && me) renderQueue(); }
   function denied(j) { return j && j.denied; }
 
   /* ---------- views ---------- */
@@ -146,7 +156,7 @@
     return '<div class="card" id="plazaCard"><h2>Plaza groups' + head + '</h2>' + (stale ? '<div class="note"><b>Not current.</b> The last refresh did not come back; the numbers below are from ' + esc(hm) + '. It tries again every 20 seconds.</div>' : '') + '<div class="tiles">' + tiles + '</div>' + chart + table +
       '<p class="srv">Counts only. A person is counted while her phone checks in (every 25 s). Leaving, closing the app, sleeping or signing out normally takes her out at once; if that message is lost she stops being counted after 75 s. Joins count arrivals, so someone who leaves and comes back counts twice. Daily counts are kept for a year. No names or account ids reach this page.</p></div>';
   }
-  function redrawPlaza() { if (tab === 'today' && doc.getElementById('plazaCard')) doc.getElementById('plazaCard').outerHTML = plazaCard(); }
+  function redrawPlaza() { if (me && tab === 'today' && doc.getElementById('plazaCard')) doc.getElementById('plazaCard').outerHTML = plazaCard(); }
   /* one refresh at a time, with a deadline, on its own timer; a reply older than what is shown is ignored */
   function deadline(p, ms) { return new Promise(function (res, rej) { var t = setTimeout(function () { rej(new Error('timeout')); }, ms); p.then(function (v) { clearTimeout(t); res(v); }, function (e) { clearTimeout(t); rej(e); }); }); }
   function loadPlaza() {
@@ -222,15 +232,15 @@
   function setRefresh(msg) { refreshMsg = msg; var b = doc.getElementById('runNow'), m = doc.getElementById('runMsg'); if (b) { b.disabled = !!(refreshing && refreshing.state === 'pending'); b.textContent = refreshing && refreshing.state === 'pending' ? 'Refreshing…' : refreshing ? 'Try again' : 'Refresh'; } if (m) m.textContent = msg; }
   function runNow() {
     if (refreshing && refreshing.state === 'pending') return;
-    var g = authGen, cur = refreshing = { id: refreshing ? refreshing.id : reqId(), state: 'pending' };
+    var g = acctGen, cur = refreshing = { id: refreshing ? refreshing.id : reqId(), state: 'pending' };
     setRefresh('Running…');
     rpc('admin_refresh', { p_days: 28, p_request_id: cur.id }).then(function (j) {
-      if (g !== authGen || refreshing !== cur) return;
+      if (g !== acctGen || refreshing !== cur) return;
       refreshing = null;
       setRefresh(j && j.error ? j.error : refreshText(j && j.review));
       return Promise.all([loadOverview(), loadFeed(true), loadReview()]);
     }, function (e) {
-      if (g !== authGen || refreshing !== cur) return;
+      if (g !== acctGen || refreshing !== cur || (e && e.cancelled)) return;
       cur.state = 'uncertain'; /* it may have run: the next press sends the same id, and the server replays its answer */
       setRefresh('No answer (' + e.message + '). It may have run; Try again asks once more without running it twice.');
     });
@@ -271,29 +281,74 @@
     else if (!list.length) html += '<p class="empty">' + (reportsAll ? 'No reports yet.' : 'No open reports.') + '</p>';
     else html += list.map(function (r) {
       return '<div class="prop" data-report="' + r.id + '"><div class="h"><b>' + esc(r.name) + ' · card ' + esc(r.card) + '</b><span class="chip ' + (r.status === 'open' ? 'watch' : r.status === 'dismissed' ? '' : 'high') + '">' + esc(r.status) + '</span></div>' +
-        '<div class="why">' + esc(REASONS[r.reason] || r.reason) + (r.about_note ? ' · about the note “' + esc(r.phrase || '') + '”' : ' · about the card') + '</div>' +
+        '<div class="why">' + esc(REASONS[r.reason] || r.reason) + (r.about_message ? ' · about a room message: “' + esc(r.phrase || '') + '”' : r.about_note ? ' · about the note “' + esc(r.phrase || '') + '”' : ' · about the card') + '</div>' +
         '<div class="meta">Reported by ' + esc(r.from_name || 'an account since deleted') + (r.from_card ? ' (card ' + esc(r.from_card) + ')' : '') + ' · ' + esc(ago(r.at)) + ' · ' + esc(r.open_on_card) + ' open on this card · card now ' + esc(r.card_now) + (r.days ? ' · paused ' + esc(r.days) + ' days' : '') + '</div>' +
         (owner && r.status === 'open' ? '<div class="row acts"><button class="btn sm" data-sdecide="dismiss" data-id="' + r.id + '">Dismiss</button><button class="btn sm primary" data-sdecide="pause" data-id="' + r.id + '">Pause 7 days</button><button class="btn sm danger" data-sdecide="remove" data-id="' + r.id + '">Remove the card</button></div>' : '') + '</div>';
     }).join('');
-    html += '<div class="row"><button class="btn sm" id="reportsAll">' + (reportsAll ? 'Show open only' : 'Show decided too') + '</button></div><p class="msg" id="reportsMsg"></p>' +
-      '<p class="srv">A report carries the two plaza cards (a name each person chose and a short card number) and, for a note, the phrase. Staff never see accounts, emails, groups or diaries. ' + (owner ? 'A pause stops every Plaza friends call for that account; removing the card makes her choose a new one. Each decision closes every open report on that card.' : 'An owner decides.') + '</p></div>';
+    html += '<div class="row"><button class="btn sm" id="reportsAll">' + (reportsAll ? 'Show open only' : 'Show decided too') + '</button></div><p class="msg' + (reportsNote && reportsNote.bad ? ' bad' : '') + '" id="reportsMsg">' + esc(reportsNote ? reportsNote.text : '') + '</p>' +
+      '<p class="srv">A report carries the two plaza cards (a name each person chose and a short card number) and, for a note, the phrase; a report about a room message also carries its group and room. Staff never see accounts, emails or diaries. ' + (owner ? 'A pause stops every Plaza friends call for that account; removing the card makes her choose a new one. Each decision closes every open report on that card.' : 'An owner decides.') + '</p></div>';
     return html;
   }
   /* the reports function arrives with the Plaza friends migration; until then the card says so and nothing is retried
      (Codex pre-merge review, 20 Oct, item 4) */
+  /* the answer for the filter that is chosen now: an older request for the other filter is dropped (Codex round 3) */
   function loadReports() {
     if (reportsMissing) return Promise.resolve();
-    return deadline(rpc('admin_social_reports', { p_status: reportsAll ? null : 'open' }), 10000).then(function (j) {
+    var rg = ++reportsGen, all = reportsAll;
+    return deadline(rpc('admin_social_reports', { p_status: all ? null : 'open' }), 10000).then(function (j) {
+      if (rg !== reportsGen || all !== reportsAll) return;
       if (denied(j) || !j || !Array.isArray(j.reports)) { reportsBad = true; reports = null; return; }
       reports = j.reports; reportsBad = false;
     }).catch(function (e) {
+      if ((e && e.cancelled) || rg !== reportsGen) return;
       if (/PGRST202|Could not find the function|\b404\b/i.test(String((e && e.message) || ''))) { reportsMissing = true; reportsBad = false; reports = null; return; }
       reportsBad = true; reports = null;
     });
   }
+  /* room messages waiting for a person: an owner shows or hides each one; an analyst reads (supabase 20261022120000) */
+  function roomMsgsCard(owner) {
+    if (roomMsgsMissing) return '';
+    var list = (roomMsgs && roomMsgs.messages) || [];
+    var html = '<div class="card" id="roomMsgsCard"><h2>Room messages waiting<span>' + (roomMsgs ? list.length + (roomMsgs.mode ? ' · ' + esc(roomMsgs.mode) + ' mode' : '') : '') + '</span></h2>';
+    if (!roomMsgs) html += '<p class="empty">' + (roomMsgsBad ? 'Could not load the room messages. Open this tab again to retry.' : 'Loading…') + '</p>';
+    else if (!list.length) html += '<p class="empty">Nothing waiting. Held messages show here until someone shows or hides them; each is deleted 24 hours after it was written.</p>';
+    else html += list.map(function (m) {
+      return '<div class="prop" data-roommsg="' + m.id + '"><div class="h"><b>' + esc(m.group) + ', ' + esc(m.room) + ' · ' + esc(m.name) + ' · card ' + esc(m.card) + '</b><span class="chip ' + (m.why === 'care' || m.why === 'asked' ? 'high' : 'watch') + '">' + esc(m.why || 'held') + '</span></div>' +
+        '<div class="why"></div><div class="meta">' + esc(HELD[m.why] || 'Held') + ' · ' + esc(ago(m.at)) + (m.reports ? ' · ' + esc(m.reports) + ' open reports' : '') + '</div>' +
+        (owner ? '<div class="row acts"><button class="btn sm primary" data-rdecide="show" data-id="' + m.id + '" data-rev="' + esc(m.rev) + '">Show in the room</button><button class="btn sm danger" data-rdecide="hide" data-id="' + m.id + '" data-rev="' + esc(m.rev) + '">Hide</button></div>' : '') + '</div>';
+    }).join('');
+    html += '<p class="msg' + (roomMsgsNote && roomMsgsNote.bad ? ' bad' : '') + '" id="roomMsgsMsg">' + esc(roomMsgsNote ? roomMsgsNote.text : '') + '</p><p class="srv">The writer sees her held message as waiting; nobody else does until it is shown. Crisis words and her phone\'s own request mean she may need help now: the room shows her the help card, but nobody is told. ' + (owner ? 'Hide also closes the open reports on that message; Show dismisses them.' : 'An owner decides.') + '</p></div>';
+    return html;
+  }
+  /* a timed look joins one already on its way; a look after a decision (fresh) starts anew and the older answer, read
+     before the decision, is dropped, so a decided message never comes back (Codex diff review round 4, B5) */
+  function loadRoomMsgs(fresh) {
+    if (roomMsgsMissing) return Promise.resolve();
+    if (roomMsgsBusy && !fresh) return roomMsgsBusy;
+    var rg = ++roomMsgsGen;
+    var p = deadline(rpc('admin_plaza_messages', { p_status: 'held' }), 10000).then(function (j) {
+      if (rg !== roomMsgsGen) return;
+      if (denied(j) || !j || !Array.isArray(j.messages)) { roomMsgsBad = true; roomMsgs = null; return; }
+      roomMsgs = j; roomMsgsBad = false;
+    }).catch(function (e) {
+      if ((e && e.cancelled) || rg !== roomMsgsGen) return;
+      if (/PGRST202|Could not find the function|\b404\b/i.test(String((e && e.message) || ''))) { roomMsgsMissing = true; roomMsgsBad = false; roomMsgs = null; return; }
+      roomMsgsBad = true; roomMsgs = null;
+    }).then(function () { if (rg === roomMsgsGen) roomMsgsBusy = false; });
+    roomMsgsBusy = p;
+    return p;
+  }
+  /* while Queue is open: look again every 20 s and redraw only when what waits changed, so a decision under way or its
+     message is not wiped by a redraw that changes nothing (Codex round 2, B4) */
+  /* everything the card shows counts: the messages, the mode and the switch, and whether it could load at all (round 4, B7) */
+  function queueKey() { return JSON.stringify([roomMsgs && roomMsgs.messages, roomMsgs && roomMsgs.mode, roomMsgs && roomMsgs.chat_on, roomMsgsBad, roomMsgsMissing, reports, reportsBad, reportsMissing]); }
+  function refreshQueue() {
+    var before = queueKey();
+    return Promise.all([loadRoomMsgs(), loadReports()]).then(function () { if (queueKey() !== before) queueAgain(); });
+  }
   function renderQueue() {
     var owner = me.role === 'owner', pol = (ov && ov.policy) || {}, blocked = (ov && ov.blocked) || [];
-    var html = reportsCard(owner) + '<div class="card"><h2>Proposals<span>' + (Array.isArray(proposals) ? proposals.length : '') + '</span></h2>';
+    var html = roomMsgsCard(owner) + reportsCard(owner) + '<div class="card"><h2>Proposals<span>' + (Array.isArray(proposals) ? proposals.length : '') + '</span></h2>';
     if (proposals === 'unavailable') html += '<p class="msg bad">Proposals could not be loaded. They are not empty; try again in a moment.</p>';
     else if (!proposals) html += '<p class="empty">Loading…</p>';
     else if (!proposals.length) html += '<p class="empty">No proposals. ' + (review && review.last && review.last.state === 'done' ? 'The team\'s last review proposed nothing.' : 'The team proposes only after a refresh with the team review switched on, and only from measured findings.') + '</p>';
@@ -313,20 +368,30 @@
     app.querySelectorAll('[data-decide]').forEach(function (b) { b.addEventListener('click', function () { var id = Number(b.dataset.id), d = b.dataset.decide; b.disabled = true; rpc('admin_decide', { p_id: id, p_decision: d }).then(function () { return Promise.all([loadProposals(), loadOverview()]); }).then(render); }); });
     app.querySelectorAll('[data-sdecide]').forEach(function (b) {
       b.addEventListener('click', function () {
-        var m = doc.getElementById('reportsMsg'); app.querySelectorAll('[data-sdecide]').forEach(function (x) { x.disabled = true; });
+        var g = acctGen; reportsNote = null; app.querySelectorAll('[data-sdecide]').forEach(function (x) { x.disabled = true; });
         rpc('admin_social_decide', { p_id: Number(b.dataset.id), p_decision: b.dataset.sdecide, p_days: b.dataset.sdecide === 'pause' ? 7 : null }).then(function (j) {
-          if (j && (j.error || j.ok === false)) { m.textContent = j.error || 'Not done.'; m.className = 'msg bad'; }
+          if (j && (j.error || j.ok === false)) reportsNote = { text: j.error || 'Not done.', bad: true };
           return loadReports();
-        }).catch(function (e) { m.textContent = e.message; m.className = 'msg bad'; }).then(function () { if (tab === 'queue') renderQueue(); });
+        }).catch(function (e) { if (!(e && e.cancelled) && g === acctGen) reportsNote = { text: e.message, bad: true }; }).then(function () { queueAgain(); });
       });
     });
-    var ra = doc.getElementById('reportsAll'); if (ra) ra.addEventListener('click', function () { reportsAll = !reportsAll; reports = null; renderQueue(); loadReports().then(function () { if (tab === 'queue') renderQueue(); }); });
+    var ra = doc.getElementById('reportsAll'); if (ra) ra.addEventListener('click', function () { reportsAll = !reportsAll; reports = null; renderQueue(); loadReports().then(function () { queueAgain(); }); });
+    (roomMsgs && roomMsgs.messages || []).forEach(function (m) { var el = app.querySelector('[data-roommsg="' + m.id + '"] .why'); if (el) el.textContent = m.body; }); /* her words as text, never markup */
+    app.querySelectorAll('[data-rdecide]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var g = acctGen; roomMsgsNote = null; app.querySelectorAll('[data-rdecide]').forEach(function (x) { x.disabled = true; });
+        rpc('admin_plaza_decide', { p_id: Number(b.dataset.id), p_decision: b.dataset.rdecide, p_rev: Number(b.dataset.rev) }).then(function (j) {
+          if (j && (j.error || j.ok === false)) roomMsgsNote = { text: j.error || 'Not done.', bad: true };
+          return Promise.all([loadRoomMsgs(true), loadReports()]);
+        }).catch(function (e) { if (!(e && e.cancelled) && g === acctGen) roomMsgsNote = { text: e.message, bad: true }; }).then(function () { queueAgain(); });
+      });
+    });
     app.querySelectorAll('[data-clear]').forEach(function (b) { b.addEventListener('click', function () { b.disabled = true; rpc('admin_block_clear', { p_id: Number(b.dataset.clear) }).then(loadOverview).then(render); }); });
     app.querySelectorAll('[data-pol]').forEach(function (el) {
       el.addEventListener('change', function () {
         var key = el.dataset.pol, v = el.type === 'checkbox' ? el.checked : Number(el.value), m = doc.getElementById('polMsg');
         if (key === 'k_floor' && !(Number.isInteger(v) && v >= 20 && v <= 1000)) { m.textContent = 'The floor is a whole number of people from 20 to 1000.'; m.className = 'msg bad'; return; }
-        rpc('admin_policy_set', { p_key: key, p_value: v }).then(function (j) { m.textContent = j && j.error ? j.error : 'Saved.'; m.className = 'msg' + (j && j.error ? ' bad' : ''); if (key === 'k_floor' && j && j.ok) dropResults(); return loadOverview(); }).then(function () { if (tab === 'queue') renderQueue(); }).catch(function (e) { m.textContent = e.message; m.className = 'msg bad'; });
+        rpc('admin_policy_set', { p_key: key, p_value: v }).then(function (j) { m.textContent = j && j.error ? j.error : 'Saved.'; m.className = 'msg' + (j && j.error ? ' bad' : ''); if (key === 'k_floor' && j && j.ok) dropResults(); return loadOverview(); }).then(function () { queueAgain(); }).catch(function (e) { m.textContent = e.message; m.className = 'msg bad'; });
       });
     });
   }
@@ -357,7 +422,7 @@
   function holdOverview() { if (!ov) return; ov = Object.assign({}, ov, { latest: {}, latest_run: null, held_runs: Math.max(1, ov.held_runs || 0), runs: (ov.runs || []).map(function (r) { return Object.assign({}, r, { summary: null }); }) }); if (tab === 'today') renderToday(); if (tab === 'agents') renderAgents(); } /* a hold seen anywhere clears the summaries on screen until a newer overview answers */ /* only the newest feed or overview request may write; a full feed reload stays owed until one succeeds */
   function dropProposals() { propGen++; proposals = null; if (tab === 'queue' && me) renderQueue(); } /* held words leave the screen now, before any reload answers */
   function dropResults() { feedGen++; dropProposals(); holdOverview(); feed = []; feedTop = 0; feedNeedsFull = true; if (tab === 'feed') renderFeed(); } /* a floor change the server confirmed: what is on screen was computed under the old floor, so it goes now, and any answer already on its way is ignored */
-  function loadOverview() { var gen = ++ovGen; return rpc('admin_overview').then(function (j) { if (gen !== ovGen) return; /* a newer overview was sent since: this answer may predate a hold */ if (denied(j)) return bootStaffOnly(); ov = j; pill('on', 'live'); var rk = String(j && j.latest_run) + '|' + String(j && j.held_runs); if (releaseKey === null || rk !== releaseKey) { feed = []; feedTop = 0; feedNeedsFull = true; dropProposals(); if (tab === 'feed') renderFeed(); if (tab === 'queue') loadProposals().then(function () { if (tab === 'queue') renderQueue(); }); } /* the first overview counts as a change: anything the boot feed showed may predate a hold, so it is dropped and reloaded whole */ releaseKey = rk; if (feedNeedsFull) loadFeed(true); if (tab === 'today') renderToday(); if (tab === 'agents') renderAgents(); if (tab === 'queue') renderQueue(); }).catch(function (e) { pill('bad', 'offline'); }); }
+  function loadOverview() { var gen = ++ovGen; return rpc('admin_overview').then(function (j) { if (gen !== ovGen) return; /* a newer overview was sent since: this answer may predate a hold */ if (denied(j)) return bootStaffOnly(); ov = j; pill('on', 'live'); var rk = String(j && j.latest_run) + '|' + String(j && j.held_runs); if (releaseKey === null || rk !== releaseKey) { feed = []; feedTop = 0; feedNeedsFull = true; dropProposals(); if (tab === 'feed') renderFeed(); if (tab === 'queue') loadProposals().then(function () { if (tab === 'queue') renderQueue(); }); } /* the first overview counts as a change: anything the boot feed showed may predate a hold, so it is dropped and reloaded whole */ releaseKey = rk; if (feedNeedsFull) loadFeed(true); if (tab === 'today') renderToday(); if (tab === 'agents') renderAgents(); queueAgain(); }).catch(function (e) { pill('bad', 'offline'); }); }
   function loadFeed(all) {
     all = all || feedNeedsFull;
     var gen = ++feedGen, args = all || !feedTop ? { p_limit: 60 } : { p_limit: 60, p_after: feedTop };
@@ -381,7 +446,7 @@
       }
     }).catch(function () { if (gen !== feedGen) return; var was = feedBad; feedBad = true; if (tab === 'feed' && !was) renderFeed(); });
   }
-  function loadProposals() { var g = ++propGen; return rpc('admin_proposals').then(function (j) { if (g !== propGen) return; proposals = Array.isArray(j) ? j : 'unavailable'; }).catch(function () { if (g === propGen) proposals = 'unavailable'; }); }
+  function loadProposals() { var g = ++propGen, a = acctGen; return rpc('admin_proposals').then(function (j) { if (g !== propGen || a !== acctGen) return; proposals = Array.isArray(j) ? j : 'unavailable'; }).catch(function (e) { if ((e && e.cancelled) || g !== propGen || a !== acctGen) return; proposals = 'unavailable'; }); } /* the newest request of this account only; a failure is unavailable, never empty */
   function redrawTeam() { var t = doc.getElementById('teamLine'); if (t) t.innerHTML = teamLine(); if (tab === 'agents') renderAgents(); }
   function loadReview() {
     var g = ++reviewGen;
@@ -421,39 +486,41 @@
     if (tab === 'today') renderToday();
     else if (tab === 'feed') renderFeed();
     else if (tab === 'agents') renderAgents();
-    else if (tab === 'queue') { renderQueue(); loadProposals().then(function () { if (tab === 'queue') renderQueue(); }); loadReports().then(function () { if (tab === 'queue') renderQueue(); }); }
+    else if (tab === 'queue') { renderQueue(); loadProposals().then(function () { queueAgain(); }); loadReports().then(function () { queueAgain(); }); loadRoomMsgs().then(function () { queueAgain(); }); } /* proposals reload on every open: a cached list may be stale */
     else if (tab === 'staff') { renderStaff(); loadStaff().then(function () { if (tab === 'staff') renderStaff(); }); }
   }
   function stopTimers() { timers.forEach(clearInterval); timers = []; }
   function bootStaffOnly() { stopTimers(); me = null; staffOnly(); }
   function boot() {
-    stopTimers(); var g = ++bootGen; /* a later boot (sign-in, account change) makes every step of this one stand down */
+    stopTimers();
     if (!A || !CFG.supabaseUrl) { app.innerHTML = '<div class="gate">' + LUNA + '<div class="card"><h2>Rhythme staff</h2><p class="msg bad">The sign-in module did not load.</p></div></div>'; return; }
-    bootUser = A.userId ? A.userId() : null;
+    acct = who(); var g = ++acctGen; /* an earlier boot still waiting for its answer stops here */
     if (!A.session()) return gate('');
     return rpc('admin_me').then(function (j) {
-      if (g !== bootGen) return;
+      if (g !== acctGen) return;
       if (!j || !j.admin) return staffOnly();
       me = j; shell(); render();
       loadPlaza(); timers.push(setInterval(function () { if (!doc.hidden) loadPlaza(); }, 20000)); /* the groups card never holds up the rest */
       return Promise.all([loadOverview(), loadFeed(true), loadReview()]).then(function () {
-        if (g !== bootGen) return;
+        if (g !== acctGen) return;
         timers.push(setInterval(function () { if (!doc.hidden) { loadFeed(false); if (review && review.open) loadReview(); } }, 10000));
         timers.push(setInterval(function () { if (!doc.hidden) { loadOverview(); loadReview(); } }, 30000));
+        timers.push(setInterval(function () { if (!doc.hidden && tab === 'queue') refreshQueue(); }, 20000));
       });
-    }).catch(function (e) { if (g === bootGen) gate('Could not check your account: ' + e.message, true); });
+    }).catch(function (e) { if (g === acctGen && !(e && e.cancelled)) gate('Could not check your account: ' + e.message, true); });
   }
-  doc.addEventListener('visibilitychange', function () { if (!doc.hidden && me) { loadFeed(false); loadOverview(); loadPlaza(); loadReview(); } });
-  /* a different account (or none) on this page: everything shown belonged to the old one, so it goes before anything else answers */
+  /* another account signed in or out, in this tab or another: forget everything the last one loaded, then start again */
   function accountChanged() {
-    authGen++; feedGen++; ovGen++; propGen++; reviewGen++; plazaGen++; bootGen++; stopTimers();
-    me = null; ov = null; feed = []; feedTop = 0; feedLoaded = false; feedBad = false; findings = null; proposals = null; admins = null; audit = null; releaseKey = null; feedNeedsFull = false; seenHold = 0;
-    review = null; reviewAt = 0; reviewBad = false; refreshing = null; refreshMsg = '';
-    plaza = null; plazaOk = 0; plazaBad = false; plazaBusy = false; reports = null; reportsBad = false;
+    if (who() === acct) return;
+    acctGen++; me = null; stopTimers();
+    reports = null; reportsBad = false; reportsNote = null; reportsGen++; roomMsgs = null; roomMsgsBad = false; roomMsgsNote = null; roomMsgsBusy = false; roomMsgsGen++; proposals = null; propGen++; admins = null; audit = null; ov = null; feed = []; feedTop = 0; feedLoaded = false; feedBad = false; findings = null; plaza = null; plazaOk = 0; plazaBad = false; plazaBusy = false; plazaGen++; releaseKey = null; feedGen++; feedNeedsFull = false; ovGen++; seenHold = 0;
+    review = null; reviewAt = 0; reviewBad = false; reviewGen++; refreshing = null; refreshMsg = '';
     app.innerHTML = '<div class="gate">' + LUNA + '<div class="card"><h2>Rhythme staff</h2><p class="empty">Checking the account…</p></div></div>'; /* nothing of the old account stays up while the new one is checked */
     boot();
   }
-  if (A && A.subscribe) A.subscribe(function () { var u = A.userId ? A.userId() : null; if (u !== bootUser) accountChanged(); });
+  if (A && A.subscribe) A.subscribe(accountChanged);
+  root.addEventListener('storage', function (e) { if (e.key === null || e.key === 'ovumind_auth_v1') accountChanged(); });
+  doc.addEventListener('visibilitychange', function () { if (doc.hidden) return; accountChanged(); if (me) { loadFeed(false); loadOverview(); loadPlaza(); loadReview(); if (tab === 'queue') refreshQueue(); } });
   if (root.__ADMIN_TEST__) root.__ADMIN_TEST__.api = { loadOverview: loadOverview, loadFeed: loadFeed, setTab: function (t) { tab = t; }, dropResults: dropResults, accountChanged: accountChanged, setMe: function (m) { me = m; }, runNow: runNow, renderQueue: renderQueue, renderFeed: renderFeed, boot: boot, review: function () { return review; }, teamLine: function () { return teamLine(); }, setReview: function (r) { review = r; }, proposals: function () { return proposals; }, loadProposals: loadProposals, loadReview: loadReview, refreshText: refreshText, state: function () { return { feed: feed, feedTop: feedTop, needsFull: feedNeedsFull, releaseKey: releaseKey, latest: ov && ov.latest, held: ov && ov.held_runs }; } }; /* core tests only */
   /* finish a Google round trip (?code= in the URL) before deciding what to show */
   (A && A.init ? A.init() : Promise.resolve({})).then(function (r) { if (r && r.error && !A.session()) return gate('Sign-in did not finish: ' + r.error, true); boot(); }, function () { boot(); });

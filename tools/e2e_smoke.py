@@ -3121,10 +3121,434 @@ async def main():
             check("no page errors in the Plaza friends before-the-server run", not m_errors, m_errors[:3])
             await ctx7.close()
 
+            # plaza rooms and room chat (22 Oct), against a fake rooms server (nothing leaves the machine): the Channel tab shows
+            # every group with how many are there now, the rooms of her group, a read-only peek, one-tap join, Room chat asked
+            # once at her first message, a message waiting for a check, the care card for her own words, report and mute
+            RM = {"servers": [{"id": "everyone", "name": "Everyone", "capacity": 24, "open": True, "people": 6}, {"id": "pcos", "name": "PCOS and endometriosis", "capacity": 24, "open": True, "people": 3},
+                              {"id": "trying-to-conceive", "name": "Trying to conceive", "capacity": 24, "open": True, "people": 2}, {"id": "after-a-loss", "name": "After a loss", "capacity": 24, "open": True, "people": 1},
+                              {"id": "new-mothers", "name": "New mothers", "capacity": 24, "open": True, "people": 4}, {"id": "menopause", "name": "Perimenopause and menopause", "capacity": 24, "open": True, "people": 9}],
+                  "rooms": [{"id": "everyone-chat", "name": "Chat", "blurb": "Anything on your mind today", "kind": "chat", "capacity": 12, "open": True, "no_news": False, "people": 3, "last_at": NOW},
+                            {"id": "everyone-wins", "name": "Wins", "blurb": "Small wins and good news, cheered on", "kind": "wins", "capacity": 12, "open": True, "no_news": False, "people": 12, "last_at": None},
+                            {"id": "everyone-vent", "name": "Vent", "blurb": "Let it out. No fixing needed", "kind": "vent", "capacity": 12, "open": True, "no_news": False, "people": 1, "last_at": None},
+                            {"id": "everyone-doctor", "name": "Doctor visits", "blurb": "Getting ready for a visit, and being heard", "kind": "doctor", "capacity": 12, "open": True, "no_news": False, "people": 2, "last_at": NOW},
+                            {"id": "everyone-cycle", "name": "Cycle and PMDD", "blurb": "Luteal days, PMS and PMDD. Humour welcome", "kind": "topic", "capacity": 12, "open": True, "no_news": False, "people": 0, "last_at": None}],
+                  "msgs": {"everyone-doctor": [{"id": 11, "rev": 11, "at": NOW, "body": "My GP finally listened when I wrote my questions down.", "care": False, "mine": False, "held": False, "handle": "h-mei", "name": "Mei", "look": "kebaya-blue"},
+                                               {"id": 12, "rev": 12, "at": NOW, "body": "Same here, the list helped me too.", "care": False, "mine": False, "held": False, "handle": "h-ana", "name": "Ana", "look": "cozy"}]},
+                  "room": None, "entry": None, "talk": False, "chat_event": None, "next": 20, "missing": False, "slow": 0, "deny": None, "slow_feed": 0, "slow_on": 0, "badrows": False, "slow_join": {}, "slow_on_after": 0, "slow_off": 0, "down": False}
+            rcalls, r_errors = [], []
+            def rcall(n): return [b for (m, b) in rcalls if m == n]
+            def fingerprint(v): return ",".join("%s.%s" % (x["id"], x["rev"]) for x in v)  # any stable text does; the phone only hands it back
+            async def rooms_gate(route):
+                url = route.request.url
+                if url.startswith(BASE): return await route.continue_()
+                if "fonts.googleapis.com" in url or "fonts.gstatic.com" in url: return await route.fulfill(status=200, content_type="text/css", body="")
+                m = re.search(r"/rest/v1/rpc/([a-z_]+)", url); name = m.group(1) if m else ""; body = json.loads(route.request.post_data or "{}")
+                rcalls.append((name, body))
+                ROOMCALLS = ("plaza_rooms_list", "plaza_room_join", "plaza_room_leave", "plaza_room_feed", "plaza_say", "plaza_chat_on", "plaza_chat_off", "plaza_report_message")
+                if RM["down"] and name in ROOMCALLS: return await route.abort()  # the rooms cannot be reached
+                if RM["missing"] and name in ROOMCALLS:
+                    return await route.fulfill(status=404, content_type="application/json", body=json.dumps({"code": "PGRST202", "message": "Could not find the function public.%s in the schema cache" % name}))
+                if route.request.headers.get("authorization", "") != "Bearer smoke-token":
+                    out = {"ok": False, "why": "not_here"} if name in ROOMCALLS else ({"card": None, "on": False, "adult": True, "paused_until": None} if name == "social_me" else ({"servers": RM["servers"], "mine": None, "beat_seconds": 25} if name == "plaza_list" else {"ok": False, "why": "off"}))
+                    return await route.fulfill(status=200, content_type="application/json", body=json.dumps(out))
+                def visible(room): return [x for x in RM["msgs"].get(room, [])][-40:]
+                if name == "plaza_list": out = {"servers": RM["servers"], "mine": "everyone", "beat_seconds": 25}
+                elif name == "plaza_join": out = {"ok": True, "server": body["p_server"], "name": "Everyone", "capacity": 24, "people": 6, "visit": "vE", "beat_seconds": 25}
+                elif name == "plaza_beat": out = {"ok": True, "server": body["p_server"], "visit": body.get("p_visit"), "people": 6}
+                elif name == "plaza_leave": out = {"ok": True}
+                elif name == "social_me": out = {"card": {"handle": "h-me", "name": "Fern", "look": "kebaya-red", "hidden": False, "paused_until": None}, "on": True, "adult": True, "paused_until": None}
+                elif name == "social_inbox": out = {"ok": True, "card": {"handle": "h-me", "name": "Fern", "look": "kebaya-red", "hidden": False, "paused_until": None}, "friends": [], "asks": [], "asked": [], "notes": [], "blocked": []}
+                elif name == "social_people": out = {"ok": True, "people": []}
+                elif name == "social_block": RM["msgs"]["everyone-doctor"] = [x for x in RM["msgs"].get("everyone-doctor", []) if x["handle"] != body.get("p_handle")]; out = {"ok": True}
+                elif name == "plaza_rooms_list":
+                    if body.get("p_visit") != "vE": out = {"ok": False, "why": "not_here"}
+                    else: out = {"ok": True, "server": "everyone", "room": RM["room"], "entry": RM["entry"], "chat_on": True, "mode": "review", "read": not RM["deny"], "why": RM["deny"], "talk": RM["talk"] and not RM["deny"], "chat_event": RM["chat_event"], "card": "h-me", "rooms": [None] if RM["badrows"] else RM["rooms"]}
+                elif name == "plaza_room_feed" and RM["deny"]: out = {"ok": False, "why": RM["deny"]}
+                elif name == "plaza_room_feed":  # as the server: the whole window when anything changed, `same` and no rows when nothing did
+                    v = visible(body["p_room"]); fp = fingerprint(v); same = body.get("p_seen") == fp
+                    out = {"ok": True, "room": body["p_room"], "people": 2, "capacity": 12, "mode": "review", "open": True, "joined": RM["room"] == body["p_room"], "entry": RM["entry"] if RM["room"] == body["p_room"] else None,
+                           "ids": [x["id"] for x in v], "seen": fp, "same": same, "messages": [] if same else [dict(x) for x in v]}
+                    if RM["slow_feed"]: await asyncio.sleep(RM["slow_feed"])  # the answer was read before the wait: a stale reply
+                elif name == "plaza_room_join":
+                    if RM["slow_join"].get(body["p_room"]): await asyncio.sleep(RM["slow_join"][body["p_room"]])  # its answer commits when it lands
+                    if body["p_room"] == "everyone-wins": out = {"ok": False, "why": "full", "room": "everyone-wins", "name": "Wins", "people": 12, "capacity": 12, "suggest": [{"id": "everyone-chat", "name": "Chat"}, {"id": "everyone-vent", "name": "Vent"}]}
+                    else: RM["room"] = body["p_room"]; RM["entry"] = "e-%s" % body["p_room"]; out = {"ok": True, "room": body["p_room"], "entry": RM["entry"], "people": 3, "capacity": 12}
+                elif name == "plaza_room_leave": RM["room"] = None; RM["entry"] = None; out = {"ok": True}
+                elif name == "plaza_chat_on":
+                    if RM["slow_on"]: await asyncio.sleep(RM["slow_on"])
+                    if body.get("p_opt_in") and body.get("p_expect") == "h-me" and body.get("p_seen") == RM["chat_event"]: RM["talk"] = True; RM["chat_event"] = (RM["chat_event"] or 100) + 1; out = {"ok": True, "recorded": ["plaza_chat"], "chat_event": RM["chat_event"]}
+                    else: out = {"ok": False, "why": "stale"}
+                    if RM["slow_on_after"]: await asyncio.sleep(RM["slow_on_after"])  # committed, then its answer is slow
+                elif name == "plaza_say":
+                    if not RM["talk"]: out = {"ok": False, "why": "notice"}
+                    else:
+                        if RM["slow"]: await asyncio.sleep(RM["slow"])
+                        RM["next"] += 1; msg = {"id": RM["next"], "rev": RM["next"], "at": NOW, "body": body["p_body"], "care": False, "mine": True, "held": True, "handle": "h-me", "name": "Fern", "look": "kebaya-red"}
+                        if RM["talk"]: RM["msgs"].setdefault(RM["room"], []).append(msg)  # committed before an Off that came meanwhile, then deleted by it
+                        out = {"ok": True, "message": msg, "held": True, "held_why": "asked" if body.get("p_hold") else "review"}
+                elif name == "plaza_report_message":  # with Also block, her messages leave for the reporter
+                    if body.get("p_block"):
+                        who = [x["handle"] for k in RM["msgs"] for x in RM["msgs"][k] if x["id"] == body.get("p_message")]
+                        for k in RM["msgs"]: RM["msgs"][k] = [x for x in RM["msgs"][k] if x["handle"] not in who]
+                    out = {"ok": True, "hidden": False}
+                elif name == "plaza_chat_off":  # every Off is an event, and her messages go
+                    if RM["slow_off"]: await asyncio.sleep(RM["slow_off"])
+                    RM["talk"] = False; RM["chat_event"] = (RM["chat_event"] or 100) + 1
+                    for k in RM["msgs"]: RM["msgs"][k] = [x for x in RM["msgs"][k] if x["handle"] != "h-me"]
+                    out = {"ok": True, "chat_event": RM["chat_event"]}
+                else: out = {}
+                return await route.fulfill(status=200, content_type="application/json", body=json.dumps(out))
+            ctxR2 = await browser.new_context(viewport={"width": 390, "height": 844})
+            await ctxR2.add_init_script(seed_signed_in)
+            pr2 = await ctxR2.new_page(); await pr2.route("**/*", rooms_gate)
+            pr2.on("pageerror", lambda e: r_errors.append("pageerror: " + str(e)))
+            pr2.on("console", lambda m: r_errors.append("console: " + m.text) if m.type == "error" and "favicon" not in m.text and "404" not in m.text else None)
+            await pr2.goto(BASE + "room.html", wait_until="networkidle"); await pr2.wait_for_selector(".hotspot"); await pr2.wait_for_timeout(600)
+            await pr2.evaluate("()=>{OvuRoom.isNight=function(){return false}; OvuRoom.asleep=function(){return false}; if (window.OvuPetWalk) OvuPetWalk.auto(false); OvuRoom.closeSheet && OvuRoom.closeSheet();}")
+            check("rooms: nothing about the rooms is asked at boot, before she opens the Channel tab", not [c for c in rcalls if c[0].startswith("plaza_room") or c[0] in ("plaza_rooms_list", "plaza_say")], [c[0] for c in rcalls])
+            await pr2.evaluate("()=>OvuWalk.travel('plaza')")  # a test jump
+            try: await pr2.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='plaza'", timeout=12000)
+            except Exception: pass
+            await pr2.evaluate("()=>OvuPlaza.join('everyone')")
+            try: await pr2.wait_for_function("()=>OvuPlaza.state().joined && OvuPlaza.state().joined.visit==='vE'", timeout=8000)
+            except Exception: pass
+            await pr2.evaluate("()=>OvuRoom.closeSheet && OvuRoom.closeSheet()")
+            await pr2.click("#deckTabs [data-deck=channel]")
+            try: await pr2.wait_for_function("()=>document.querySelectorAll('#chGroups .rmgroup').length===6 && document.querySelectorAll('#chRooms .rmrow').length===5", timeout=8000)
+            except Exception: pass
+            g1 = await pr2.evaluate("()=>({groups: [...document.querySelectorAll('#chGroups .rmgroup')].map(e=>e.textContent), doors: [...document.querySelectorAll('#chGroups img.rmdoor')].map(i=>i.getAttribute('src')), mine: (document.querySelector('#chGroups .rmgroup.mine')||{}).textContent||'', rows: [...document.querySelectorAll('#chRooms .rmrow')].map(e=>e.textContent), head: (document.querySelector('#deckChannel .chhead')||{}).textContent||'', width: document.documentElement.scrollWidth, note: (document.querySelector('#deckChannel .chnote')||{}).textContent||''})")
+            check("rooms: the Channel tab lists all six groups with their door signs and how many are here now, marks hers, and says she is in the plaza", len(g1["groups"]) == 6 and len(g1["doors"]) == 6 and all(d.startswith("assets/room/dream/door-") for d in g1["doors"]) and "9 here now" in " ".join(g1["groups"]) and "You are here" in g1["mine"] and "Everyone" in g1["mine"] and "In the plaza" in g1["head"], g1)
+            check("rooms: the rooms of her group show with who joined each, a full room says so, the last message time shows, and the page has no sideways scroll", len(g1["rows"]) == 5 and "3 joined" in g1["rows"][0] and "12 of 12 joined, full" in g1["rows"][1] and "Nobody joined yet" in g1["rows"][4] and "Last message" in g1["rows"][0] and g1["width"] <= 390 and "peer support" in g1["note"], g1)
+            if os.environ.get("SMOKE_SHOTS"): await pr2.screenshot(path=os.path.join(os.environ["SMOKE_SHOTS"], "rooms-list.png"), full_page=True)
+            await pr2.click("#chRooms [data-rmroom=everyone-doctor]")
+            try: await pr2.wait_for_function("()=>document.querySelectorAll('#chRooms .rmm').length===2", timeout=8000)
+            except Exception: pass
+            pk = await pr2.evaluate("()=>({msgs: [...document.querySelectorAll('#chRooms .rmm')].map(e=>e.textContent), help: (document.querySelector('#chRooms .rmhelp')||{}).textContent||'', note: [...document.querySelectorAll('#chRooms .rmnote')].map(e=>e.textContent), join: !!document.querySelector('#chRooms [data-rmact=join]'), compose: !document.querySelector('#chRooms .rmcompose').hidden, more: document.querySelectorAll('#chRooms .rmmore').length})")
+            check("rooms: tapping a room shows its latest messages read-only, with the world-wide help card, the room note, the doctor-visit card and a Join button, and no box to write in", len(pk["msgs"]) == 2 and "GP finally listened" in pk["msgs"][0] and "local emergency number" in pk["help"] and "findahelpline.com" in pk["help"] and any("not instructions" in n for n in pk["note"]) and any("three questions" in n and "second opinion" in n for n in pk["note"]) and pk["join"] and not pk["compose"] and pk["more"] == 2, pk)
+            await pr2.click("#chRooms [data-rmact=join]")
+            try: await pr2.wait_for_function("()=>!document.querySelector('#chRooms .rmcompose').hidden", timeout=6000)
+            except Exception: pass
+            jn = rcall("plaza_room_join")
+            check("rooms: Join is one tap, for her visit and that room", jn and jn[-1] == {"p_server": "everyone", "p_visit": "vE", "p_room": "everyone-doctor"}, jn)
+            await pr2.fill("#rmText", "Write down three questions before you go, it really helps."); await pr2.click("#chRooms [data-rmact=send]")
+            try: await pr2.wait_for_selector("#rmChatOn", timeout=5000)
+            except Exception: pass
+            ask = await pr2.evaluate("()=>({text: (document.querySelector('#rmSheet')||{}).textContent||'', said: 0})")
+            check("rooms: her first message asks for Room chat first, with the words (24 hours, held and reported messages, not medical advice), and nothing is said yet", "24 hours" in ask["text"] and "90 days" in ask["text"] and "not medical advice" in ask["text"] and not rcall("plaza_say"), ask["text"][:200])
+            await pr2.click("#rmChatOn"); await pr2.wait_for_timeout(200)
+            nochk = await pr2.evaluate("()=>(document.querySelector('#rmChatMsg')||{}).textContent||''")
+            await pr2.check("#rmChatOk"); await pr2.click("#rmChatOn")
+            try: await pr2.wait_for_function("()=>document.querySelectorAll('#chRooms .rmm.mine.held').length===1", timeout=8000)
+            except Exception: pass
+            co = rcall("plaza_chat_on"); sd = rcall("plaza_say")
+            mine = await pr2.evaluate("()=>({mine: (document.querySelector('#chRooms .rmm.mine')||{}).textContent||'', box: document.querySelector('#rmText').value, toast: document.querySelector('#toast').textContent})")
+            check("rooms: Turn on waits for the box to be ticked, then sends her own yes with the card it was opened for and the last Room chat event it knew, and the message goes out", "Tick the box" in nochk and co and co[-1]["p_opt_in"] is True and co[-1]["p_expect"] == "h-me" and co[-1]["p_seen"] is None and sd and sd[-1]["p_entry"] == "e-everyone-doctor" and sd[-1]["p_hold"] is False, {"chk": nochk, "on": co, "say": sd})
+            check("rooms: in review mode her message shows only to her, marked as waiting for a check, and the box empties", "Waiting for a check" in mine["mine"] and "three questions" in mine["mine"] and mine["box"] == "" and "Sent" in mine["toast"], mine)
+            if os.environ.get("SMOKE_SHOTS"): await pr2.screenshot(path=os.path.join(os.environ["SMOKE_SHOTS"], "rooms-doctor.png"), full_page=True)
+            await pr2.wait_for_timeout(3100)
+            await pr2.fill("#rmText", "Some nights I want to die, honestly."); await pr2.click("#chRooms [data-rmact=send]")
+            try: await pr2.wait_for_selector("#rmCareSend", timeout=5000)
+            except Exception: pass
+            care = await pr2.evaluate("()=>({text: (document.querySelector('#rmSheet')||{}).textContent||'', link: !!document.querySelector('#rmSheet a[href=\"https://findahelpline.com\"]')})")
+            n_say = len(rcall("plaza_say"))
+            check("rooms: words of self-harm bring her the care card first (local emergency number, a helpline link), nothing is sent, and she may send it for a person to read or keep it", "local emergency number" in care["text"] and care["link"] and "Send it for a check" in care["text"] and n_say == 1, care)
+            await pr2.click("#rmCareKeep"); await pr2.wait_for_timeout(200)
+            kept = await pr2.evaluate("()=>document.querySelector('#rmText').value")
+            check("rooms: Keep it here sends nothing and keeps her words in the box", kept.startswith("Some nights") and len(rcall("plaza_say")) == 1, kept)
+            await pr2.click("#chRooms [data-rmact=send]"); await pr2.wait_for_selector("#rmCareSend"); await pr2.click("#rmCareSend")
+            try: await pr2.wait_for_function("()=>document.querySelectorAll('#chRooms .rmm.mine.held').length===2", timeout=6000)
+            except Exception: pass
+            check("rooms: Send it for a check sends it held (the phone can only hold, never show)", rcall("plaza_say") and rcall("plaza_say")[-1]["p_hold"] is True, rcall("plaza_say")[-1:])
+            await pr2.click("#chRooms .rmmore[data-rmmore='11']"); await pr2.wait_for_selector("#rmReport")
+            await pr2.check("#rmSheet input[value=advice]"); await pr2.click("#rmReport"); await pr2.wait_for_timeout(400)
+            rp = rcall("plaza_report_message")
+            check("rooms: Report sends the message id and the reason she chose, without blocking unless she ticks it", rp and rp[-1] == {"p_message": 11, "p_reason": "advice", "p_block": False}, rp)
+            await pr2.click("#chRooms .rmmore[data-rmmore='12']"); await pr2.wait_for_selector("#rmMute"); await pr2.click("#rmMute"); await pr2.wait_for_timeout(300)
+            mu = await pr2.evaluate("()=>({msgs: [...document.querySelectorAll('#chRooms .rmm')].map(e=>e.getAttribute('data-id')), saved: OvuStore.state().roomsMuted})")
+            check("rooms: Mute takes her messages off this phone only, for this account", "12" not in mu["msgs"] and mu["saved"] and mu["saved"]["handles"] == ["h-ana"], mu)
+            RM["msgs"]["everyone-doctor"] = [x for x in RM["msgs"]["everyone-doctor"] if x["id"] != 11]  # the server hid Mei's message
+            await pr2.evaluate("()=>OvuRooms.poll()"); await pr2.wait_for_timeout(500)
+            gone = await pr2.evaluate("()=>[...document.querySelectorAll('#chRooms .rmm')].map(e=>e.getAttribute('data-id'))")
+            check("rooms: a message the server stops listing (hidden, blocked or expired) leaves her screen at the next look", "11" not in gone and len(gone) == 2, gone)
+            # an older message shown after a check, once newer ones arrived: it comes back with a new revision (Codex diff review, 3)
+            first = RM["msgs"]["everyone-doctor"][1]; RM["next"] += 1; first["held"] = False; first["rev"] = RM["next"] + 100
+            await pr2.evaluate("()=>OvuRooms.poll()"); await pr2.wait_for_timeout(500)
+            ap = await pr2.evaluate("(id)=>({held: !!document.querySelector('#chRooms .rmm.held[data-id=\"'+id+'\"]'), there: !!document.querySelector('#chRooms .rmm[data-id=\"'+id+'\"]')})", str(first["id"]))
+            await pr2.evaluate("()=>OvuRooms.poll()"); await pr2.wait_for_timeout(400)
+            fa = [b.get("p_seen") for b in rcall("plaza_room_feed")]
+            check("rooms: an older held message shown after newer ones arrived reaches her at the next look, and the look after hands back the window she now has", ap["there"] and not ap["held"] and fa[-1] == fingerprint(RM["msgs"]["everyone-doctor"][-40:]), {"ap": ap, "seen": fa[-3:]})
+            # a slow send: what she types while it is on its way stays in the box (Codex diff review, 9)
+            RM["slow"] = 1.2; await pr2.wait_for_timeout(3100)
+            await pr2.fill("#rmText", "Thank you all for this."); await pr2.click("#chRooms [data-rmact=send]"); await pr2.wait_for_timeout(150)
+            await pr2.fill("#rmText", "And one more thing"); await pr2.wait_for_timeout(1600); RM["slow"] = 0
+            sl = await pr2.evaluate("()=>({box: document.querySelector('#rmText').value, said: [...document.querySelectorAll('#chRooms .rmm.mine')].map(e=>e.textContent).join('|')})")
+            check("rooms: a reply that comes back after she typed more keeps the new words and still shows the sent one", sl["box"] == "And one more thing" and "Thank you all" in sl["said"], sl)
+            await pr2.fill("#rmText", "")
+            # someone reading further up stays there when a message arrives (Codex round 2, B6)
+            for i in range(12): RM["next"] += 1; RM["msgs"]["everyone-doctor"].append({"id": RM["next"], "rev": RM["next"], "at": NOW, "body": "Zoe here, note %d: my appointment notes, all of them, in order, so I remember." % i, "care": False, "mine": False, "held": False, "handle": "h-zoe", "name": "Zoe", "look": "cozy"})
+            await pr2.evaluate("()=>OvuRooms.poll()"); await pr2.wait_for_timeout(500)
+            await pr2.evaluate("()=>{var o=document.querySelector('#chRooms .rmmsgs'); o.scrollTop=0;}"); await pr2.wait_for_timeout(100)
+            RM["next"] += 1; RM["msgs"]["everyone-doctor"].append({"id": RM["next"], "rev": RM["next"], "at": NOW, "body": "Zoe again, one more.", "care": False, "mine": False, "held": False, "handle": "h-zoe", "name": "Zoe", "look": "cozy"}); zoe_id = RM["next"]
+            await pr2.evaluate("()=>OvuRooms.poll()"); await pr2.wait_for_timeout(500)
+            sc = await pr2.evaluate("()=>{var o=document.querySelector('#chRooms .rmmsgs'); return {top: o.scrollTop, room: o.scrollHeight - o.clientHeight, n: o.children.length}}")
+            check("rooms: a new message does not pull a reader who scrolled up back to the bottom", sc["room"] > 100 and sc["top"] < 20, sc)
+            await pr2.evaluate("()=>{var o=document.querySelector('#chRooms .rmmsgs'); o.scrollTop=o.scrollHeight;}")
+            # reading stops (her card hidden on another phone) while a report sheet is open: the sheet closes with the room
+            await pr2.click("#chRooms .rmmore[data-rmmore='%d']" % zoe_id); await pr2.wait_for_selector("#rmReport")
+            RM["deny"] = "hidden"
+            await pr2.evaluate("()=>OvuRooms.poll()"); await pr2.wait_for_timeout(500)
+            sh0 = await pr2.evaluate("()=>({open: OvuRoom.sheetOpen(), rm: !!document.querySelector('#sheet[aria-hidden=\"false\"] #rmSheet')})")
+            check("rooms: an open report sheet closes when the server stops her reading, so its buttons cannot act", not sh0["rm"] and not sh0["open"], sh0)
+            dn = await pr2.evaluate("()=>({st: OvuRooms.state(), msgs: document.querySelectorAll('#chRooms .rmm').length, box: !!document.querySelector('#rmText'), why: (document.querySelector('#chRooms .rmwhy')||{}).textContent||''})")
+            check("rooms: when the server stops her reading, the open room closes, its messages and box go, and the list says why", dn["st"]["view"] is None and dn["st"]["feed"] is None and dn["msgs"] == 0 and not dn["box"] and "hidden" in dn["why"], {"view": dn["st"]["view"], "msgs": dn["msgs"], "why": dn["why"][:80]})
+            RM["deny"] = None
+            await pr2.evaluate("()=>OvuRooms.poll()"); await pr2.wait_for_timeout(400)
+            await pr2.click("#chRooms [data-rmroom=everyone-doctor]")
+            try: await pr2.wait_for_function("()=>document.querySelectorAll('#chRooms .rmm').length>=2", timeout=6000)
+            except Exception: pass
+            await pr2.click("#chRooms [data-rmact=back]"); await pr2.wait_for_timeout(300)
+            await pr2.click("#chRooms [data-rmroom=everyone-wins]"); await pr2.wait_for_timeout(400)
+            await pr2.click("#chRooms [data-rmact=join]"); await pr2.wait_for_timeout(500)
+            fl = await pr2.evaluate("()=>document.querySelector('#toast').textContent")
+            check("rooms: a full room says which rooms in the group have space", "Wins is full right now. Chat and Vent have space." in fl, fl)
+            await pr2.click("#chRooms [data-rmact=back]"); await pr2.wait_for_timeout(300)
+            await pr2.click("#chRooms [data-rmroom=everyone-doctor]")
+            try: await pr2.wait_for_function("()=>document.querySelectorAll('#chRooms .rmm').length>=2 && !document.querySelector('#chRooms .rmcompose').hidden", timeout=6000)
+            except Exception: pass
+            # a Room chat yes that comes back after she moved on sends nothing she did not tap Send for (Codex round 2, B1)
+            await pr2.evaluate("()=>OvuRooms.chatOff()"); await pr2.wait_for_timeout(400)
+            await pr2.fill("#rmText", "First draft, for later."); await pr2.click("#chRooms [data-rmact=send]"); await pr2.wait_for_selector("#rmChatOn")
+            await pr2.check("#rmChatOk"); RM["slow_on"] = 1.2; n_say0 = len(rcall("plaza_say"))
+            await pr2.click("#rmChatOn"); await pr2.wait_for_timeout(100)
+            await pr2.evaluate("()=>OvuRoom.closeSheet()"); await pr2.fill("#rmText", "A different thought entirely"); await pr2.wait_for_timeout(1700); RM["slow_on"] = 0
+            lc = await pr2.evaluate("()=>({box: document.querySelector('#rmText').value, toast: document.querySelector('#toast').textContent})")
+            check("rooms: a Room chat yes that arrives after she changed her words sends nothing and says to tap Send", len(rcall("plaza_say")) == n_say0 and lc["box"] == "A different thought entirely" and "Tap Send" in lc["toast"], {"says": len(rcall("plaza_say")) - n_say0, "lc": lc})
+            # a feed reply read before Room chat went off does not bring her deleted messages back (Codex round 2, B3)
+            await pr2.wait_for_timeout(3100); await pr2.click("#chRooms [data-rmact=send]")
+            try: await pr2.wait_for_function("()=>document.querySelectorAll('#chRooms .rmm.mine').length>=1", timeout=6000)
+            except Exception: pass
+            mine0 = await pr2.evaluate("()=>document.querySelectorAll('#chRooms .rmm.mine').length")
+            # someone else writes just before the look, so its stale reply carries the whole window, hers included
+            RM["next"] += 1; RM["msgs"]["everyone-doctor"].append({"id": RM["next"], "rev": RM["next"], "at": NOW, "body": "Zoe, a little later.", "care": False, "mine": False, "held": False, "handle": "h-zoe", "name": "Zoe", "look": "cozy"})
+            RM["slow_feed"] = 1.2
+            await pr2.evaluate("()=>{OvuRooms.poll(); return true}"); await pr2.wait_for_timeout(300)
+            # looked at once the stale reply is in (1.2 s) and before any fresh look could come back (each takes 1.2 s too)
+            await pr2.evaluate("()=>OvuRooms.chatOff()"); await pr2.wait_for_timeout(1300)
+            st2 = await pr2.evaluate("()=>({mine: document.querySelectorAll('#chRooms .rmm.mine').length, sheet: OvuRoom.sheetOpen()})")
+            RM["slow_feed"] = 0; await pr2.wait_for_timeout(1500)
+            check("rooms: after Room chat off, a feed reply that was already on its way does not bring her messages back", mine0 >= 1 and st2["mine"] == 0, {"before": mine0, "after": st2})
+            # a phone marked under 18 on its old age question: the rooms go and nothing more is asked (Codex diff review, 8)
+            band = await pr2.evaluate("()=>OvuStore.profile().ageBand||null")
+            await pr2.click("#chRooms .rmmore[data-rmmore='%d']" % zoe_id); await pr2.wait_for_selector("#rmReport")
+            await pr2.evaluate("()=>OvuStore.setProfile({ageBand: '13-17'})"); await pr2.evaluate("()=>OvuRooms.poll()"); await pr2.wait_for_timeout(300)
+            sh1 = await pr2.evaluate("()=>!!document.querySelector('#sheet[aria-hidden=\"false\"] #rmSheet')")
+            check("rooms: a report sheet open when the phone turns under 18 closes, so it cannot report or block", not sh1, sh1)
+            k0 = len(rcalls); await pr2.evaluate("()=>OvuRooms.poll()"); await pr2.wait_for_timeout(300); k1 = len(rcalls)
+            mn = await pr2.evaluate("()=>({st: OvuRooms.state(), rows: document.querySelectorAll('#chRooms .rmrow,#chRooms .rmm,#chGroups .rmgroup').length, avail: OvuRooms.available()})")
+            check("rooms: on a phone marked under 18 the groups, rooms and messages go, Room chat is not offered, and the rooms ask nothing", mn["rows"] == 0 and mn["st"]["view"] is None and not mn["avail"] and not [c for c in rcalls[k0:k1] if c[0].startswith("plaza_room") or c[0] in ("plaza_rooms_list", "plaza_say")], {"rows": mn["rows"], "calls": [c[0] for c in rcalls[k0:k1]]})
+            await pr2.evaluate("(b)=>OvuStore.setProfile({ageBand: b})", band); await pr2.evaluate("()=>OvuRoom.closeSheet && OvuRoom.closeSheet()"); await pr2.evaluate("()=>OvuRooms.poll()"); await pr2.wait_for_timeout(400)
+            # Report with Also block: her messages leave at once, and a look already on its way cannot bring them back (Codex round 3, B3)
+            try: await pr2.wait_for_selector("#chRooms [data-rmroom=everyone-doctor]", timeout=6000)
+            except Exception: pass
+            await pr2.click("#chRooms [data-rmroom=everyone-doctor]")
+            for i in range(2): RM["next"] += 1; RM["msgs"]["everyone-doctor"].append({"id": RM["next"], "rev": RM["next"], "at": NOW, "body": "Kit says hi %d" % i, "care": False, "mine": False, "held": False, "handle": "h-kit", "name": "Kit", "look": "cozy"})
+            kit_id = RM["next"]
+            await pr2.evaluate("()=>OvuRooms.poll()"); await pr2.wait_for_timeout(500)
+            await pr2.click("#chRooms .rmmore[data-rmmore='%d']" % kit_id); await pr2.wait_for_selector("#rmReport"); await pr2.check("#rmAlsoBlock")
+            RM["next"] += 1; RM["msgs"]["everyone-doctor"].append({"id": RM["next"], "rev": RM["next"], "at": NOW, "body": "Zoe once more.", "care": False, "mine": False, "held": False, "handle": "h-zoe", "name": "Zoe", "look": "cozy"})
+            RM["slow_feed"] = 1.2
+            await pr2.evaluate("()=>{OvuRooms.poll(); return true}"); await pr2.wait_for_timeout(300)
+            await pr2.click("#rmReport"); await pr2.wait_for_timeout(1300)
+            kb = await pr2.evaluate("()=>[...document.querySelectorAll('#chRooms .rmm b')].map(e=>e.textContent)")
+            RM["slow_feed"] = 0; await pr2.wait_for_timeout(1500)
+            check("rooms: Report with Also block takes her messages away at once, and a look already on its way does not bring them back", "Kit" not in kb and len(kb) > 0, kb)
+            # an open report sheet closes when its message leaves the window (hidden, expired or withdrawn) (Codex round 3, 3)
+            await pr2.click("#chRooms .rmmore[data-rmmore='%d']" % zoe_id); await pr2.wait_for_selector("#rmReport")
+            RM["msgs"]["everyone-doctor"] = [x for x in RM["msgs"]["everyone-doctor"] if x["id"] != zoe_id]
+            await pr2.evaluate("()=>OvuRooms.poll()"); await pr2.wait_for_timeout(600)
+            sh2 = await pr2.evaluate("()=>!!document.querySelector('#sheet[aria-hidden=\"false\"] #rmSheet')")
+            check("rooms: an open report sheet closes when its message leaves the room", not sh2, sh2)
+            # a Send answer that comes back after Room chat went off adds nothing and says nothing (Codex round 3, 2)
+            await pr2.fill("#rmText", "Back again, hello."); await pr2.click("#chRooms [data-rmact=send]"); await pr2.wait_for_selector("#rmChatOn")
+            await pr2.check("#rmChatOk"); await pr2.click("#rmChatOn")
+            try: await pr2.wait_for_function("()=>document.querySelectorAll('#chRooms .rmm.mine').length>=1", timeout=6000)
+            except Exception: pass
+            RM["slow"] = 1.2; n_say1 = len(rcall("plaza_say"))
+            await pr2.fill("#rmText", "This one is slow."); await pr2.click("#chRooms [data-rmact=send]"); await pr2.wait_for_timeout(200)
+            await pr2.evaluate("()=>OvuRooms.chatOff()"); await pr2.wait_for_timeout(1600); RM["slow"] = 0
+            ls = await pr2.evaluate("()=>({mine: document.querySelectorAll('#chRooms .rmm.mine').length, toast: document.querySelector('#toast').textContent})")
+            check("rooms: a Send answer that arrives after Room chat went off shows no message and no Sent", len(rcall("plaza_say")) == n_say1 + 1 and ls["mine"] == 0 and "Sent" not in ls["toast"], ls)
+            # a Room chat yes that comes back late closes only its own sheet, not one opened since (Codex round 3, 4)
+            # (words that open the hold card once Room chat is on, so a late yes that went on would open it over the other sheet: round 4, item 4)
+            await pr2.fill("#rmText", "Try a heat pad tonight."); await pr2.click("#chRooms [data-rmact=send]"); await pr2.wait_for_selector("#rmChatOn")
+            await pr2.check("#rmChatOk"); RM["slow_on"] = 1.2; n_say4 = len(rcall("plaza_say")); await pr2.click("#rmChatOn"); await pr2.wait_for_timeout(100)
+            await pr2.evaluate("()=>OvuRoom.openSheet('smokeOther', 'Something else', 'Opened meanwhile', 'info', '<p id=\"smokeOther\">other</p>')"); await pr2.wait_for_timeout(1700); RM["slow_on"] = 0
+            ot = await pr2.evaluate("()=>({id: OvuRoom.sheetId(), here: !!document.getElementById('smokeOther'), toast: document.querySelector('#toast').textContent})")
+            check("rooms: a late Room chat answer leaves a sheet opened meanwhile open, opens no hold card over it, and asks her to tap Send", ot["id"] == "smokeOther" and ot["here"] and "Tap Send" in ot["toast"] and len(rcall("plaza_say")) == n_say4, ot)
+            await pr2.evaluate("()=>OvuRoom.closeSheet()"); await pr2.wait_for_timeout(300)
+            # two joins in quick succession: the room chosen last is where she is, whichever answer lands first (Codex round 3, 5)
+            await pr2.click("#chRooms [data-rmact=back]"); await pr2.wait_for_timeout(300)
+            RM["slow_join"] = {"everyone-chat": 1.5}
+            await pr2.click("#chRooms [data-rmroom=everyone-chat]"); await pr2.wait_for_selector("#chRooms [data-rmact=join]"); await pr2.click("#chRooms [data-rmact=join]"); await pr2.wait_for_timeout(100)
+            await pr2.click("#chRooms [data-rmact=back]"); await pr2.wait_for_selector("#chRooms [data-rmroom=everyone-vent]")
+            await pr2.click("#chRooms [data-rmroom=everyone-vent]"); await pr2.wait_for_selector("#chRooms [data-rmact=join]"); await pr2.click("#chRooms [data-rmact=join]")
+            await pr2.wait_for_timeout(2600); RM["slow_join"] = {}
+            await pr2.evaluate("()=>OvuRooms.poll()"); await pr2.wait_for_timeout(400)
+            jr = await pr2.evaluate("()=>({room: (OvuRooms.state().rooms||{}).room, view: OvuRooms.state().view})")
+            check("rooms: two quick joins end in the room chosen last, on the server and on screen", RM["room"] == "everyone-vent" and jr["room"] == "everyone-vent", {"server": RM["room"], "phone": jr})
+            # Plaza friends off (its consent withdrawal) while a Send is on its way: the rooms go at once, and the late answer
+            # adds nothing and says nothing (Codex round 4, B2)
+            try: await pr2.wait_for_selector("#chRooms #rmText", timeout=6000)
+            except Exception: pass
+            RM["slow"] = 1.2; n_say2 = len(rcall("plaza_say"))
+            await pr2.fill("#rmText", "Slow, before friends off."); await pr2.click("#chRooms [data-rmact=send]"); await pr2.wait_for_timeout(200)
+            await pr2.evaluate("()=>{OvuConsent.withdraw('social', 'you', {sent: true}); return true}"); await pr2.wait_for_timeout(1600); RM["slow"] = 0
+            fo = await pr2.evaluate("()=>({feed: OvuRooms.state().feed, mine: [...document.querySelectorAll('#chRooms .rmm.mine')].map(e=>e.textContent).join('|'), toast: document.querySelector('#toast').textContent})")
+            check("rooms: Plaza friends off clears the rooms at once, and a Send answer that lands after adds nothing and says nothing", len(rcall("plaza_say")) == n_say2 + 1 and fo["feed"] is None and "Slow, before friends off" not in fo["mine"] and "Sent" not in fo["toast"], fo)
+            await pr2.evaluate("()=>{OvuConsent.grant('social', 'you', {sent: true}); return true}"); await pr2.evaluate("()=>OvuRooms.poll()"); await pr2.wait_for_timeout(400)
+            # an older Room chat yes cannot undo a newer Off (Codex round 4, B1): the yes commits, an Off commits and answers
+            # first, and when the yes lands Room chat stays off and nothing is sent
+            await pr2.evaluate("()=>{var b=document.querySelector('#chRooms [data-rmact=back]'); if (b) b.click(); return true}"); await pr2.wait_for_timeout(300)  # the room list, wherever she was left
+            await pr2.wait_for_selector("#chRooms [data-rmroom=everyone-vent]"); await pr2.click("#chRooms [data-rmroom=everyone-vent]")
+            try: await pr2.wait_for_selector("#chRooms #rmText", timeout=6000)
+            except Exception: pass
+            await pr2.evaluate("()=>OvuRooms.chatOff()"); await pr2.wait_for_timeout(400)
+            await pr2.fill("#rmText", "After the yes."); await pr2.click("#chRooms [data-rmact=send]"); await pr2.wait_for_selector("#rmChatOn")
+            await pr2.check("#rmChatOk"); RM["slow_on_after"] = 1.5; n_say3 = len(rcall("plaza_say"))
+            await pr2.click("#rmChatOn"); await pr2.wait_for_timeout(300)
+            await pr2.evaluate("()=>OvuRooms.chatOff()"); await pr2.wait_for_timeout(1700); RM["slow_on_after"] = 0
+            oo = await pr2.evaluate("()=>({talk: (OvuRooms.state().rooms||{}).talk, local: OvuConsent.allows('plaza_chat')})")
+            check("rooms: a Room chat yes that lands after a newer Off leaves Room chat off, records no yes and sends nothing", RM["talk"] is False and oo["talk"] is False and not oo["local"] and len(rcall("plaza_say")) == n_say3, {"server": RM["talk"], "phone": oo, "says": len(rcall("plaza_say")) - n_say3})
+            await pr2.evaluate("()=>OvuRoom.closeSheet && OvuRoom.closeSheet()"); await pr2.wait_for_timeout(200)
+            # Plaza friends redraws after a late Room chat off only while it is still the sheet open (Codex round 4, item 4)
+            await pr2.evaluate("()=>OvuFriends.open()")
+            try: await pr2.wait_for_selector("#frSheet [data-fr=chatoff]", timeout=8000)
+            except Exception: pass
+            await pr2.click("#frSheet [data-fr=chatoff]"); RM["slow_off"] = 1.2; await pr2.click("#frSheet [data-fr=chatoff]"); await pr2.wait_for_timeout(150)
+            await pr2.evaluate("()=>OvuRoom.openSheet('smokeOther2', 'Something else', 'Opened meanwhile', 'info', '<p id=\"smokeOther2\">other</p>')"); await pr2.wait_for_timeout(1500); RM["slow_off"] = 0
+            fr2 = await pr2.evaluate("()=>({id: OvuRoom.sheetId(), here: !!document.getElementById('smokeOther2')})")
+            check("rooms: a late Room chat off answer leaves a sheet opened meanwhile open, instead of reopening Plaza friends", fr2["id"] == "smokeOther2" and fr2["here"], fr2)
+            await pr2.evaluate("()=>OvuRoom.closeSheet()"); await pr2.wait_for_timeout(200)
+            # a join that lands while she looks at the room she was in: that room loses its composer at once, and a look read
+            # before the join cannot give it back (Codex round 4, B6)
+            await pr2.click("#chRooms [data-rmact=back]"); await pr2.wait_for_selector("#chRooms [data-rmroom=everyone-chat]")
+            RM["slow_join"] = {"everyone-chat": 1.5}
+            await pr2.click("#chRooms [data-rmroom=everyone-chat]"); await pr2.wait_for_selector("#chRooms [data-rmact=join]"); await pr2.click("#chRooms [data-rmact=join]"); await pr2.wait_for_timeout(100)
+            await pr2.click("#chRooms [data-rmact=back]"); await pr2.wait_for_selector("#chRooms [data-rmroom=everyone-vent]"); await pr2.click("#chRooms [data-rmroom=everyone-vent]")
+            try: await pr2.wait_for_function("()=>{var f=OvuRooms.state().feed; return !!f && f.room==='everyone-vent' && f.joined}", timeout=3000)
+            except Exception: pass
+            RM["slow_feed"] = 1.2; await pr2.evaluate("()=>{OvuRooms.poll(); return true}")
+            await pr2.wait_for_timeout(1500)
+            bj = await pr2.evaluate("()=>{var f=OvuRooms.state().feed, c=document.querySelector('#chRooms .rmcompose'); return {room: f && f.room, joined: f && f.joined, compose: !!c && !c.hidden, listRoom: (OvuRooms.state().rooms||{}).room}}")
+            RM["slow_feed"] = 0; RM["slow_join"] = {}; await pr2.wait_for_timeout(1500)
+            check("rooms: once a join elsewhere lands, the room on screen loses its composer, and an older look cannot give it back", RM["room"] == "everyone-chat" and bj["room"] == "everyone-vent" and bj["joined"] is False and not bj["compose"] and bj["listRoom"] == "everyone-chat", bj)
+            # messages older than 24 hours leave this phone even while the rooms cannot be reached (Codex round 4, B8)
+            await pr2.click("#chRooms [data-rmact=back]"); await pr2.wait_for_selector("#chRooms [data-rmroom=everyone-doctor]")
+            RM["next"] += 1; RM["msgs"]["everyone-doctor"].append({"id": RM["next"], "rev": RM["next"], "at": (datetime.datetime.now() - datetime.timedelta(hours=23, minutes=59, seconds=30)).isoformat(), "body": "A note from yesterday.", "care": False, "mine": False, "held": False, "handle": "h-zoe", "name": "Zoe", "look": "cozy"})
+            await pr2.click("#chRooms [data-rmroom=everyone-doctor]")
+            try: await pr2.wait_for_function("()=>/A note from yesterday/.test(document.querySelector('#chRooms').textContent)", timeout=6000)
+            except Exception: pass
+            seen_old = await pr2.evaluate("()=>/A note from yesterday/.test(document.querySelector('#chRooms').textContent)")
+            RM["down"] = True; n_err = len(r_errors)
+            await pr2.evaluate("()=>{window.__realNow = Date.now; Date.now = function(){ return window.__realNow.call(Date) + 120000 }; OvuRooms.poll(); return true}"); await pr2.wait_for_timeout(1200)
+            ex = await pr2.evaluate("()=>({old: /A note from yesterday/.test(document.querySelector('#chRooms').textContent), left: document.querySelectorAll('#chRooms .rmm').length})")
+            await pr2.evaluate("()=>{Date.now = window.__realNow; return true}"); RM["down"] = False
+            r_errors[n_err:] = [e for e in r_errors[n_err:] if "ERR_FAILED" not in e]  # the requests cut on purpose, nothing else
+            RM["msgs"]["everyone-doctor"] = [x for x in RM["msgs"]["everyone-doctor"] if x["body"] != "A note from yesterday."]
+            check("rooms: a message past its 24 hours leaves the phone even while the rooms cannot be reached, and the others stay", seen_old and not ex["old"] and ex["left"] >= 1, {"seen": seen_old, "after": ex})
+            # a look already on its way when a message expires on the phone is dropped, not taken as a broken answer that
+            # hides the rooms (Codex round 5, 1)
+            await pr2.evaluate("()=>OvuRooms.poll()"); await pr2.wait_for_timeout(500)
+            RM["next"] += 1; RM["msgs"]["everyone-doctor"].append({"id": RM["next"], "rev": RM["next"], "at": (datetime.datetime.now() - datetime.timedelta(hours=23, minutes=59, seconds=30)).isoformat(), "body": "Another note from yesterday.", "care": False, "mine": False, "held": False, "handle": "h-zoe", "name": "Zoe", "look": "cozy"})
+            await pr2.evaluate("()=>OvuRooms.poll()")
+            try: await pr2.wait_for_function("()=>/Another note from yesterday/.test(document.querySelector('#chRooms').textContent)", timeout=6000)
+            except Exception: pass
+            await pr2.wait_for_timeout(300)
+            RM["slow_feed"] = 1.2; await pr2.evaluate("()=>{OvuRooms.poll(); return true}"); await pr2.wait_for_timeout(200)  # an unchanged window: the answer will be `same`
+            RM["msgs"]["everyone-doctor"] = [x for x in RM["msgs"]["everyone-doctor"] if x["body"] != "Another note from yesterday."]  # the server's 24 hours pass too
+            await pr2.evaluate("()=>{window.__realNow = Date.now; Date.now = function(){ return window.__realNow.call(Date) + 120000 }; document.dispatchEvent(new Event('visibilitychange')); return true}")
+            await pr2.wait_for_timeout(2700)
+            pe = await pr2.evaluate("()=>({broken: OvuRooms.state().broken, old: /Another note from yesterday/.test(document.querySelector('#chRooms').textContent), left: document.querySelectorAll('#chRooms .rmm').length})")
+            await pr2.evaluate("()=>{Date.now = window.__realNow; return true}"); RM["slow_feed"] = 0; await pr2.wait_for_timeout(300)
+            check("rooms: a look on its way when a message expires on the phone does not break the rooms, and the expired message stays gone", pe["broken"] is False and not pe["old"] and pe["left"] >= 1, pe)
+            # the Room chat yes lands after a poll already saw that same yes: the waiting message still goes (Codex round 5, 3)
+            await pr2.click("#chRooms [data-rmact=back]"); await pr2.wait_for_selector("#chRooms [data-rmroom=everyone-chat]"); await pr2.click("#chRooms [data-rmroom=everyone-chat]")
+            try: await pr2.wait_for_selector("#chRooms #rmText", timeout=6000)
+            except Exception: pass
+            if RM["talk"]: await pr2.evaluate("()=>OvuRooms.chatOff()"); await pr2.wait_for_timeout(400)
+            await pr2.fill("#rmText", "Hello from the first try."); await pr2.click("#chRooms [data-rmact=send]"); await pr2.wait_for_selector("#rmChatOn")
+            await pr2.check("#rmChatOk"); RM["slow_on_after"] = 1.5; n_say5 = len(rcall("plaza_say"))
+            await pr2.click("#rmChatOn"); await pr2.wait_for_timeout(300)
+            await pr2.evaluate("()=>{OvuRooms.poll(); return true}"); await pr2.wait_for_timeout(1900); RM["slow_on_after"] = 0
+            ft = await pr2.evaluate("()=>({talk: (OvuRooms.state().rooms||{}).talk, mine: [...document.querySelectorAll('#chRooms .rmm.mine')].map(e=>e.textContent).join('|')})")
+            check("rooms: a Room chat yes that a poll saw first still sends the waiting message", RM["talk"] is True and ft["talk"] is True and len(rcall("plaza_say")) == n_say5 + 1 and "Hello from the first try" in ft["mine"], {"says": len(rcall("plaza_say")) - n_say5, "ft": ft})
+            # Room chat turned off on another phone, seen by the next poll: a Send on its way says nothing and adds nothing (round 5, 2)
+            await pr2.wait_for_timeout(3100)
+            RM["slow"] = 1.2; n_say6 = len(rcall("plaza_say")); await pr2.evaluate("()=>{document.querySelector('#toast').textContent=''; return true}")  # the last check's Sent stays in the toast
+            await pr2.fill("#rmText", "Slow before a remote off."); await pr2.click("#chRooms [data-rmact=send]"); await pr2.wait_for_timeout(200)
+            RM["talk"] = False; RM["chat_event"] = (RM["chat_event"] or 100) + 1
+            for k in RM["msgs"]: RM["msgs"][k] = [x for x in RM["msgs"][k] if x["handle"] != "h-me"]
+            await pr2.evaluate("()=>{OvuRooms.poll(); return true}"); await pr2.wait_for_timeout(1700); RM["slow"] = 0
+            ro = await pr2.evaluate("()=>({talk: (OvuRooms.state().rooms||{}).talk, mine: [...document.querySelectorAll('#chRooms .rmm.mine')].map(e=>e.textContent).join('|'), toast: document.querySelector('#toast').textContent})")
+            check("rooms: Room chat off on another phone, once a poll sees it, drops a Send on its way: no message and no Sent", len(rcall("plaza_say")) == n_say6 + 1 and ro["talk"] is False and "Slow before a remote off" not in ro["mine"] and "Sent" not in ro["toast"], ro)
+            # another tab signs in B: everything of hers goes from this tab at once
+            await pr2.evaluate("()=>{document.querySelector('#rmText') && (document.querySelector('#rmText').value='draft');}")
+            SESS_RB = dict(SESS); SESS_RB["access_token"] = "smoke-token-b"; SESS_RB["user"] = dict(SESS["user"]); SESS_RB["user"]["id"] = "00000000-0000-4000-8000-00000000000b"
+            await pr2.evaluate("(s)=>{localStorage.setItem('ovumind_auth_v1', s); window.dispatchEvent(new StorageEvent('storage',{key:'ovumind_auth_v1'}));}", json.dumps(SESS_RB)); await pr2.wait_for_timeout(900)
+            sw = await pr2.evaluate("()=>({st: OvuRooms.state(), msgs: document.querySelectorAll('#chRooms .rmm').length})")
+            check("rooms: another account signing in clears her rooms, messages and drafts from this tab", sw["st"]["view"] is None and sw["st"]["feed"] is None and sw["msgs"] == 0, {"view": sw["st"]["view"], "msgs": sw["msgs"]})
+            await pr2.evaluate("(s)=>{localStorage.setItem('ovumind_auth_v1', s); window.dispatchEvent(new StorageEvent('storage',{key:'ovumind_auth_v1'}));}", json.dumps(SESS)); await pr2.wait_for_timeout(600)
+            check("rooms: no page errors in the rooms run", not r_errors, r_errors[:3])
+            await ctxR2.close()
+            # before the rooms exist on the server (404 PGRST202 until the migration is applied): the Channel tab is as it was
+            RM["missing"] = True; rcalls.clear(); r_errors.clear()
+            ctxR3 = await browser.new_context(viewport={"width": 390, "height": 844})
+            await ctxR3.add_init_script(seed_signed_in)
+            pr3 = await ctxR3.new_page(); await pr3.route("**/*", rooms_gate)
+            pr3.on("pageerror", lambda e: r_errors.append("pageerror: " + str(e)))
+            await pr3.goto(BASE + "room.html", wait_until="networkidle"); await pr3.wait_for_selector(".hotspot"); await pr3.wait_for_timeout(600)
+            await pr3.evaluate("()=>{OvuRoom.isNight=function(){return false}; OvuRoom.asleep=function(){return false}; if (window.OvuPetWalk) OvuPetWalk.auto(false); OvuRoom.closeSheet && OvuRoom.closeSheet();}")
+            await pr3.evaluate("()=>OvuWalk.travel('plaza')")
+            try: await pr3.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='plaza'", timeout=12000)
+            except Exception: pass
+            await pr3.evaluate("()=>OvuPlaza.join('everyone')")
+            try: await pr3.wait_for_function("()=>OvuPlaza.state().joined", timeout=8000)
+            except Exception: pass
+            await pr3.evaluate("()=>OvuRoom.closeSheet && OvuRoom.closeSheet()"); await pr3.click("#deckTabs [data-deck=channel]"); await pr3.wait_for_timeout(1200)
+            n0 = len([c for c in rcalls if c[0] in ("plaza_rooms_list", "plaza_room_feed")])
+            await pr3.evaluate("()=>OvuRooms.poll()"); await pr3.wait_for_timeout(500)
+            ms = await pr3.evaluate("()=>({st: OvuRooms.state(), rooms: document.querySelectorAll('#chRooms .rmrow').length, hidden: document.querySelector('#chRooms').hidden, note: (document.querySelector('#deckChannel .chnote')||{}).textContent||''})")
+            n1 = len([c for c in rcalls if c[0] in ("plaza_rooms_list", "plaza_room_feed")])
+            check("rooms: before the server has them, the rooms stay hidden, the old note stays, and after one question nothing more is asked", ms["st"]["missing"] and ms["rooms"] == 0 and ms["hidden"] and "Typed chat is not open yet" in ms["note"] and n0 == 1 and n1 == n0, {"n0": n0, "n1": n1, "missing": ms["st"]["missing"], "note": ms["note"][:60]})
+            check("rooms: no page errors in the before-the-server run", not r_errors, r_errors[:3])
+            await ctxR3.close()
+            # a rooms answer with a broken row ({ok:true, rooms:[null]}) hides the rooms instead of throwing (Codex round 1, 12)
+            RM["missing"] = False; RM["badrows"] = True; rcalls.clear(); r_errors.clear()
+            ctxR4 = await browser.new_context(viewport={"width": 390, "height": 844})
+            await ctxR4.add_init_script(seed_signed_in)
+            pr4 = await ctxR4.new_page(); await pr4.route("**/*", rooms_gate)
+            pr4.on("pageerror", lambda e: r_errors.append("pageerror: " + str(e)))
+            await pr4.goto(BASE + "room.html", wait_until="networkidle"); await pr4.wait_for_selector(".hotspot"); await pr4.wait_for_timeout(600)
+            await pr4.evaluate("()=>{OvuRoom.isNight=function(){return false}; OvuRoom.asleep=function(){return false}; if (window.OvuPetWalk) OvuPetWalk.auto(false); OvuRoom.closeSheet && OvuRoom.closeSheet();}")
+            await pr4.evaluate("()=>OvuWalk.travel('plaza')")
+            try: await pr4.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='plaza'", timeout=12000)
+            except Exception: pass
+            await pr4.evaluate("()=>OvuPlaza.join('everyone')")
+            try: await pr4.wait_for_function("()=>OvuPlaza.state().joined", timeout=8000)
+            except Exception: pass
+            await pr4.evaluate("()=>OvuRoom.closeSheet && OvuRoom.closeSheet()"); await pr4.click("#deckTabs [data-deck=channel]"); await pr4.wait_for_timeout(1200)
+            await pr4.evaluate("()=>OvuRooms.poll()"); await pr4.wait_for_timeout(400)
+            br = await pr4.evaluate("()=>({st: OvuRooms.state(), rows: document.querySelectorAll('#chRooms .rmrow').length, hidden: document.querySelector('#chRooms').hidden})")
+            check("rooms: a rooms answer with a broken row hides the rooms and throws nothing", br["st"]["broken"] and br["rows"] == 0 and br["hidden"] and not br["st"]["timers"] and not r_errors, {"broken": br["st"]["broken"], "rows": br["rows"], "errors": r_errors[:2]})
+            RM["badrows"] = False
+            await ctxR4.close()
+
             # the staff dashboard signed in as an owner (fake session, fake staff calls): the Plazas card shows counts only
             ctx5 = await browser.new_context(viewport={"width": 390, "height": 844})
             await ctx5.add_init_script("localStorage.setItem('ovumind_auth_v1', %s);" % json.dumps(json.dumps(SESS)))
             sg_today = (datetime.datetime.utcnow() + datetime.timedelta(hours=8)).date().isoformat()
+            STAFF_SLOW = {"open": 0}
+            STAFF_HELD = {"id": 5, "rev": 9, "at": datetime.datetime.now(datetime.timezone.utc).isoformat(), "status": "held", "why": "care", "care": True, "body": "a rough night", "group": "Everyone", "room": "Vent", "name": "Fern", "card": "1a2b3c4d", "reports": 0}
             STAFF = {"admin_me": {"admin": True, "role": "owner", "uid": SESS["user"]["id"]},
                      "admin_overview": {"counts": {"accounts": 1, "accounts_with_cloud_copy": 0, "consent_active": 0, "consent_eligible": 0}, "floor": 20, "runs": [], "open_proposals": 0, "blocked": [], "latest": {}},
                      "admin_feed": [],
@@ -3132,12 +3556,19 @@ async def main():
                                      "days": [{"day": sg_today, "server": "pcos", "joins": 5, "peak": 4}, {"day": sg_today, "server": "everyone", "joins": 1, "peak": 1}]},
                      "admin_proposals": [],
                      "admin_social_reports": {"at": datetime.datetime.now(datetime.timezone.utc).isoformat(), "reports": [{"id": 3, "at": datetime.datetime.now(datetime.timezone.utc).isoformat(), "reason": "unkind", "status": "open", "decided_at": None, "days": None, "card": "1a2b3c4d", "name": "Mei", "look": "base", "phrase": "Sending you a warm cup of tea.", "about_note": True, "from_card": "9f8e7d6c", "from_name": "Priya", "open_on_card": 1, "card_now": "active"}]},
-                     "admin_social_decide": {"ok": True}}
+                     "admin_social_decide": {"ok": True},
+                     "admin_plaza_messages": {"at": NOW, "mode": "review", "chat_on": True, "messages": [{"id": 5, "rev": 9, "at": datetime.datetime.now(datetime.timezone.utc).isoformat(), "status": "held", "why": "care", "care": True, "body": "<b>not markup</b> a rough night", "group": "Everyone", "room": "Vent", "name": "Fern", "card": "1a2b3c4d", "reports": 0}]},
+                     "admin_plaza_decide": {"ok": True}}
             async def staff_gate(route):
                 url = route.request.url
                 if url.startswith(BASE): return await route.continue_()
                 if "fonts.googleapis.com" in url or "fonts.gstatic.com" in url: return await route.fulfill(status=200, content_type="text/css", body="")
                 m = re.search(r"/rest/v1/rpc/([a-z_]+)", url)
+                if m and m.group(1) == "admin_social_reports" and STAFF["admin_social_reports"] is not None:  # as the server: open only, or all
+                    bd = json.loads(route.request.post_data or "{}"); rp = dict(STAFF["admin_social_reports"])
+                    if bd.get("p_status") == "open": rp["reports"] = [x for x in rp["reports"] if x["status"] == "open"]
+                    if STAFF_SLOW["open"] and bd.get("p_status") == "open": await asyncio.sleep(STAFF_SLOW["open"])
+                    return await route.fulfill(status=200, content_type="application/json", body=json.dumps(rp))
                 if m and m.group(1) in STAFF:
                     if STAFF[m.group(1)] is None: return await route.fulfill(status=503, content_type="application/json", body='{"message":"unavailable"}')
                     return await route.fulfill(status=200, content_type="application/json", body=json.dumps(STAFF[m.group(1)]))
@@ -3177,6 +3608,91 @@ async def main():
             try: await p5.wait_for_function("()=>/No open reports/.test((document.querySelector('#reportsCard')||{}).textContent||'') || /paused/.test((document.querySelector('#reportsCard')||{}).textContent||'')", timeout=6000)
             except Exception: pass
             check("an owner's Pause 7 days sends that report and seven days", sdec == [{"p_id": 3, "p_decision": "pause", "p_days": 7}], sdec)
+            rdec = []
+            async def staff_gate3(route):
+                if re.search(r"/rest/v1/rpc/admin_plaza_decide", route.request.url): rdec.append(json.loads(route.request.post_data or "{}")); STAFF["admin_plaza_messages"]["messages"] = []
+                return await staff_gate(route)
+            await p5.unroute("**/*"); await p5.route("**/*", staff_gate3)
+            try: await p5.wait_for_function("()=>/Room messages waiting/.test((document.querySelector('#roomMsgsCard')||{}).textContent||'')", timeout=6000)
+            except Exception: pass
+            rmc = await p5.evaluate("()=>{var c=document.querySelector('#roomMsgsCard'); return c ? {text: c.textContent, bold: !!c.querySelector('.why b'), acts: c.querySelectorAll('[data-rdecide]').length} : null}")
+            check("the staff Queue tab lists room messages waiting for a person (group, room, card, why), her words as text never markup, with Show and Hide for an owner", rmc and "Everyone, Vent" in rmc["text"] and "Words of self-harm or crisis" in rmc["text"] and "<b>not markup</b> a rough night" in rmc["text"] and not rmc["bold"] and rmc["acts"] == 2 and "review mode" in rmc["text"], rmc)
+            await p5.click('#roomMsgsCard [data-rdecide=show]')
+            try: await p5.wait_for_function("()=>/Nothing waiting/.test((document.querySelector('#roomMsgsCard')||{}).textContent||'')", timeout=6000)
+            except Exception: pass
+            check("an owner's Show sends that message and the decision, and the card empties", rdec == [{"p_id": 5, "p_decision": "show", "p_rev": 9}], rdec)
+            # a decision that fails says so, and the redraw keeps the words (Codex round 2, B5)
+            STAFF["admin_plaza_messages"]["messages"] = [dict(STAFF_HELD, id=7, body="still waiting here")]
+            STAFF["admin_plaza_decide"] = {"ok": False, "error": "That message is gone (deleted, expired or withdrawn)."}
+            await p5.unroute("**/*"); await p5.route("**/*", staff_gate)
+            await p5.evaluate("()=>document.dispatchEvent(new Event('visibilitychange'))")
+            try: await p5.wait_for_function("()=>/still waiting here/.test((document.querySelector('#roomMsgsCard')||{}).textContent||'')", timeout=6000)
+            except Exception: pass
+            qv = await p5.evaluate("()=>(document.querySelector('#roomMsgsCard')||{}).textContent||''")
+            check("staff: coming back to an open Queue looks again, so a message held since shows", "still waiting here" in qv, qv[:120])
+            await p5.click('#roomMsgsCard [data-rdecide=show]'); await p5.wait_for_timeout(800)
+            fm = await p5.evaluate("()=>({msg: (document.querySelector('#roomMsgsMsg')||{}).textContent||'', bad: (document.querySelector('#roomMsgsMsg')||{}).className||''})")
+            check("staff: a Show that fails keeps its reason on screen after the queue redraws", "gone" in fm["msg"] and "bad" in fm["bad"], fm)
+            STAFF["admin_plaza_decide"] = {"ok": True}
+            # the reports shown are the filter chosen last: an older open-only answer cannot overwrite it (Codex round 3, 8)
+            STAFF_SLOW["open"] = 1.2
+            await p5.evaluate("()=>document.dispatchEvent(new Event('visibilitychange'))"); await p5.wait_for_timeout(150)
+            await p5.click('#reportsAll'); await p5.wait_for_timeout(1700); STAFF_SLOW["open"] = 0
+            # redraw the queue from what the page holds now (a tab change draws before it asks again), and read it in the same turn
+            rf = await p5.evaluate("()=>{document.querySelector('nav.tabs button[data-tab=today]').click(); document.querySelector('nav.tabs button[data-tab=queue]').click(); return {text: (document.querySelector('#reportsCard')||{}).textContent||'', btn: (document.querySelector('#reportsAll')||{}).textContent||''}}")
+            check("staff: the reports shown match the filter chosen last, whatever order the answers land in", "Show open only" in rf["btn"] and "Mei · card 1a2b3c4d" in rf["text"], {"btn": rf["btn"], "text": rf["text"][:100]})
+            # a report decision that fails keeps its reason after the redraw (Codex round 3, 7)
+            STAFF["admin_social_reports"]["reports"][0]["status"] = "open"; STAFF["admin_social_decide"] = {"ok": False, "error": "That report was already decided."}
+            await p5.evaluate("()=>document.dispatchEvent(new Event('visibilitychange'))")
+            try: await p5.wait_for_selector('#reportsCard [data-sdecide=pause]', timeout=6000)
+            except Exception: pass
+            await p5.click('#reportsCard [data-sdecide=pause]'); await p5.wait_for_timeout(800)
+            rm2 = await p5.evaluate("()=>({msg: (document.querySelector('#reportsMsg')||{}).textContent||'', cls: (document.querySelector('#reportsMsg')||{}).className||''})")
+            check("staff: a report decision that fails keeps its reason on screen after the queue redraws", "already decided" in rm2["msg"] and "bad" in rm2["cls"], rm2)
+            STAFF["admin_social_decide"] = {"ok": True}
+            # a queue look already on its way when Show is tapped cannot bring the decided message back (Codex round 4, B5)
+            STAFF["admin_plaza_messages"]["messages"] = [dict(STAFF_HELD, id=8, rev=20, body="decide me while a look waits")]
+            await p5.evaluate("()=>document.dispatchEvent(new Event('visibilitychange'))")
+            try: await p5.wait_for_function("()=>/decide me while a look waits/.test((document.querySelector('#roomMsgsCard')||{}).textContent||'')", timeout=6000)
+            except Exception: pass
+            slowq = {"on": True}
+            async def staff_gate6(route):
+                url = route.request.url
+                if re.search(r"/rest/v1/rpc/admin_plaza_messages", url) and slowq["on"]:
+                    slowq["on"] = False; body = json.dumps(STAFF["admin_plaza_messages"])  # read before the wait, as a server would
+                    await asyncio.sleep(1.5)
+                    return await route.fulfill(status=200, content_type="application/json", body=body)
+                if re.search(r"/rest/v1/rpc/admin_plaza_decide", url): STAFF["admin_plaza_messages"]["messages"] = []
+                return await staff_gate(route)
+            await p5.unroute("**/*"); await p5.route("**/*", staff_gate6)
+            await p5.evaluate("()=>document.dispatchEvent(new Event('visibilitychange'))"); await p5.wait_for_timeout(250)
+            await p5.click('#roomMsgsCard [data-rdecide=show]'); await p5.wait_for_timeout(2200)
+            dq = await p5.evaluate("()=>(document.querySelector('#roomMsgsCard')||{}).textContent||''")
+            check("staff: a queue look already on its way when Show is tapped cannot bring the decided message back", "decide me while" not in dq and "Nothing waiting" in dq, dq[:140])
+            # a change of mode alone redraws the card (Codex round 4, B7): one look first so nothing else differs
+            await p5.evaluate("()=>document.dispatchEvent(new Event('visibilitychange'))"); await p5.wait_for_timeout(900)
+            STAFF["admin_plaza_messages"]["mode"] = "live"
+            await p5.evaluate("()=>document.dispatchEvent(new Event('visibilitychange'))"); await p5.wait_for_timeout(900)
+            md = await p5.evaluate("()=>(document.querySelector('#roomMsgsCard h2')||{}).textContent||''")
+            STAFF["admin_plaza_messages"]["mode"] = "review"
+            check("staff: a change of mode alone redraws the queue card", "live mode" in md, md)
+            # another account signs in (another tab) while a queue answer is on its way: the page forgets the queue, shows the
+            # staff-only screen for that account, and the late answer never draws (Codex diff review, 22 Oct, item 1)
+            STAFF["admin_plaza_messages"]["messages"] = [dict(STAFF_HELD, id=6, body="late words from the queue")]
+            slow5 = {"on": True}
+            async def staff_gate4(route):
+                url = route.request.url
+                if re.search(r"/rest/v1/rpc/admin_me", url) and route.request.headers.get("authorization", "") == "Bearer smoke-token-b":
+                    return await route.fulfill(status=200, content_type="application/json", body=json.dumps({"admin": False}))
+                if re.search(r"/rest/v1/rpc/admin_plaza_messages", url) and slow5["on"]: await asyncio.sleep(1.5)
+                return await staff_gate(route)
+            await p5.unroute("**/*"); await p5.route("**/*", staff_gate4)
+            await p5.click('nav.tabs button[data-tab=today]'); await p5.wait_for_timeout(200); await p5.click('nav.tabs button[data-tab=queue]'); await p5.wait_for_timeout(250)
+            SESS5B = dict(SESS); SESS5B["access_token"] = "smoke-token-b"; SESS5B["user"] = dict(SESS["user"]); SESS5B["user"]["id"] = "00000000-0000-4000-8000-00000000000b"; SESS5B["user"]["email"] = "someone.else@example.invalid"
+            await p5.evaluate("(s)=>{localStorage.setItem('ovumind_auth_v1', s); window.dispatchEvent(new StorageEvent('storage',{key:'ovumind_auth_v1'}));}", json.dumps(SESS5B))
+            await p5.wait_for_timeout(2400); slow5["on"] = False
+            sw5 = await p5.evaluate("()=>({text: document.getElementById('app').textContent, card: !!document.querySelector('#roomMsgsCard')})")
+            check("staff: another account signing in while a queue answer is on its way shows the staff-only screen, and the late answer never draws", "not on the staff list" in sw5["text"] and not sw5["card"] and "late words" not in sw5["text"], sw5["text"][:160])
             await ctx5.close()
 
             # the launch setting: Luna's AI help is paused. The three AI choices cannot be turned on, Luna says so, and no AI request goes out

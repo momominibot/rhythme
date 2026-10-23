@@ -34,7 +34,7 @@
     return (j && j.name ? j.name : 'That group') + ' is full right now.' + (s && s.name ? ' ' + s.name + ' has room.' : ' Try again in a little while.');
   }
   /* a quiet icon per group; an unknown group gets the plain one */
-  var ICONS = { everyone: 'groups', 'trying-to-conceive': 'favorite', pcos: 'water_drop', menopause: 'spa' };
+  var ICONS = { everyone: 'groups', 'trying-to-conceive': 'favorite', pcos: 'water_drop', menopause: 'spa', 'after-a-loss': 'local_florist', 'new-mothers': 'crib' };
   function icon(id) { return ICONS[id] || 'groups'; }
   var P = { BEAT: BEAT, LIST: LIST, TIMEOUT: TIMEOUT, ICONS: ICONS, icon: icon, countText: countText, roomText: roomText, pillText: pillText, fullText: fullText };
   root.OvuPlaza = P;
@@ -204,10 +204,16 @@
     fillSheet();
     watchers.forEach(function (f) { try { f(); } catch (e) { } }); /* Plaza friends follows her visit (ovu-friends.js) */
   }
+  /* the rooms' own sentence once they exist on the server (ovu-rooms.js), the old one until then */
+  function chatLine() {
+    var X = root.OvuRooms;
+    return X && X.available && X.available() ? 'Each group has rooms, open in the Channel tab: reading them needs a shown plaza card, writing needs Room chat, and messages are kept for 24 hours.'
+      : 'There is no open chat; friends can send each other kind notes from a set list.';
+  }
   function openSheet() {
     if (!uid()) {
       R.openSheet('plaza', 'Plaza groups', 'Choose a topic you want to connect around', 'groups',
-        '<p>The plaza has groups for everyone, for trying to conceive, for PCOS and for menopause, each showing how many people are in it right now. Sign in to see the counts and join one. You are not counted in a group until you choose Join.</p>' +
+        '<p>The plaza has a group for everyone and groups by stage of life, each showing how many people are in it right now. Sign in to see the counts and join one. You are not counted in a group until you choose Join.</p>' +
         '<div class="row"><button type="button" class="btn primary" id="plazaSignIn"><span class="ms">person</span>Sign in from You</button></div>');
       var b = doc.getElementById('plazaSignIn');
       if (b) b.addEventListener('click', function () { R.hideSheet(); var a = doc.querySelector('nav a[data-tab="you"]'); if (a) a.click(); });
@@ -215,7 +221,7 @@
     }
     R.openSheet('plaza', 'Plaza groups', 'Choose a topic you want to connect around', 'groups',
       '<div class="plazalist" id="plazaList"><p class="help">Looking around…</p></div>' +
-      '<p class="help">Joining stores that your account is in this group, with the time you joined and last checked in, so you can be counted. The groups are about health, so joining one tells Rhythme something about you while you are in it. Anyone can join any group, and nothing in your profile chooses one for you. This phone remembers the group you chose and rejoins it when you come back to the plaza; tap Leave the group to forget it. Unless you turn on Plaza friends, other people see only the number, never who; Rhythme staff see only the number. Leaving the plaza, putting Rhythme away, going to sleep or signing out takes you out; if that message does not get through, you stop being counted after 75 seconds and the record is deleted the next time anyone uses the groups. Each group also keeps daily counts of joins and its busiest moment, with no account attached, for a year. There is no open chat; friends can send each other kind notes from a set list.</p>' +
+      '<p class="help">Joining stores that your account is in this group, with the time you joined and last checked in, so you can be counted. The groups are about health, so joining one tells Rhythme something about you while you are in it. Anyone can join any group, and nothing in your profile chooses one for you. This phone remembers the group you chose and rejoins it when you come back to the plaza; tap Leave the group to forget it. Unless you turn on Plaza friends, other people see only the number, never who; Rhythme staff see only the number, except for a room message held for a check or reported, which staff see with its card, its group and its room. Leaving the plaza, putting Rhythme away, going to sleep or signing out takes you out; if that message does not get through, you stop being counted after 75 seconds and the record is deleted the next time anyone uses the groups. Each group also keeps daily counts of joins and its busiest moment, with no account attached, for a year. ' + chatLine() + '</p>' +
       '<div id="plazaFriendsRow" class="frplaza"></div>' +
       '<div class="row" id="plazaLeaveRow" hidden><button type="button" class="btn soft" id="plazaLeave"><span class="ms">logout</span>Leave the group</button></div>');
     var list = doc.getElementById('plazaList');
