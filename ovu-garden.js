@@ -294,7 +294,7 @@
   function carefulHTML(pf) {
     return '<div class="teacare first"><b><span class="ms">health_and_safety</span>Before any herb</b><p>' + (pf.pregState === 'pregnant' || pf.pregState === 'maybe' ? 'While you are or could be pregnant' : pf.pregState === 'postpartum' || pf.breastfeeding === 'yes' ? 'While you are breastfeeding or recovering from a birth' : 'While you are trying to conceive') + ', read each tea’s Take care note and ask a doctor or pharmacist before trying a herb. These are comfort drinks, not fertility or milk-supply treatments.</p></div>';
   }
-  function refsHTML(ids) { var E = root.OvuEvidence; return (ids || []).map(function (id) { var e = E && E.get(id); return e ? '<a href="evidence.html#' + id + '" target="_blank" rel="noopener">' + esc(e.short) + ' <i>' + esc(id) + '</i></a>' : ''; }).join(''); }
+  function refsHTML(ids) { var E = root.OvuEvidence; return (ids || []).map(function (id) { var e = E && E.get(id); return e ? '<a href="evidence.html#' + id + '">' + esc(e.short) + ' <i>' + esc(id) + '</i></a>' : ''; }).join(''); }
   function teaHTML(t, open) {
     return '<details class="tea"' + (open ? ' open' : '') + '><summary>' + (t.img ? '<img class="teaimg" src="' + R.ART + t.img + '" alt="">' : '<span class="ms">' + esc(t.icon || 'local_cafe') + '</span>') +
       '<span><b>' + esc(t.name) + '</b><small>' + esc(t.why) + '</small></span><span class="ms go">expand_more</span></summary>' +
