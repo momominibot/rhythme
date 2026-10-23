@@ -220,6 +220,30 @@
   {
    "text": "Seen 23.10.2026 and 24.10.2026",
    "problem": null
+  },
+  {
+   "text": "See x.com",
+   "problem": "link"
+  },
+  {
+   "text": "I.love it",
+   "problem": null
+  },
+  {
+   "text": "My appointments are 2026-10-22-2026-10-23",
+   "problem": null
+  },
+  {
+   "text": "Call +45 20-12-2012",
+   "problem": "contact"
+  },
+  {
+   "text": "After the phone call I managed 10000 steps",
+   "problem": null
+  },
+  {
+   "text": "phone call 5551234",
+   "problem": "contact"
   }
  ],
  "hold": [

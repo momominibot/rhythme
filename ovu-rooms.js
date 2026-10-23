@@ -86,16 +86,18 @@
      after it (findahelpline.com.evil.scot stays an address; Codex round 5, B3) */
   var HELPLINE = /(^|[^a-z0-9.@_-])(https?:\/\/)?(www\.)?findahelpline\.com(\/[a-z0-9\/_-]*)?(?=$|[^a-z0-9@_.-]|\.(?:$|[^a-z0-9]))/gi,
     PHONE7 = /(^|[^0-9])[0-9]{3}[ .-][0-9]{4}($|[^0-9])/,
-    INTENT = /\b((call|text|ring|phone|whatsapp|sms|msg|message|reach|contact|email|e-mail|telegram|wechat|signal|line|add|find) me|my (phone number|number|no|phone|hp|handphone|mobile|cell|contact|whatsapp|telegram|wechat|line|insta|ig|email|e-mail|handle|id)|call|text|ring|dial|sms|whatsapp|phone)\b/,
+    /* contact grammar ("call me on", "my number is", or a bare "call", "text") with a number of five digits or more
+       right after it, at most one word between ("after the phone call I managed 10000 steps" is not one; round 6) */
+    ASK = /\b(?:(?:call|text|ring|phone|whatsapp|sms|msg|message|reach|contact|email|e-mail|telegram|wechat|signal|line|add|find) me|my (?:phone number|number|no|phone|hp|handphone|mobile|cell|contact|whatsapp|telegram|wechat|line|insta|ig|email|e-mail|handle|id)|call|text|ring|dial|sms|whatsapp|phone)\b[^0-9a-z+]*(?:[a-z']+[^0-9a-z+]+)?(\+?[0-9][0-9 ().-]*[0-9])/g,
     /* a date (2026-10-22, 23.10.2026) is never part of a phone number, so dates go before digits are counted (round 5) */
-    DATES = /(?<![0-9.-])([0-9]{4}[-.](0?[1-9]|1[0-2])[-.](0?[1-9]|[12][0-9]|3[01])|(0?[1-9]|[12][0-9]|3[01])[-.](0?[1-9]|1[0-2])[-.]([0-9]{4}|[0-9]{2}))(?![0-9])/g;
+    DATES = /(?<![0-9.])([0-9]{4}[-.](0?[1-9]|1[0-2])[-.](0?[1-9]|[12][0-9]|3[01])|(0?[1-9]|[12][0-9]|3[01])[-.](0?[1-9]|1[0-2])[-.]([0-9]{4}|[0-9]{2}))(?![0-9])/g;
   function hostIn(t) {
     return t.split(/[^A-Za-z0-9.-]+/).some(function (tok) {
       var parts = tok.replace(/^[.-]+|[.-]+$/g, '').split('.');
       for (var i = 1; i < parts.length; i++) {
         var tld = parts[i].toLowerCase(), prev = parts[i - 1];
         if (!/^[a-z]{2,24}$/.test(tld) || !/^[A-Za-z0-9-]+$/.test(prev)) continue;
-        if (tld.length === 2 ? prev.length >= 3 : (prev.length >= 2 && TLDS.indexOf(' ' + tld + ' ') > -1)) return true;
+        if (tld.length === 2 ? prev.length >= 3 : ((prev.length >= 2 || !/^[ia]$/i.test(prev)) && TLDS.indexOf(' ' + tld + ' ') > -1)) return true; /* x.com counts; "I.love" stays prose (round 6) */
       }
       return false;
     });
@@ -107,9 +109,12 @@
     var low = straight(t);
     /* contact details first, on all of her words, so no exception can hide one */
     if (/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/.test(low) || /(^|[^a-z0-9])@[a-z0-9_.]{2,}/.test(low)) return 'contact';
-    var nd = low.replace(DATES, ' ');
+    /* a number with a country code is a phone number whatever its digits look like (+45 20-12-2012; round 6) */
+    if ((low.match(/\+[0-9][0-9 ().-]*[0-9]/g) || []).some(function (r) { return r.replace(/[^0-9]/g, '').length >= 7; })) return 'contact';
+    var nd = low.replace(DATES, ' '), m;
     if (digitRuns(nd).some(function (n) { return n >= 8; }) || PHONE7.test(nd)) return 'contact';
-    var at = nd.search(INTENT); if (at > -1 && digitRuns(nd.slice(at)).some(function (n) { return n >= 5; })) return 'contact';
+    ASK.lastIndex = 0;
+    while ((m = ASK.exec(nd))) if (m[1].replace(/[^0-9]/g, '').length >= 5) return 'contact';
     if (/\b(dm|pm|message|add) me\b/.test(low) || /\bmy (number|handle|ig|insta) is\b/.test(low)) return 'contact';
     var bare = t.replace(HELPLINE, '$1 ');
     if (LINK.test(straight(bare)) || hostIn(bare)) return 'link';

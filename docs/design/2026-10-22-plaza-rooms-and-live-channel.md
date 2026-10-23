@@ -321,3 +321,19 @@ Checks: 7 more text cases in the shared fixture; `expired_decision_refused` in t
 check that the phone and migration endings match; three browser checks (findings 1, 2, 3), each shown failing on
 d365540. Finding 6 has no browser check (a P3 needing a two-account staff race); the change is one guard.
 
+## 17. Codex diff review, round 6 (23 Oct): MERGE; the last refusal-rule edges answered
+
+Review: `docs/design/reviews/2026-10-23-plaza-rooms-codex-diff-r6.md`. MERGE, and the main merges (PR 51's admin.js, PR 85's
+styles) were judged intact. Round-5 fixes 1, 2, 3 and 5 and B3, B4 were confirmed. What was left, and what changed:
+
+| Round 6 item | What changed |
+|---|---|
+| A10 one-letter names | `x.com` counts: a one-letter name before a listed ending is an address, except "I" and "a", so "I.love it" stays prose |
+| 4 compact date ranges | A date may follow a hyphen, so `2026-10-22-2026-10-23` is two dates, not a phone number |
+| new 1 country codes | A number written with a country code (`+45 20-12-2012`) is a phone number whatever its digits look like; this is checked before dates are set aside |
+| new 2 bare "call" | The contact words need the number right after them, at most one word between ("call me on 555 1234", "Call 5551234"), so "after the phone call I managed 10000 steps" is fine. Known limit: "call me later at 5551234" passes the refusal and waits for the team's check like every message |
+| 6 proposals | The proposals loader drops a late answer or failure from before an account change (its generation), not only a tagged cancellation |
+
+These are the last of a family Codex has found more of each round. With review only, a phrase the refusal rules miss
+reaches a person before anyone else, so the rules are a first filter, not the boundary.
+

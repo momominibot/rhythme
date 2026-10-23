@@ -298,7 +298,7 @@ $$;
 -- dates (2026-10-22, 23.10.2026) set aside before digits are counted: a date is never part of a phone number
 create or replace function plaza.undate(p_text text) returns text
 language sql immutable security definer set search_path = '' as $$
-  select regexp_replace(coalesce(p_text, ''), '(?<![0-9.-])([0-9]{4}[-.](0?[1-9]|1[0-2])[-.](0?[1-9]|[12][0-9]|3[01])|(0?[1-9]|[12][0-9]|3[01])[-.](0?[1-9]|1[0-2])[-.]([0-9]{4}|[0-9]{2}))(?![0-9])', ' ', 'g')
+  select regexp_replace(coalesce(p_text, ''), '(?<![0-9.])([0-9]{4}[-.](0?[1-9]|1[0-2])[-.](0?[1-9]|[12][0-9]|3[01])|(0?[1-9]|[12][0-9]|3[01])[-.](0?[1-9]|1[0-2])[-.]([0-9]{4}|[0-9]{2}))(?![0-9])', ' ', 'g')
 $$;
 -- a web address anywhere in her words, in any case: a name of two or more before a listed ending, or three or more
 -- before a two-letter one (so a missed space, "it.in my back", stays a sentence; Codex diff review round 5, A10)
@@ -312,7 +312,7 @@ begin
       tld := lower(parts[i]); prev := parts[i - 1];
       if tld ~ '^[a-z]{2,24}$' and prev ~ '^[A-Za-z0-9-]+$'
          and ((char_length(tld) = 2 and char_length(prev) >= 3)
-              or (char_length(tld) >= 3 and char_length(prev) >= 2 and position(' ' || tld || ' ' in plaza.tlds()) > 0)) then
+              or (char_length(tld) >= 3 and (char_length(prev) >= 2 or lower(prev) not in ('i', 'a')) and position(' ' || tld || ' ' in plaza.tlds()) > 0)) then
         return true;
       end if;
     end loop;
@@ -323,25 +323,27 @@ end $$;
 -- what a message may not carry, or null; the phone runs the same rules first (ovu-rooms.js textProblem)
 create or replace function plaza.text_problem(p_body text) returns text
 language plpgsql stable security definer set search_path = '' as $$
-declare t text := btrim(regexp_replace(coalesce(p_body, ''), '\s+', ' ', 'g')); low text; nd text; bare text; tail text; tok text; run text; k text;
+declare t text := btrim(regexp_replace(coalesce(p_body, ''), '\s+', ' ', 'g')); low text; nd text; bare text; tok text; run text; k text;
 begin
   if t = '' then return 'empty'; end if;
   if char_length(t) > 280 then return 'long'; end if;
   low := lower(translate(t, '’‘', ''''''));
   -- contact details first, on all of her words, so no exception can hide one (Codex diff review round 4, B3 and B4)
   if low ~ '[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}' or low ~ '(^|[^a-z0-9])@[a-z0-9_.]{2,}' then return 'contact'; end if;
+  -- a number with a country code is a phone number whatever its digits look like (+45 20-12-2012; round 6)
+  for run in select m[1] from regexp_matches(low, '(\+[0-9][0-9 ().-]*[0-9])', 'g') as m loop
+    if char_length(regexp_replace(run, '[^0-9]', '', 'g')) >= 7 then return 'contact'; end if;
+  end loop;
   nd := plaza.undate(low);
   for run in select m[1] from regexp_matches(nd, '(\+?[0-9][0-9 ().-]*[0-9])', 'g') as m loop
     if char_length(regexp_replace(run, '[^0-9]', '', 'g')) >= 8 then return 'contact'; end if;
   end loop;
   if nd ~ '(^|[^0-9])[0-9]{3}[ .-][0-9]{4}($|[^0-9])' then return 'contact'; end if;
-  -- contact grammar ("call me on", "my number is", or a bare "call", "text", "ring") followed by five digits or more
-  tail := (regexp_match(nd, '(\y(?:(?:call|text|ring|phone|whatsapp|sms|msg|message|reach|contact|email|e-mail|telegram|wechat|signal|line|add|find) me|my (?:phone number|number|no|phone|hp|handphone|mobile|cell|contact|whatsapp|telegram|wechat|line|insta|ig|email|e-mail|handle|id)|call|text|ring|dial|sms|whatsapp|phone)\y.*)$'))[1];
-  if tail is not null then
-    for run in select m[1] from regexp_matches(tail, '(\+?[0-9][0-9 ().-]*[0-9])', 'g') as m loop
-      if char_length(regexp_replace(run, '[^0-9]', '', 'g')) >= 5 then return 'contact'; end if;
-    end loop;
-  end if;
+  -- contact grammar ("call me on", "my number is", or a bare "call", "text") with a number of five digits or more right
+  -- after it, at most one word between ("after the phone call I managed 10000 steps" is not one; round 6)
+  for run in select m[1] from regexp_matches(nd, '\y(?:(?:call|text|ring|phone|whatsapp|sms|msg|message|reach|contact|email|e-mail|telegram|wechat|signal|line|add|find) me|my (?:phone number|number|no|phone|hp|handphone|mobile|cell|contact|whatsapp|telegram|wechat|line|insta|ig|email|e-mail|handle|id)|call|text|ring|dial|sms|whatsapp|phone)\y[^0-9a-z+]*(?:[a-z'']+[^0-9a-z+]+)?(\+?[0-9][0-9 ().-]*[0-9])', 'g') as m loop
+    if char_length(regexp_replace(run, '[^0-9]', '', 'g')) >= 5 then return 'contact'; end if;
+  end loop;
   if low ~ '\y(dm|pm|message|add) me\y' or low ~ '\ymy (number|handle|ig|insta) is\y' then return 'contact'; end if;
   -- then links: the help card's one address is set aside exactly (its own host, nothing before it, no further label
   -- after it: findahelpline.com.evil.scot stays an address; round 5, B3); any other web address counts
