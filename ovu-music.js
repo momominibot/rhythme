@@ -266,6 +266,7 @@
       if (root.OvuSeats && root.OvuSeats.state && root.OvuSeats.state()) return true;
       if (root.OvuLightFlower && root.OvuLightFlower.running && root.OvuLightFlower.running()) return true;
       if (root.OvuBreathTap && root.OvuBreathTap.running && root.OvuBreathTap.running()) return true;
+      if (root.OvuTones && ((root.OvuTones.playing && root.OvuTones.playing()) || (root.OvuTones.bed && root.OvuTones.bed()))) return true; /* the spring's tone or bed is the only sound by the water (22 Oct) */
     } catch (e) { }
     return false;
   }
@@ -403,6 +404,7 @@
       R.on('boot', function () { lastLayout = R.layout && R.layout(); reconcile('boot'); });
     }
     if (S && S.subscribe) S.subscribe(function () { reconcile('store'); paint(); });
+    if (root.OvuTones && root.OvuTones.onChange) root.OvuTones.onChange(function () { reconcile('tones'); }); /* the spring's tone or bed starts or ends: step aside or come back at once (22 Oct) */
     if (root.document) root.document.addEventListener('visibilitychange', function () { reconcile('visibility'); });
     /* activities end without an event, and the hour moves: look every half second while music is on */
     exclusiveTimer = root.setInterval(function () { if (on()) reconcile('poll'); }, 500);
