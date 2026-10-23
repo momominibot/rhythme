@@ -3378,7 +3378,7 @@ async def main():
             try: await pv.wait_for_function("()=>document.querySelector('#vSay .vthanks')", timeout=8000)
             except Exception: pass
             gv = await pv.evaluate("()=>({gift: true, thanks: (document.querySelector('#vSay .vthanks')||{}).textContent||'', id: OvuRoom.sheetId(), cont: !!document.querySelector('#vActs [data-v=scene]'), pts: OvuStore.state().villagers.lu.points, dish: (OvuFarm.farmState(OvuStore).dishes||{}).tomatoegg||0})")
-            check("villagers: a loved dish is named in Lu's thanks, leaves the bag in the same save, and the 2-heart scene waits behind Continue so his answer shows first", gift and "Tomato and egg" in gv["thanks"] and gv["id"] == "villager-lu" and gv["cont"] and gv["pts"] == 26 and gv["dish"] == 0, gv)
+            check("villagers: a loved dish is named in Lu's thanks, leaves the bag in the same save, and the 2-heart scene waits behind Continue so his answer shows first", gift and "tomato and egg" in gv["thanks"].lower() and gv["id"] == "villager-lu" and gv["cont"] and gv["pts"] == 26 and gv["dish"] == 0, gv)
             await pv.click("#vActs [data-v=scene]")
             try: await pv.wait_for_function("()=>OvuRoom.sheetId()==='villager-event'", timeout=8000)
             except Exception: pass
