@@ -233,6 +233,14 @@
       icon: 'directions_run', title: 'How Movement counts',
       body: window.OvuExercise ? '<p>' + esc(window.OvuExercise.COPY.week) + '</p><p>' + esc(window.OvuExercise.COPY.counting) + '</p>' : ''
     },
+    steps: {
+      icon: 'directions_walk', title: 'Steps without a target',
+      body: window.OvuSignals ? '<p>' + esc(window.OvuSignals.COPY.stepsNote) + '</p><p>Steps come only from your phone or watch, through Apple Health or Google. You never need to count or type them. When a phone and a watch both counted the same hour, the one that counted more is kept, so nothing is added twice.</p>' : ''
+    },
+    signals: {
+      icon: 'favorite', title: 'Resting heart rate and temperature',
+      body: window.OvuSignals ? '<p>' + esc(window.OvuSignals.COPY.heartNote) + '</p><p>' + esc(window.OvuSignals.COPY.tempNote) + '</p><p>Your usual is the middle of your own readings from the weeks before, never a number for everyone.</p>' : ''
+    },
     luna: {
       icon: 'dark_mode', title: 'How Luna reads your notes',
       body: '<p>Luna tries her own simple rules on this phone first: sleep times, period words, the symptom list, pain out of 10, mood, meals and minutes of practice. When they cannot read a note, and you have said yes, her AI help reads that note alone, never with your name. Food photos work the same way: she suggests the dishes and nutrients, using Singapore’s HPB data where she can, and you check and change everything before it is saved. Photo estimates are rough, especially for oil, sauces and portions. You can switch any of this off here or under Your choices in You.</p>'
@@ -1038,7 +1046,28 @@
   function openScores() {
     openSheet('scores', 'Your rhythm', 'Scores from what you have recorded', 'favorite', '<div id="rhythmPanel"></div><div class="row scpast"><button type="button" class="btn ghost" id="scPast"><span class="ms">edit_calendar</span>Log or fix a past day</button></div>');
     var rp = $('#rhythmPanel'); if (rp && window.OvuRhythm) OvuRhythm.render(rp); if (rp && window.OvuScores) rp.insertAdjacentHTML('afterbegin', OvuScores.panelHTML(S.profile()));
+    var sig = signalsHTML(); if (sig && rp) rp.insertAdjacentHTML('afterend', sig);
     $('#scPast').addEventListener('click', function () { chime('tap'); openCalendar('period'); });
+  }
+  /* resting heart rate and temperature from a health app (ovu-signals.js), as a difference from her own usual;
+     shown only when she brought some in, and never used to predict anything */
+  function signalSpark(series, key, label, unit) {
+    var xs = series.filter(function (p) { return p[key] !== null; }).map(function (p) { return p[key]; }); if (xs.length < 2) return '';
+    /* a calm scale: at least 20 beats or 1.5 °C top to bottom, so a change of a few beats looks like the few beats it is */
+    var lo = Math.min.apply(null, xs), hi = Math.max.apply(null, xs), span = Math.max(hi - lo, unit === '°C' ? 1.5 : 20), base = lo - span * 0.5;
+    return '<div class="ibars sigbars" role="img" aria-label="' + esc(label + ', last 28 days: ' + series.filter(function (p) { return p[key] !== null; }).map(function (p) { return prettyDate(p.date) + ' ' + p[key] + ' ' + unit; }).join('; ')) + '">' +
+      series.map(function (p) { return '<i' + (p[key] === null ? ' class="none"' : '') + ' style="height:' + (p[key] === null ? 4 : Math.max(6, Math.round((p[key] - base) / (span * 1.6) * 100))) + '%"></i>'; }).join('') + '</div>';
+  }
+  function signalsHTML() {
+    var G = window.OvuSignals; if (!G) return '';
+    var today = S.today(), from = G.addDays(today, -40), h = G.heart(S.list('restinghr', { from: from, to: today }), today), t = G.temperature(S.list('temperature', { from: from, to: today }), today);
+    if (!h.any && !t.wrist.any && !t.basal.any) return '';
+    var card = function (icon, title, spark, line) { return '<div class="sigcard"><div class="imp-head"><span class="ms">' + icon + '</span><div><b>' + esc(title) + '</b><small>From your health app · last 28 days</small></div></div>' + spark + '<p class="imp-line">' + esc(line) + '</p></div>'; };
+    return '<div class="ygroup sigs" id="bodySignals"><span class="lbl">Body signals ' + infoBtn('signals') + '</span>' +
+      (h.any ? card('favorite', 'Resting heart rate', signalSpark(h.series, 'bpm', 'Resting heart rate', 'bpm'), G.heartLine(h)) : '') +
+      (t.wrist.any ? card('device_thermostat', 'Temperature while asleep', signalSpark(t.wrist.series, 'c', 'Wrist temperature while asleep', '°C'), G.tempLine(t.wrist, 'wrist')) : '') +
+      (t.basal.any ? card('device_thermostat', 'Basal body temperature', signalSpark(t.basal.series, 'c', 'Basal body temperature', '°C'), G.tempLine(t.basal, 'basal')) : '') +
+      guideHTML('signals') + '</div>';
   }
   function openCalendar(tab, date) {
     var d = date ? new Date(date + 'T12:00:00') : new Date(); cal.y = d.getFullYear(); cal.m = d.getMonth(); cal.tab = tab === 'symptom' ? 'symptom' : 'period'; cal.sel = date || S.today(); cal.lastFill = [];
@@ -1752,7 +1781,7 @@
       conn('radio_button_checked', 'Smart rings', 'Bring a ring’s sleep export in with Sleep from a file, below.', 'File') +
       '<label class="yrow" for="setSleepCsv" style="cursor:pointer"><span class="ms">bedtime</span><span><b>Sleep from a file</b><small>A CSV file, one night per line. Nothing is uploaded.</small></span><span class="ms go">upload_file</span></label><input type="file" id="setSleepCsv" accept=".csv,text/csv" hidden>' +
       '<details class="help"><summary style="cursor:pointer">The file’s format</summary>Each line is date, bedtime, wake time and an optional quality from 1 to 5, separated by commas: 2026-10-17,23:10,06:45,4. A header line is skipped. Bringing the same nights in again updates them instead of adding them twice; nights you wrote yourself are kept.</details><div class="msg" id="setSleepMsg" role="status" aria-live="polite"></div></div>' +
-      '<div class="ygroup"><span class="lbl">Live links</span>' + (window.OvuHealthNative && OvuHealthNative.available() ? (function (P) { return row(P.origin === 'healthkit' ? 'ios' : 'android', 'Connect ' + P.name, 'Read sleep and cycle days from ' + P.name + ' on ' + P.device + '; you choose what comes in', 'healthkit'); })(OvuHealthNative.info()) : conn('sync_disabled', 'Not here yet', 'A live link to Apple Health, Health Connect or a ring needs the phone app. Until then, files bring your data in.', 'Planned')) + '</div>' +
+      '<div class="ygroup"><span class="lbl">Live links</span>' + (window.OvuHealthNative && OvuHealthNative.available() ? (function (P) { return row(P.origin === 'healthkit' ? 'ios' : 'android', 'Connect ' + P.name, 'Read sleep, cycle days and more from ' + P.name + ' on ' + P.device + '; you choose what comes in', 'healthkit'); })(OvuHealthNative.info()) : conn('sync_disabled', 'Not here yet', 'A live link to Apple Health, Health Connect or a ring needs the phone app. Until then, files bring your data in.', 'Planned')) + '</div>' +
       '<div class="ygroup"><span class="lbl">Your records</span>' + row('medical_information', 'Your health notes', 'A short guide to keeping medicines, supplements and treatment notes for your care team', '', 'health-profile.html') + row('science', 'Lab records', 'Enter, review and export dated results', '', 'labs.html') + row('edit_note', 'Cycle observations', 'Dated signs on your wall calendar', 'calendar') + '</div>' +
       '<div class="ygroup"><span class="lbl">Your data and account</span>' + row('delete_sweep', 'Choose what to delete', 'Pick local records, export a copy, then confirm', '', 'privacy.html#privacy-local-title') + row('person_remove', 'Your account', 'Sign in, account status and deleting your account', 'you') + row('shield', 'Privacy and local data', 'What is kept on this phone and why', '', 'privacy.html') + '</div>' +
       '<p class="help" style="text-align:center">Rhythme offers wellness notes, not a medical diagnosis.</p>');
@@ -1801,7 +1830,7 @@
       '<div id="youAccount"></div>' +
       '<div class="ygroup"><span class="lbl">Your room</span>' + row('waving_hand', 'Getting to know you', 'Update your answers any time', 'intro') + row('checkroom', 'Wardrobe', 'Change your outfit', 'wardrobe') + row('format_size', 'Text size', 'Bigger words and buttons', 'text') + row('self_improvement', 'Mindful pace', mindfulQuick() ? 'Quick steps, no cues. Tap to bring the slow steps back' : 'Slow steps and gentle cues. Tap for quick steps instead', 'mindful') + row('record_voice_over', 'Erin\'s voice', erinCuesOn() ? 'On: her lines play in practices and on everyday actions. Tap to keep her quiet' : 'Off. Her words show as text; tap to hear her voice', 'erinvoice') + row('storefront', 'Dream Street', 'Pet shop, furniture store, property showroom', 'shop') + row('diversity_1', 'Plaza friends', (window.OvuFriends && OvuFriends.summaryNow ? OvuFriends.summaryNow() : 'Friends you meet in the plaza groups'), 'friends') + (RW.tester && RW.tester() ? row('science', 'Tester mode is on', 'Unlimited hearts for trying things out. Tap to turn off', 'testeroff') : '') + row('alarm', 'Reminders', 'Gentle nudges, set by you', 'clock') + '</div>' +
       '<div class="ygroup"><span class="lbl">Your records</span>' + row('auto_stories', 'My journal', 'Daily logs and Luna’s readings', '', 'journal.html') + row('medical_services', 'Share with my doctor', 'A 4-week summary card', '', 'journal.html#share') + row('menu_book', 'Evidence', 'Every source behind the guides, by number', '', 'evidence.html') + '</div>' +
-      '<div class="ygroup"><span class="lbl">Your data</span>' + row('settings', 'Settings', 'Your life chapter, files from health apps, a sleep file', 'settings') + row('auto_awesome', 'Rhythme Plus', (window.OvuPodcast && OvuPodcast.plusActive() ? 'On for this phone' : 'Erin’s full library · preview'), 'plus') + row('fact_check', 'Your choices', 'Each use of your data, on or off, and your receipt', 'choices') + row('dark_mode', 'Luna’s settings', 'Reading, food photos and readings', 'luna') + row('move_to_inbox', 'Apple Health and Google', (window.OvuHealth ? OvuHealth.importedCount(S) : 0) ? OvuHealth.importedCount(S).toLocaleString() + ' entries brought in · see them or bring in more' : 'Choose what comes in: sleep, cycle, weight and more', 'import') + (window.OvuHealthNative && OvuHealthNative.available() ? (function (P) { return row(P.origin === 'healthkit' ? 'ios' : 'android', 'Connect ' + P.name, 'Read sleep and cycle days from ' + P.name + ' on ' + P.device + '; you choose what comes in', 'healthkit'); })(OvuHealthNative.info()) : '') + row('download', 'Export my data', 'A copy of everything, as a file', 'export') + row('delete', 'Delete everything', 'Start fresh on this phone', 'delete') + '</div>' +
+      '<div class="ygroup"><span class="lbl">Your data</span>' + row('settings', 'Settings', 'Your life chapter, files from health apps, a sleep file', 'settings') + row('auto_awesome', 'Rhythme Plus', (window.OvuPodcast && OvuPodcast.plusActive() ? 'On for this phone' : 'Erin’s full library · preview'), 'plus') + row('fact_check', 'Your choices', 'Each use of your data, on or off, and your receipt', 'choices') + row('dark_mode', 'Luna’s settings', 'Reading, food photos and readings', 'luna') + row('move_to_inbox', 'Apple Health and Google', (window.OvuHealth ? OvuHealth.importedCount(S) : 0) ? OvuHealth.importedCount(S).toLocaleString() + ' entries brought in · see them or bring in more' : 'Choose what comes in: sleep, cycle, weight and more', 'import') + (window.OvuHealthNative && OvuHealthNative.available() ? (function (P) { return row(P.origin === 'healthkit' ? 'ios' : 'android', 'Connect ' + P.name, 'Read sleep, cycle days and more from ' + P.name + ' on ' + P.device + '; you choose what comes in', 'healthkit'); })(OvuHealthNative.info()) : '') + row('download', 'Export my data', 'A copy of everything, as a file', 'export') + row('delete', 'Delete everything', 'Start fresh on this phone', 'delete') + '</div>' +
       (confirmDelete ? '<div class="flag high" id="yDel"><span class="ms">warning</span><div><b>Delete everything on this phone?</b><span>Every entry, answer, photo thumbnail and heart is removed, and this cannot be undone. Your sign-in, cloud backup and Rhythme Plus access stay. Export a copy first if you want to keep it.' + (function () { var h = window.OvuSync && OvuSync.status ? OvuSync.status().held || 0 : 0; return h ? ' ' + h + ' Movement ' + (h === 1 ? 'entry is' : 'entries are') + ' not in your cloud backup yet, so ' + (h === 1 ? 'it' : 'they') + ' would be lost.' : ''; })() + '</span><div class="row"><button type="button" class="btn danger" data-yact="delete-yes"><span class="ms">delete</span>Delete everything</button><button type="button" class="btn ghost" data-yact="delete-no">Keep my data</button></div></div></div>' : '') +
       '<p class="help" style="text-align:center"><a href="privacy.html">Privacy notes</a> · <a href="terms.html">Terms</a> · Rhythme is a diary, not a diagnosis, and never replaces care.</p>');
     $('#youNameSave').addEventListener('click', function () { S.setProfile({ name: $('#youName').value.trim() }); updateGreeting(); chime('save'); toast('Nice to meet you' + (S.profile().name ? ', ' + S.profile().name : '') + '.', 'favorite'); openYou(); });
@@ -1868,7 +1897,7 @@
     };
     var html = (imp.last ? importSummaryHTML(H, imp.last) : '') +
       (have.length ? '<div class="ygroup"><span class="lbl">Brought in so far</span>' + have.map(function (k) { return importedCardHTML(H, k); }).join('') + '</div>'
-        : '<p class="help" style="margin-top:6px">Bring in the sleep, cycle, weight and mindful minutes you already have. Rhythme reads the file here on your phone, shows you what is in it, and you choose what comes in. Nothing is ticked until you tick it.</p>') +
+        : '<p class="help" style="margin-top:6px">Bring in the sleep, cycle, weight, mindful minutes, steps, workouts, resting heart rate and temperature you already have. Rhythme reads the file here on your phone, shows you what is in it, and you choose what comes in. Nothing is ticked until you tick it.</p>') +
       '<div class="ygroup"><span class="lbl">' + (have.length ? 'Bring in more' : 'Choose a file') + '</span>' + source('apple') + source('google') + '</div>' +
       '<div id="impProgress"' + (importing ? '' : ' hidden') + '><div class="ibar"><i id="impBar" style="width:' + (importing ? '30%' : '0') + '"></i></div><p class="help" id="impStatus" role="status" aria-live="polite">' + (importing ? 'Still reading your file…' : '') + '</p></div>' +
       '<div id="impError"></div>' +
@@ -1889,6 +1918,8 @@
         toast('Removed ' + impPlural(gone, 'imported entry', 'imported entries') + '. Your own entries are untouched.', 'delete_sweep'); return renderImportHome(H);
       }
       if (act === 'calendar') { var dt = b.dataset.date; openCalendar(kind === 'symptoms' ? 'symptom' : 'period', dt); return; }
+      if (act === 'move') { openExercise(); return; }
+      if (act === 'signals') { openScores(); return; }
       if (act === 'journal') { if (window.OvuPage) OvuPage.open('journal.html#' + (b.dataset.type || '')); else location.href = 'journal.html#' + (b.dataset.type || ''); }
     });
   }
@@ -1915,6 +1946,20 @@
       var top = Object.keys(tally).sort(function (a, b) { return tally[b] - tally[a]; }).slice(0, 4);
       prev = '<p class="imp-line">Most often: ' + top.map(function (s) { return esc(s) + ' (' + tally[s] + ')'; }).join(', ') + '.</p>';
       go = '<button type="button" class="btn ghost" data-impact="calendar" data-kind="symptoms" data-date="' + esc(last.date) + '"><span class="ms">calendar_month</span>On my calendar</button>';
+    } else if (k.id === 'steps') {
+      var sd = es.slice(-14), sv = sd.map(function (e) { return Number(e.data.steps) || 0; });
+      prev = (sv.length >= 3 ? impBars(sv, 0, Math.max.apply(null, sv) * 1.1, sd.map(function (e) { return prettyDate(e.date) + ', ' + (Number(e.data.steps) || 0).toLocaleString() + ' steps'; })) : '') + '<p class="imp-line">Latest ' + (Number(last.data.steps) || 0).toLocaleString() + ' steps on ' + prettyDate(last.date) + '. They show in Movement, beside your usual, with no goal.</p>';
+      go = '<button type="button" class="btn ghost" data-impact="move"><span class="ms">directions_run</span>In Movement</button>';
+    } else if (k.id === 'workouts') {
+      var wm = es.reduce(function (n, e) { return n + (Number(e.data.minutes) || 0); }, 0);
+      prev = '<p class="imp-line">' + impPlural(wm, 'minute', 'minutes') + ' in all; latest ' + esc(last.data.label || 'workout') + ' on ' + prettyDate(last.date) + '. They count in your Movement week, once each, and earn no hearts.</p>';
+      go = '<button type="button" class="btn ghost" data-impact="move"><span class="ms">directions_run</span>In Movement</button>';
+    } else if (k.id === 'restinghr') {
+      prev = '<p class="imp-line">Latest ' + esc(last.data.bpm) + ' beats a minute on ' + prettyDate(last.date) + '. They show under Body signals in the Cycle tab.</p>';
+      go = '<button type="button" class="btn ghost" data-impact="signals"><span class="ms">favorite</span>Body signals</button>';
+    } else if (k.id === 'temperature') {
+      prev = '<p class="imp-line">Latest on ' + prettyDate(last.date) + ': ' + esc([typeof last.data.wrist === 'number' ? last.data.wrist + ' °C on the wrist while asleep' : '', typeof last.data.basal === 'number' ? last.data.basal + ' °C basal' : ''].filter(Boolean).join(', ')) + '. They show under Body signals in the Cycle tab.</p>';
+      go = '<button type="button" class="btn ghost" data-impact="signals"><span class="ms">favorite</span>Body signals</button>';
     } else if (k.id === 'mindful') {
       var mins = es.reduce(function (n, e) { return n + (Number(e.data.minutes) || 0); }, 0);
       prev = '<p class="imp-line">' + impPlural(mins, 'minute', 'minutes') + ' in all; latest ' + (Number(last.data.minutes) || 0) + ' min on ' + prettyDate(last.date) + '. These earn no hearts; hearts are for logging here.</p>';
@@ -1941,13 +1986,13 @@
       var off = !k.count, kept = preview.keptBy[k.id] || 0;
       return '<label class="imp-kind' + (off ? ' off' : '') + '"><input type="checkbox" data-kind="' + k.id + '"' + (imp.pick[k.id] && !off ? ' checked' : '') + (off ? ' disabled' : '') + '><span class="ms">' + k.icon + '</span><span><b>' + esc(k.label) + '</b><small>' +
         (off ? 'None in these dates' : esc(impPlural(k.count, k.one, k.many) + ' · ' + impDates(k.from, k.to))) + '</small>' +
-        (kept && !off ? '<small class="imp-kept">' + (kept === 1 ? '1 day you logged yourself stays as it is' : kept.toLocaleString() + ' days you logged yourself stay as they are') + '</small>' : '') + '</span></label>';
+        (kept && !off ? '<small class="imp-kept">' + (k.id === 'workouts' ? (kept === 1 ? '1 workout you logged yourself counts once' : kept.toLocaleString() + ' workouts you logged yourself count once') : kept === 1 ? '1 day you logged yourself stays as it is' : kept.toLocaleString() + ' days you logged yourself stay as they are') + '</small>' : '') + '</span></label>';
     }).join('');
     var later = found.later, laterHTML = later.length ? '<details class="imp-later"><summary>' + impPlural(later.length, 'other kind', 'other kinds') + ' Rhythme has no place for yet</summary><ul>' + later.map(function (l) { return '<li><b>' + esc(l.name) + '</b> · ' + l.count.toLocaleString() + (l.from ? ' · ' + esc(impDates(l.from, l.to)) : '') + '</li>'; }).join('') + '</ul><p class="help">These stay in your Health app. They are listed so you know what was in the file.</p></details>' : '';
     var html = '<div class="imp-card"><div class="imp-head"><span class="ms">' + (imp.scan.source === H.SOURCE.google ? 'android' : 'ios') + '</span><div><b>Found in ' + (direct ? esc(imp.scan.sourceLabel) : 'your ' + (google ? 'Google Takeout' : 'Apple Health export')) + '</b><small>' + esc(imp.file) + '</small></div></div>' +
       '<p class="help" style="margin-top:8px">Tick what you want in your diary. Nothing is saved until you tap Bring in.</p>' +
       '<div class="chips imp-range" role="radiogroup" aria-label="Which dates">' + IMP_RANGES.map(function (r) { return '<button type="button" class="chipbtn' + (imp.range === r.id ? ' on' : '') + '" role="radio" aria-checked="' + (imp.range === r.id) + '" data-range="' + r.id + '">' + r.label + '</button>'; }).join('') + '</div>' +
-      (ready.length ? '<div class="imp-kinds">' + rows + '</div>' : '<div class="flag watch"><span class="ms">info</span><div><b>Nothing Rhythme can use</b><span>This file has no sleep, cycle, weight or mindful minutes in it.</span></div></div>') +
+      (ready.length ? '<div class="imp-kinds">' + rows + '</div>' : '<div class="flag watch"><span class="ms">info</span><div><b>Nothing Rhythme can use</b><span>This file has no sleep, cycle, weight, mindful minutes, steps, workouts, resting heart rate or temperature in it.</span></div></div>') +
       laterHTML + '</div>' +
       '<div class="row"><button type="button" class="btn primary" id="impGo"' + (ticked.length ? '' : ' disabled') + '><span class="ms">move_to_inbox</span>' + (ticked.length ? 'Bring in ' + impPlural(ticked.length, 'kind', 'kinds') : 'Tick what to bring in') + '</button><button type="button" class="btn ghost" id="impCancel" style="flex:0 0 auto">Cancel</button></div>' +
       '<p class="help">' + (direct ? 'Read from ' + esc(imp.scan.sourceLabel) + ' on this phone and never uploaded. Cancel forgets it; ' + esc(imp.scan.sourceLabel) + ' keeps everything as it was.' : 'The file was read on this phone and never uploaded. Cancel forgets it.') + '</p>';
@@ -1986,7 +2031,7 @@
     var P = N.info(), apple = P.origin === 'healthkit';
     var html = (note || '') +
       '<div class="imp-card"><div class="imp-head"><span class="ms">' + (apple ? 'ios' : 'android') + '</span><div><b>' + esc(P.name) + ' on ' + esc(P.device) + '</b><small>Read only, the last 90 days</small></div></div>' +
-      '<p class="help" style="margin-top:8px">Rhythme asks ' + esc(P.name) + ' for three things and nothing else:</p><ul class="imp-steps">' + N.READS.map(function (r) { return '<li><b>' + esc(r.label) + '</b>. ' + esc(r.note) + '.</li>'; }).join('') + '</ul>' +
+      '<p class="help" style="margin-top:8px">Rhythme asks ' + esc(P.name) + ' for these and nothing else:</p><ul class="imp-steps">' + N.readsFor().map(function (r) { return '<li><b>' + esc(r.label) + '</b>. ' + esc(r.note) + '.</li>'; }).join('') + '</ul>' +
       '<p class="help">' + (apple ? 'Apple then shows its own sheet where you can allow each one.' : 'Health Connect then shows its own screen where you can allow each one, and past data older than 30 days if you want it.') + ' Rhythme never writes to ' + esc(P.name) + ', never uses what it reads for ads, and never sells or shares it. What you bring in joins your diary on this phone' + (S.profile().cloud && S.profile().cloud.v >= 1 ? ', and is backed up with it because cloud backup is on' : '') + '. After reading you see what was found and tick what comes into your diary; nothing is saved before that.</p>' +
       '<div class="row"><button type="button" class="btn primary" id="hkGo"' + (importing ? ' disabled' : '') + '><span class="ms">favorite</span>Connect ' + esc(P.name) + '</button></div>' +
       '<div id="impProgress"' + (importing ? '' : ' hidden') + '><div class="ibar"><i id="impBar" style="width:' + (importing ? '30%' : '0') + '"></i></div><p class="help" id="impStatus" role="status" aria-live="polite"></p></div><div id="impError"></div></div>' +
@@ -2003,13 +2048,13 @@
     N.connectAndRead({ days: 90, onProgress: show }).then(function (res) {
       importing = false;
       if (res.empty) {
-        var why = apple ? 'Either there is no sleep or cycle data from the last 90 days, or reading was not allowed. Apple does not tell apps which, so Rhythme cannot either.'
-          : (res.granted && !res.granted.length ? 'None of the three was allowed, so nothing was read.' : 'Nothing was recorded in the days Health Connect let Rhythme see' + (res.history ? '.' : ' (the last 30 days, because past data was not allowed).'));
+        var why = apple ? 'Either there is nothing Rhythme reads from the last 90 days, or reading was not allowed. Apple does not tell apps which, so Rhythme cannot either.'
+          : (res.granted && !res.granted.length ? 'None of them was allowed, so nothing was read.' : 'Nothing was recorded in the days Health Connect let Rhythme see' + (res.history ? '.' : ' (the last 30 days, because past data was not allowed).'));
         var emptyNote = '<div class="flag watch"><span class="ms">info</span><div><b>Nothing came back from ' + esc(P.name) + '</b><span>' + esc(why + ' You can check in ' + P.manage + '.') + '</span></div></div>';
         return current === 'import' ? openHealthKit(emptyNote) : toast('Nothing came back from ' + P.name + '.', 'info');
       }
       var seen = res.seenDays || res.window.days;
-      imp.scan = res; imp.file = P.name + ' on ' + P.device + ' · last ' + seen + ' days' + (res.granted && res.granted.length < N.READS.length ? ' · ' + res.granted.length + ' of ' + N.READS.length + ' kinds allowed' : ''); imp.pick = {}; imp.range = 'all';
+      imp.scan = res; imp.file = P.name + ' on ' + P.device + ' · last ' + seen + ' days' + (res.granted && res.granted.length < N.readsFor().length ? ' · ' + res.granted.length + ' of ' + N.readsFor().length + ' kinds allowed' : ''); imp.pick = {}; imp.range = 'all';
       if (current === 'import') renderImportPicker(H); else toast(P.name + ' is read. Open You, then Apple Health and Google, to choose what comes in.', 'move_to_inbox');
     }, function (err) {
       importing = false; var g2 = ui('hkGo'); if (g2) g2.disabled = false; var p = ui('impProgress'); if (p) p.hidden = true;
@@ -2688,6 +2733,19 @@
       '<div class="matweek"><span><b>' + wk.metMinutes + '</b>MET-min</span><span><b>' + wk.strengthDays + '</b>of 2 strength days</span><span><b>' + wk.sessions + '</b>' + (wk.sessions === 1 ? 'session' : 'sessions') + '</span></div>' +
       '<p class="help">A vigorous minute counts as two. From moderate and vigorous activity: ' + wk.aerobicMetMinutes + ' MET-minutes; about 500 to 1,000 a week of that matches WHO’s range.' + extra + '</p></div>' + guideHTML('move');
   }
+  /* steps from a health app (ovu-signals.js): the last 7 days against her own usual, never a goal; only when she has some */
+  function moveStepsHTML() {
+    var G = window.OvuSignals; if (!G) return '';
+    var today = S.today(), st = G.steps(S.list('steps', { from: G.addDays(today, -35), to: today }), today); if (!st.any) return '';
+    var vals = st.days.map(function (d) { return d.steps || 0; }), hi = Math.max.apply(null, vals.concat([st.usual || 0, 1])) * 1.1;
+    var usualPct = st.usual ? Math.round(st.usual / hi * 1000) / 10 : null, last = st.days[st.days.length - 1];
+    var line = st.usual ? 'Your usual is about ' + st.usual.toLocaleString() + ' a day.' : G.COPY.stepsNoUsual;
+    return '<div class="mvweek mvsteps" id="mvSteps"><div class="mvhead"><b>' + (last.steps === null ? '–' : last.steps.toLocaleString()) + '</b><span>steps today so far</span>' + infoBtn('steps') + '</div>' +
+      '<div class="ibars stepbars" role="img" aria-label="' + esc(st.days.map(function (d) { return prettyDate(d.date) + ', ' + (d.steps === null ? 'no steps' : d.steps.toLocaleString() + ' steps'); }).join('; ')) + '">' +
+      (usualPct !== null ? '<b class="usual" style="bottom:' + usualPct + '%"></b>' : '') +
+      st.days.map(function (d) { return '<i' + (d.steps === null ? ' class="none"' : '') + ' style="height:' + (d.steps ? Math.max(4, Math.round(d.steps / hi * 100)) : 4) + '%"></i>'; }).join('') + '</div>' +
+      '<p class="mvline">' + esc(line) + (st.usual ? ' The line on the bars marks it.' : '') + '</p></div>' + guideHTML('steps');
+  }
   function movePeriodHTML(ctx) {
     var C = EX.COPY;
     return '<div class="flag info mvperiod" id="mvPeriod"><span class="ms">water_drop</span><div><b>' + esc(C.periodTitle[ctx]) + '</b><span>' + esc(ctx === 'period' ? C.period : C.cramps) + ' ' + esc(C.periodEvidence) + '</span>' +
@@ -2696,7 +2754,7 @@
   }
   function moveRowHTML(e) {
     var d = e.data || {}, mm = EX.metMinutes(d), today = S.today();
-    return '<li data-id="' + esc(e.id) + '"><span><b>' + esc(d.label || 'Movement') + '</b><small>' + esc(d.detail || '') + '</small></span><small>' + esc(e.date === today ? 'Today' : prettyDate(e.date)) + ' · ' + (d.activity === 'pulse' ? (Number(d.seconds) || 0) + ' s' : (Number(d.minutes) || 0) + ' min') + (mm !== null ? ' · ' + Math.round(mm) + ' MET-min' : '') + '</small><button type="button" class="mvdel" data-mdel="' + esc(e.id) + '" aria-label="Remove this entry"><span class="ms">close</span></button></li>';
+    return '<li data-id="' + esc(e.id) + '"><span><b>' + esc(d.label || 'Movement') + (window.OvuHealth && OvuHealth.isImported(e) ? '<em class="imp-src">' + impSourceName(e.source) + '</em>' : '') + '</b><small>' + esc(d.detail || '') + '</small></span><small>' + esc(e.date === today ? 'Today' : prettyDate(e.date)) + ' · ' + (d.activity === 'pulse' ? (Number(d.seconds) || 0) + ' s' : (Number(d.minutes) || 0) + ' min') + (mm !== null ? ' · ' + Math.round(mm) + ' MET-min' : '') + '</small><button type="button" class="mvdel" data-mdel="' + esc(e.id) + '" aria-label="Remove this entry"><span class="ms">close</span></button></li>';
   }
   /* ---------- PULSE: a short movement break (ovu-pulse.js; Dr Vernece's library, Codex review 22 Oct) ----------
    * Only signed cards show (the first three are, 22 Oct); tester mode also sees any drafts. Before you move, then 45 seconds of
@@ -2794,7 +2852,7 @@
     var preDay = typeof opt.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(opt.date) && opt.date <= today ? opt.date : today;
     openSheet('move', 'Movement', 'Log what you did and see your week', 'directions_run',
       (opt.intro ? '<p class="mintro mvfrom" id="mvFrom">' + esc(String(opt.intro)) + '</p>' : '') +
-      (ctx ? movePeriodHTML(ctx) : '') + moveWeekHTML(wk) + pulseCardsHTML() +
+      (ctx ? movePeriodHTML(ctx) : '') + moveWeekHTML(wk) + moveStepsHTML() + pulseCardsHTML() +
       '<div class="field"><span class="lbl">What did you do?</span><div class="mvacts" id="mvActs">' + EX.ACTIVITIES.map(function (a) { return '<button type="button" class="mvact" data-mact="' + a.id + '" aria-pressed="false"><span class="ms">' + a.icon + '</span><span>' + esc(a.label) + '</span></button>'; }).join('') + '</div></div>' +
       '<div class="field" id="mvVarField" hidden><span class="lbl">How did it go?</span><div class="mvvars" id="mvVars"></div></div>' +
       '<div class="field"><label for="mvMin">Minutes</label><input class="input" id="mvMin" type="number" inputmode="numeric" min="1" max="' + EX.MAX_MINUTES + '" step="1" value="' + preMin + '"><div class="chips mvquick" id="mvQuick">' + [10, 20, 30, 45, 60, 90].map(function (n) { return '<button type="button" class="chipbtn' + (n === preMin ? ' on' : '') + '" data-min="' + n + '">' + n + ' min</button>'; }).join('') + '</div></div>' +

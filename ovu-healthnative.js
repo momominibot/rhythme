@@ -14,7 +14,9 @@
  * switch off, or outside its shell, available() is false and nothing is shown or called.
  *
  * What it reads, and only for the window asked (90 days by default): sleep, period days and spotting
- * between periods. It never asks to write. HealthKit never tells an app whether reading was allowed (a
+ * between periods; on an iPhone also steps (Apple's own daily totals, so a phone and a watch never count twice),
+ * workouts, resting heart rate, and temperature while asleep or basal (23 Oct 2026; Health Connect gets these when
+ * its plugin learns them). It never asks to write. HealthKit never tells an app whether reading was allowed (a
  * refusal looks the same as no data); Health Connect does, so on Android the types that were not allowed
  * are not read and the person is told which. Health Connect shows apps only the last 30 days unless the
  * person also allows past data, and that is said too. The pure parts are tested in tools/test-core.js. */
@@ -22,13 +24,20 @@
   'use strict';
   var NAME = 'RhythmeHealth';
   var DAY = 86400000;
-  /* the plugins' own names for the three types; the native side accepts nothing else */
+  /* the plugins' own names for the types; the native side accepts nothing else. `ios` marks the ones only the iPhone
+     plugin knows so far: Health Connect is never asked for a type its plugin would refuse. */
   var READS = [
     { id: 'sleep', label: 'Sleep', note: 'Time asleep and in bed, from your watch, ring or phone' },
     { id: 'menstrualFlow', label: 'Period days', note: 'Flow as you or another app recorded it' },
-    { id: 'intermenstrualBleeding', label: 'Spotting between periods', note: 'Shown as spotting; it never starts a new cycle' }
+    { id: 'intermenstrualBleeding', label: 'Spotting between periods', note: 'Shown as spotting; it never starts a new cycle' },
+    { id: 'steps', label: 'Steps', note: 'A total for each day; nothing to type in', ios: true },
+    { id: 'workouts', label: 'Workouts', note: 'Type, minutes and distance, into Movement', ios: true },
+    { id: 'restingHeartRate', label: 'Resting heart rate', note: 'One number a day; never called stress', ios: true },
+    { id: 'wristTemperature', label: 'Temperature while asleep', note: 'From an Apple Watch that records it', ios: true },
+    { id: 'basalTemperature', label: 'Basal body temperature', note: 'If you or a thermometer app log it', ios: true }
   ];
-  var TYPE_IDS = READS.map(function (r) { return r.id; });
+  function readsFor(p) { p = p || (shell() || {}).platform || 'ios'; return READS.filter(function (r) { return !r.ios || p === 'ios'; }); }
+  function typeIds(p) { return readsFor(p).map(function (r) { return r.id; }); }
   var PLATFORMS = {
     ios: { flag: 'apple', name: 'Apple Health', device: 'this iPhone', origin: 'healthkit', manage: 'Settings, then Health, then Data Access and Devices, then Rhythme' },
     android: { flag: 'android', name: 'Health Connect', device: 'this phone', origin: 'health-connect', manage: 'the Health Connect app (or Settings, then Health Connect), then App permissions, then Rhythme' }
@@ -69,11 +78,11 @@
       plat = b.platform;
       return b.call('isAvailable').then(function (r) {
         if (!r || r.available !== true) throw new Error('not available');
-        return b.call('requestAuthorization', { types: TYPE_IDS });
+        return b.call('requestAuthorization', { types: typeIds(plat) });
       });
     }).then(function (r) {
       r = r || {};
-      var granted = Array.isArray(r.granted) ? r.granted.filter(function (t) { return TYPE_IDS.indexOf(t) > -1; }) : null;
+      var ids = typeIds(plat), granted = Array.isArray(r.granted) ? r.granted.filter(function (t) { return ids.indexOf(t) > -1; }) : null;
       return { platform: plat, requested: !!r.requested, granted: plat === 'android' ? (granted || []) : null, history: plat === 'android' ? r.history === true : null };
     }, function (e) { throw friendly(e, plat); });
   }
@@ -129,7 +138,7 @@
     res.sourceLabel = p.name;
     res.window = win || null;
     res.counts.byType = byType;
-    res.empty = !(res.sleep.length || res.period.length || res.spotting.length);
+    res.empty = !(res.sleep.length || res.period.length || res.spotting.length || (res.steps || []).length || (res.workouts || []).length || (res.restinghr || []).length || (res.temperature || []).length);
     return res;
   }
 
@@ -143,7 +152,7 @@
     var plat = null;
     return need().then(function (b) {
       plat = b.platform;
-      var want = READS.filter(function (r) { return !Array.isArray(opts.granted) || opts.granted.indexOf(r.id) > -1; });
+      var want = readsFor(plat).filter(function (r) { return !Array.isArray(opts.granted) || opts.granted.indexOf(r.id) > -1; });
       var all = [], i = 0;
       function next() {
         if (i >= want.length) return Promise.resolve();
@@ -172,5 +181,5 @@
     });
   }
 
-  root.OvuHealthNative = { NAME: NAME, READS: READS, PLATFORMS: PLATFORMS, enabled: enabled, available: available, info: info, bridge: bridge, connect: connect, read: read, connectAndRead: connectAndRead, fromSamples: fromSamples, fromHealthConnect: fromHealthConnect };
+  root.OvuHealthNative = { NAME: NAME, READS: READS, readsFor: readsFor, typeIds: typeIds, PLATFORMS: PLATFORMS, enabled: enabled, available: available, info: info, bridge: bridge, connect: connect, read: read, connectAndRead: connectAndRead, fromSamples: fromSamples, fromHealthConnect: fromHealthConnect };
 })(typeof window !== 'undefined' ? window : this);

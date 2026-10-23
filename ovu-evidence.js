@@ -17,6 +17,8 @@
     luna: 'How Luna reads your notes',
     herbs: 'Teas and herbs',
     move: 'Movement and MET-minutes',
+    steps: 'Steps',
+    signals: 'Resting heart rate and temperature',
     water: 'Water in the food diary',
     recipes: 'Recipes and the Mediterranean check'
   };
@@ -142,6 +144,9 @@
     { id: 'E117', short: 'Teede et al., 2026 (Lancet)', topics: ['recipes'], url: 'https://doi.org/10.1016/S0140-6736(26)00717-8', text: 'The Lancet. Polyendocrine metabolic ovarian syndrome, the new name for polycystic ovary syndrome: a multistep global consensus process. Chosen with responses from 14,360 people with PCOS and health professionals; a global implementation strategy with a transition period is under way, so both names are in use.' },
     { id: 'E118', short: 'NHS, Foods to avoid in pregnancy', topics: ['recipes'], url: 'https://www.nhs.uk/pregnancy/keeping-well/foods-to-avoid/', text: 'Pasteurised soft cheeses such as cottage cheese, cream cheese, mozzarella and feta are fine; mould-ripened cheeses such as brie and camembert, and soft blue cheeses, must be thoroughly cooked even when pasteurised; avoid raw fish and shellfish, shark, swordfish and marlin; no more than 4 cans of tuna or 2 tuna steaks and 2 portions of oily fish a week; under 200 mg of caffeine a day.' },
     { id: 'E119', short: 'Ohayon et al., 2017 (NSF sleep quality)', topics: ['sleep'], url: 'https://doi.org/10.1016/j.sleh.2016.11.006', text: 'Ohayon M, Wickwire EM, Hirshkowitz M, et al. National Sleep Foundation’s sleep quality recommendations: first report. Sleep Health 2017;3(1):6-19. PMID 28346153. A consensus panel agreed that sleep continuity measures (time to fall asleep, awakenings over 5 minutes, time awake after falling asleep, sleep efficiency) are appropriate indicators of good sleep quality, and reached little or no agreement on sleep stages. Used for the sleep quality lines, and for showing stages without judging them.' },
+    { id: 'E120', short: 'Paluch et al., 2022 (Lancet Public Health)', topics: ['steps'], url: 'https://doi.org/10.1016/S2468-2667(21)00302-9', text: 'Daily steps and all-cause mortality: a meta-analysis of 15 international cohorts, 47,471 adults. PMID 35247352. Risk fell with more steps a day until about 6,000 to 8,000 for adults 60 and over and about 8,000 to 10,000 for younger adults, then levelled off. Used for showing steps without a fixed 10,000 goal.' },
+    { id: 'E121', short: 'Shilaih et al., 2017 (Scientific Reports)', topics: ['signals'], url: 'https://doi.org/10.1038/s41598-017-01433-9', text: 'Pulse rate measured during sleep with a wrist sensor in 91 women over 274 ovulatory cycles. PMID 28465583. On average it was 2.1 beats a minute higher in the fertile window than during the period, and 3.8 higher in the mid-luteal phase. Used for saying that resting heart rate often rises a few beats in the second half of a cycle.' },
+    { id: 'E122', short: 'Apple, retrospective ovulation estimates', topics: ['signals'], url: 'https://support.apple.com/en-us/120357', text: 'Apple Watch Series 8 or later and Ultra models use wrist temperature taken while asleep to detect the rise that often follows ovulation, and combine it with logged cycle data to estimate the likely ovulation day after it has happened. Used for the temperature note; Rhythme does not estimate ovulation from temperature.' },
   ];
   var BY = {}; LIST.forEach(function (e) { BY[e.id] = e; });
   function forTopic(t) { return LIST.filter(function (e) { return e.topics.indexOf(t) > -1; }); }

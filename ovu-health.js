@@ -1,12 +1,20 @@
 /* Rhythme health import: reads an Apple Health export (export.zip or export.xml) or Google
  * Takeout's Fit folder (the Takeout zip, or its JSON and CSV files) on the phone and turns sleep
- * nights, weigh-ins and period days into diary entries. Nothing is uploaded.
+ * nights, weigh-ins, period days, steps, workouts, resting heart rate and temperature into diary entries.
+ * Nothing is uploaded.
  *
  * How it stays light on a phone: files are read in 2 MB slices; export.xml (often hundreds of MB)
  * is scanned with a per-<Record> regex and a small carry buffer, never held as one string; zips
  * are read by walking the central directory and inflating one entry at a time through fflate
- * (assets/vendor, MIT, loaded only when a zip is chosen). Only the three record kinds Rhythme has
- * a place for are kept; everything else is counted and named in the summary.
+ * (assets/vendor, MIT, loaded only when a zip is chosen). Only the kinds Rhythme has a place for are
+ * kept; everything else is counted and named in the summary.
+ *
+ * Steps, resting heart rate and temperature (23 Oct 2026): synced only, never typed in, and never turned into a
+ * target or a score. A phone and a watch both write steps for the same minutes, so each day keeps, hour by hour,
+ * the device that counted most, then adds the hours up (a direct read gets Apple's own daily total instead).
+ * Workouts become Movement entries, counted once: a day where she logged the same activity herself keeps hers
+ * (and OvuExercise.week leaves the imported one out when she logs it after). Design note:
+ * docs/design/2026-10-23-health-steps-workouts-heart-temperature.md
  *
  * Reading a file only scans it: kinds() lists every kind found with counts and date ranges, and
  * nothing is written until the person ticks kinds in the picker (none are ticked by default).
@@ -117,6 +125,67 @@
    * Body mass comes with a unit, usually kg or lb. */
   var SLEEP_T = 'HKCategoryTypeIdentifierSleepAnalysis', MASS_T = 'HKQuantityTypeIdentifierBodyMass', FLOW_T = 'HKCategoryTypeIdentifierMenstrualFlow';
   var SPOT_T = 'HKCategoryTypeIdentifierIntermenstrualBleeding', MIND_T = 'HKCategoryTypeIdentifierMindfulSession', WORKOUT_T = 'HKWorkout';
+  var STEP_T = 'HKQuantityTypeIdentifierStepCount', RHR_T = 'HKQuantityTypeIdentifierRestingHeartRate';
+  var WRIST_T = 'HKQuantityTypeIdentifierAppleSleepingWristTemperature', BBT_T = 'HKQuantityTypeIdentifierBasalBodyTemperature';
+  function isSignal(t) { return t === STEP_T || t === RHR_T || t === WRIST_T || t === BBT_T; }
+  function toC(v, unit) {
+    var x = Number(String(v === undefined || v === null ? '' : v).replace(',', '.')); if (!isFinite(x)) return null;
+    var u = String(unit || 'degC').toLowerCase().replace(/[^a-z]/g, '');
+    if (u === 'degf' || u === 'f') x = (x - 32) * 5 / 9; else if (u !== 'degc' && u !== 'c' && u !== '') return null;
+    return Math.round(x * 100) / 100;
+  }
+  /* ---------- workouts -> Rhythme's Movement activities (ovu-exercise.js) ----------
+   * [activity, default variant, pace kind]. A pace kind picks the variant from distance and time when the record
+   * has both; without them the default (a middle variant) is used and the entry says the pace was not recorded.
+   * Types with no matching activity are counted and listed, never guessed. */
+  var WORKOUT_MAP = {
+    Walking: ['walk', 'steady', 'walk'], Running: ['run', 'jog', 'run'], Cycling: ['cycle', 'general', 'cycle'], Swimming: ['swim', 'laps', null],
+    Yoga: ['yoga', 'hatha', null], Pilates: ['pilates', 'general', null], TraditionalStrengthTraining: ['strength', 'reps', null], FunctionalStrengthTraining: ['strength', 'body', null],
+    HighIntensityIntervalTraining: ['hiit', 'intervals', null], CrossTraining: ['hiit', 'circuit', null], Dance: ['dance', 'class', null], SocialDance: ['dance', 'slow', null], CardioDance: ['dance', 'zumba', null],
+    Hiking: ['hike', 'normal', null], StairClimbing: ['stairs', 'steady', null], Stairs: ['stairs', 'steady', null], Elliptical: ['machine', 'elliptical', null], Rowing: ['machine', 'row', null],
+    Tennis: ['racket', 'tennis', null], Badminton: ['racket', 'badminton', null], TableTennis: ['racket', 'tt', null], Basketball: ['team', 'basketball', null], Soccer: ['team', 'football', null],
+    TaiChi: ['taichi', 'general', null], Flexibility: ['stretch', 'mild', null]
+  };
+  /* Google Fit's activity names (Takeout session files): checked in order, first match wins */
+  var FIT_WORKOUTS = [[/treadmill|walk/, 'Walking'], [/run|jog/, 'Running'], [/bik|cycl|spinning/, 'Cycling'], [/swim/, 'Swimming'], [/yoga/, 'Yoga'], [/pilates/, 'Pilates'], [/strength|weight/, 'TraditionalStrengthTraining'],
+    [/interval|hiit|crossfit|circuit/, 'HighIntensityIntervalTraining'], [/danc|zumba/, 'Dance'], [/hik/, 'Hiking'], [/stair/, 'StairClimbing'], [/elliptical/, 'Elliptical'], [/rowing/, 'Rowing'], [/table.?tennis|ping.?pong/, 'TableTennis'],
+    [/tennis/, 'Tennis'], [/badminton/, 'Badminton'], [/basketball/, 'Basketball'], [/football|soccer/, 'Soccer'], [/tai.?chi|qigong/, 'TaiChi'], [/stretch/, 'Flexibility']];
+  function fitWorkoutType(act) { act = String(act || '').toLowerCase(); for (var i = 0; i < FIT_WORKOUTS.length; i++) if (FIT_WORKOUTS[i][0].test(act)) return FIT_WORKOUTS[i][1]; return null; }
+  /* km/h -> the Compendium variant whose pace it matches */
+  function paceVariant(kind, kmh) {
+    if (!(kmh > 0)) return null;
+    if (kind === 'walk') return kmh < 4.25 ? 'slow' : kmh < 5.55 ? 'steady' : kmh < 6.35 ? 'brisk' : 'fast';
+    if (kind === 'run') return kmh < 9 ? 'jog' : kmh < 10.5 ? 'run' : 'fast';
+    if (kind === 'cycle') return kmh < 16 ? 'easy' : kmh < 23 ? 'general' : 'fast';
+    return null;
+  }
+  function toKm(v, unit) { var x = Number(v); if (!isFinite(x) || x <= 0) return null; var u = String(unit || 'km').toLowerCase(); if (u === 'mi') x *= 1.609344; else if (u === 'm') x /= 1000; else if (u !== 'km') return null; return Math.round(x * 100) / 100; }
+  /* one workout -> {date, start, minutes, activity, variant, paced, km, key, type}, or null when it has no activity here */
+  function workoutOf(type, s, e, minutes, km) {
+    var name = String(type || '').replace(/^HKWorkoutActivityType/, ''), m = WORKOUT_MAP[name]; if (!m || !s) return null;
+    var mins = Number(minutes); if (!(mins > 0) && e) mins = (e.ms - s.ms) / 60000;
+    mins = Math.round(mins); if (!(mins >= 1 && mins <= 600)) return null;
+    var pv = m[2] && km ? paceVariant(m[2], km / (mins / 60)) : null;
+    return { date: wallDate(s.wall), start: wallHM(s.wall), s: s.wall, e: s.wall + mins * 60000, minutes: mins, activity: m[0], variant: pv || m[1], paced: m[2] ? !!pv : null, km: km || null, type: name, key: name + '@' + new Date(s.wall).toISOString().slice(0, 16) };
+  }
+  /* the same activity twice at overlapping times (a watch and an app that both recorded the walk) is one workout: the longer stays */
+  function dedupeWorkouts(list) {
+    var out = [];
+    list.slice().sort(function (a, b) { return a.s - b.s; }).forEach(function (w) {
+      var hit = out.filter(function (o) { return o.activity === w.activity && w.s < o.e && o.s < w.e; })[0];
+      if (!hit) out.push(w); else if (w.minutes > hit.minutes) out[out.indexOf(hit)] = w;
+    });
+    return out.sort(function (a, b) { return a.s - b.s; });
+  }
+  /* steps: {date: {device: {hour: n}}} -> [{date, steps}] taking, per hour, the device that counted most */
+  function stepDays(map) {
+    return Object.keys(map).sort().map(function (d) {
+      var hours = {}; Object.keys(map[d]).forEach(function (dev) { var h = map[d][dev]; Object.keys(h).forEach(function (k) { if (!(hours[k] >= h[k])) hours[k] = h[k]; }); });
+      var n = 0; Object.keys(hours).forEach(function (k) { n += hours[k]; });
+      return { date: d, steps: Math.round(n) };
+    }).filter(function (x) { return x.steps > 0 && x.steps <= 150000; });
+  }
+  function meanOf(list, dp) { if (!list || !list.length) return null; var n = 0; list.forEach(function (x) { n += x; }); var f = Math.pow(10, dp || 0); return Math.round(n / list.length * f) / f; }
   /* Apple's symptom types (developer.apple.com/documentation/healthkit/symptom-type-identifiers, read 19 Oct 2026)
    * that match one of Rhythme's own symptom chips (OvuAgents.SYMPTOMS). The rest (mood changes, night sweats,
    * sleep changes, memory lapse and so on) have no chip and are listed as not in Rhythme yet, never guessed. */
@@ -124,7 +193,7 @@
   /* severity and presence values: NotPresent (raw 1) means the symptom was recorded as absent */
   function symptomPresent(v) { v = String(v || ''); return !(/NotPresent/i.test(v) || v === '1'); }
   var FLOW = { '1': 'unspecified', '2': 'light', '3': 'medium', '4': 'heavy', '5': 'none', HKCategoryValueMenstrualFlowUnspecified: 'unspecified', HKCategoryValueMenstrualFlowLight: 'light', HKCategoryValueMenstrualFlowMedium: 'medium', HKCategoryValueMenstrualFlowHeavy: 'heavy', HKCategoryValueMenstrualFlowNone: 'none' };
-  var FRIENDLY = { HKWorkout: 'workouts', HKCategoryTypeIdentifierNightSweats: 'night sweats', HKCategoryTypeIdentifierSleepChanges: 'sleep changes', HKCategoryTypeIdentifierMemoryLapse: 'memory lapse', HKCategoryTypeIdentifierPelvicPain: 'pelvic pain', HKCategoryTypeIdentifierVaginalDryness: 'vaginal dryness', HKCategoryTypeIdentifierAppetiteChanges: 'appetite changes', HKCategoryTypeIdentifierHandwashingEvent: 'handwashing', HKCategoryTypeIdentifierToothbrushingEvent: 'toothbrushing', HKQuantityTypeIdentifierStepCount: 'steps', HKQuantityTypeIdentifierHeartRate: 'heart rate', HKQuantityTypeIdentifierActiveEnergyBurned: 'active energy', HKQuantityTypeIdentifierBasalEnergyBurned: 'resting energy', HKQuantityTypeIdentifierDistanceWalkingRunning: 'walking distance', HKQuantityTypeIdentifierFlightsClimbed: 'flights climbed', HKQuantityTypeIdentifierRespiratoryRate: 'breathing rate', HKQuantityTypeIdentifierHeartRateVariabilitySDNN: 'heart rate variability', HKQuantityTypeIdentifierOxygenSaturation: 'blood oxygen', HKQuantityTypeIdentifierAppleExerciseTime: 'exercise minutes', HKQuantityTypeIdentifierAppleStandTime: 'stand time', HKCategoryTypeIdentifierAppleStandHour: 'stand hours', HKQuantityTypeIdentifierEnvironmentalAudioExposure: 'noise levels', HKQuantityTypeIdentifierHeadphoneAudioExposure: 'headphone levels', HKQuantityTypeIdentifierWalkingSpeed: 'walking speed', HKQuantityTypeIdentifierBodyMassIndex: 'BMI', HKQuantityTypeIdentifierHeight: 'height', HKQuantityTypeIdentifierBodyTemperature: 'body temperature', HKQuantityTypeIdentifierBasalBodyTemperature: 'basal body temperature', HKQuantityTypeIdentifierAppleSleepingWristTemperature: 'wrist temperature', HKCategoryTypeIdentifierOvulationTestResult: 'ovulation tests', HKCategoryTypeIdentifierCervicalMucusQuality: 'cervical mucus', HKCategoryTypeIdentifierIntermenstrualBleeding: 'spotting between periods', HKCategoryTypeIdentifierSexualActivity: 'sexual activity', HKCategoryTypeIdentifierMindfulSession: 'mindful minutes', HKQuantityTypeIdentifierDietaryWater: 'water', HKQuantityTypeIdentifierDietaryEnergyConsumed: 'calories eaten', HKCategoryTypeIdentifierHeadache: 'headaches', HKCategoryTypeIdentifierAbdominalCramps: 'cramps', HKCategoryTypeIdentifierMoodChanges: 'mood changes', HKCategoryTypeIdentifierBloating: 'bloating', HKCategoryTypeIdentifierFatigue: 'fatigue', HKQuantityTypeIdentifierRestingHeartRate: 'resting heart rate', HKQuantityTypeIdentifierWalkingHeartRateAverage: 'walking heart rate', HKQuantityTypeIdentifierVO2Max: 'VO2 max', HKQuantityTypeIdentifierBloodPressureSystolic: 'blood pressure', HKQuantityTypeIdentifierBloodPressureDiastolic: 'blood pressure', HKQuantityTypeIdentifierBloodGlucose: 'blood glucose' };
+  var FRIENDLY = { HKWorkout: 'workouts', HKWorkoutOther: 'workouts of a kind Rhythme has no activity for', HKCategoryTypeIdentifierNightSweats: 'night sweats', HKCategoryTypeIdentifierSleepChanges: 'sleep changes', HKCategoryTypeIdentifierMemoryLapse: 'memory lapse', HKCategoryTypeIdentifierPelvicPain: 'pelvic pain', HKCategoryTypeIdentifierVaginalDryness: 'vaginal dryness', HKCategoryTypeIdentifierAppetiteChanges: 'appetite changes', HKCategoryTypeIdentifierHandwashingEvent: 'handwashing', HKCategoryTypeIdentifierToothbrushingEvent: 'toothbrushing', HKQuantityTypeIdentifierStepCount: 'steps', HKQuantityTypeIdentifierHeartRate: 'heart rate', HKQuantityTypeIdentifierActiveEnergyBurned: 'active energy', HKQuantityTypeIdentifierBasalEnergyBurned: 'resting energy', HKQuantityTypeIdentifierDistanceWalkingRunning: 'walking distance', HKQuantityTypeIdentifierFlightsClimbed: 'flights climbed', HKQuantityTypeIdentifierRespiratoryRate: 'breathing rate', HKQuantityTypeIdentifierHeartRateVariabilitySDNN: 'heart rate variability', HKQuantityTypeIdentifierOxygenSaturation: 'blood oxygen', HKQuantityTypeIdentifierAppleExerciseTime: 'exercise minutes', HKQuantityTypeIdentifierAppleStandTime: 'stand time', HKCategoryTypeIdentifierAppleStandHour: 'stand hours', HKQuantityTypeIdentifierEnvironmentalAudioExposure: 'noise levels', HKQuantityTypeIdentifierHeadphoneAudioExposure: 'headphone levels', HKQuantityTypeIdentifierWalkingSpeed: 'walking speed', HKQuantityTypeIdentifierBodyMassIndex: 'BMI', HKQuantityTypeIdentifierHeight: 'height', HKQuantityTypeIdentifierBodyTemperature: 'body temperature', HKQuantityTypeIdentifierBasalBodyTemperature: 'basal body temperature', HKQuantityTypeIdentifierAppleSleepingWristTemperature: 'wrist temperature', HKCategoryTypeIdentifierOvulationTestResult: 'ovulation tests', HKCategoryTypeIdentifierCervicalMucusQuality: 'cervical mucus', HKCategoryTypeIdentifierIntermenstrualBleeding: 'spotting between periods', HKCategoryTypeIdentifierSexualActivity: 'sexual activity', HKCategoryTypeIdentifierMindfulSession: 'mindful minutes', HKQuantityTypeIdentifierDietaryWater: 'water', HKQuantityTypeIdentifierDietaryEnergyConsumed: 'calories eaten', HKCategoryTypeIdentifierHeadache: 'headaches', HKCategoryTypeIdentifierAbdominalCramps: 'cramps', HKCategoryTypeIdentifierMoodChanges: 'mood changes', HKCategoryTypeIdentifierBloating: 'bloating', HKCategoryTypeIdentifierFatigue: 'fatigue', HKQuantityTypeIdentifierRestingHeartRate: 'resting heart rate', HKQuantityTypeIdentifierWalkingHeartRateAverage: 'walking heart rate', HKQuantityTypeIdentifierVO2Max: 'VO2 max', HKQuantityTypeIdentifierBloodPressureSystolic: 'blood pressure', HKQuantityTypeIdentifierBloodPressureDiastolic: 'blood pressure', HKQuantityTypeIdentifierBloodGlucose: 'blood glucose' };
   function friendlyType(t) {
     if (FRIENDLY[t]) return FRIENDLY[t];
     var s = String(t || '').replace(/^HK(Quantity|Category|Correlation|Data)TypeIdentifier/, '').replace(/^Apple/, '');
@@ -147,8 +216,9 @@
 
   function appleScanner() {
     var carry = '', asleep = [], inbed = [], awake = [], weights = {}, flows = {}, spots = {}, syms = {}, minds = {}, skipped = {}, skipDates = {};
-    var counts = { records: 0, sleepSegments: 0, awake: 0, weighIns: 0, flowRecords: 0, flowNone: 0, spotRecords: 0, symptomRecords: 0, symptomAbsent: 0, mindfulSessions: 0, workouts: 0, unreadable: 0 };
-    var RE = /<(Record|Workout)\s([^>]*)>/g;
+    var steps = {}, rhr = {}, temps = {}, workouts = [], openWorkout = null;
+    var counts = { records: 0, sleepSegments: 0, awake: 0, weighIns: 0, flowRecords: 0, flowNone: 0, spotRecords: 0, symptomRecords: 0, symptomAbsent: 0, mindfulSessions: 0, workouts: 0, stepRecords: 0, heartRecords: 0, tempRecords: 0, unreadable: 0 };
+    var RE = /<(Record|Workout|WorkoutStatistics)\s([^>]*)>/g;
     /* kinds Rhythme has no place for are counted with their first and last date (the first ten characters of startDate) */
     function skip(t, body) {
       skipped[t] = (skipped[t] || 0) + 1;
@@ -183,12 +253,42 @@
         var mins = (me.ms - ms.ms) / 60000; if (!(mins >= 0.5 && mins <= 600)) { counts.unreadable++; return; }
         mindAdd(minds, ms, me); counts.mindfulSessions++; return;
       }
+      if (t === STEP_T) {
+        var sv = Number(a.value), sp = parseStamp(a.startDate); if (!sp || !(sv >= 0 && sv < 100000)) { counts.unreadable++; return; }
+        var sd = wallDate(sp.wall), dev = a.sourceName || 'device', hr = new Date(sp.wall).getUTCHours(), byDev = steps[sd] || (steps[sd] = {}), hrs = byDev[dev] || (byDev[dev] = {});
+        hrs[hr] = (hrs[hr] || 0) + sv; counts.stepRecords++; return;
+      }
+      if (t === RHR_T) {
+        var bpm = Number(a.value), rp = parseStamp(a.startDate); if (!rp || !(bpm >= 25 && bpm <= 200)) { counts.unreadable++; return; }
+        (rhr[wallDate(rp.wall)] = rhr[wallDate(rp.wall)] || []).push(bpm); counts.heartRecords++; return;
+      }
+      if (t === WRIST_T || t === BBT_T) {
+        var c = toC(a.value, a.unit), tp = parseStamp(t === WRIST_T ? a.endDate : a.startDate), wrist = t === WRIST_T;
+        if (!tp || c === null || (wrist ? (c < 30 || c > 42) : (c < 34 || c > 40))) { counts.unreadable++; return; }
+        /* a sleeping wrist reading belongs to the morning it ends on, like a night of sleep */
+        var td = wallDate(tp.wall), cur = temps[td] || (temps[td] = { wrist: [], basal: [] }); cur[wrist ? 'wrist' : 'basal'].push(c); counts.tempRecords++; return;
+      }
       if (SYMPTOM_T[t]) {
         if (!symptomPresent(a.value)) { counts.symptomAbsent++; return; }
         var ys = parseStamp(a.startDate); if (!ys) { counts.unreadable++; return; }
         var yd = wallDate(ys.wall), list = syms[yd] || (syms[yd] = []); if (list.indexOf(SYMPTOM_T[t]) < 0) list.push(SYMPTOM_T[t]); counts.symptomRecords++; return;
       }
       counts.unreadable++;
+    }
+    /* a <Workout>: older exports carry totalDistance on the tag, newer ones a <WorkoutStatistics> distance after it */
+    function workout(a, body) {
+      counts.workouts++; openWorkout = null;
+      var s = parseStamp(a.startDate), e = parseStamp(a.endDate), mins = Number(a.duration), u = String(a.durationUnit || 'min').toLowerCase();
+      if (u === 's' || u === 'sec') mins /= 60; else if (u === 'hr' || u === 'h') mins *= 60;
+      var w = workoutOf(a.workoutActivityType, s, e, mins, toKm(a.totalDistance, a.totalDistanceUnit) || toKm(a.distanceKm, 'km'));
+      if (!w) { skip('HKWorkoutOther', body || ('startDate="' + String(a.startDate || '') + '"')); return; }
+      workouts.push(w); openWorkout = w;
+    }
+    function stat(a) {
+      var w = openWorkout; if (!w || w.km || !/Distance/.test(a.type || '')) return;
+      var km = toKm(a.sum, a.unit); if (!km) return;
+      var m = WORKOUT_MAP[w.type], pv = m && m[2] ? paceVariant(m[2], km / (w.minutes / 60)) : null;
+      w.km = km; if (pv) { w.variant = pv; w.paced = true; }
     }
     function push(text, final) {
       var buf = carry ? carry + text : (text || '');
@@ -198,11 +298,12 @@
       RE.lastIndex = 0;
       while ((m = RE.exec(head))) {
         var body = m[2];
-        if (m[1] === 'Workout') { counts.workouts++; skip(WORKOUT_T, body); continue; }
+        if (m[1] === 'Workout') { workout(attrs(body), body); continue; }
+        if (m[1] === 'WorkoutStatistics') { stat(attrs(body)); continue; }
         counts.records++;
         var ti = body.indexOf('type="'); if (ti < 0) { counts.unreadable++; continue; }
         var t = body.slice(ti + 6, body.indexOf('"', ti + 6));
-        if (t === SLEEP_T || t === MASS_T || t === FLOW_T || t === SPOT_T || t === MIND_T || SYMPTOM_T[t]) one(attrs(body)); else skip(t, body);
+        if (t === SLEEP_T || t === MASS_T || t === FLOW_T || t === SPOT_T || t === MIND_T || SYMPTOM_T[t] || isSignal(t)) one(attrs(body)); else skip(t, body);
       }
     }
     function result() {
@@ -217,15 +318,19 @@
       var spotting = Object.keys(spots).filter(function (d) { return !flows[d]; }).sort().map(function (d) { return { date: d, flow: 'spotting' }; });
       var symptoms = Object.keys(syms).sort().map(function (d) { return { date: d, symptoms: syms[d].slice() }; });
       var mindful = mindDays(minds);
+      var restinghr = Object.keys(rhr).sort().map(function (d) { return { date: d, bpm: Math.round(meanOf(rhr[d], 0)) }; });
+      var temperature = Object.keys(temps).sort().map(function (d) { return { date: d, wrist: meanOf(temps[d].wrist, 2), basal: meanOf(temps[d].basal, 2) }; });
       var total = 0; Object.keys(skipped).forEach(function (k) { total += skipped[k]; });
-      return { source: SOURCE.apple, sleep: nights, weight: weight, period: period, spotting: spotting, symptoms: symptoms, mindful: mindful, naps: sl.naps, inBedNights: ib.nights.filter(function (n) { return n.basis === 'in-bed'; }).length, skipped: skipped, skipDates: skipDates, skippedTotal: total, skippedKinds: Object.keys(skipped).length, counts: counts };
+      return { source: SOURCE.apple, sleep: nights, weight: weight, period: period, spotting: spotting, symptoms: symptoms, mindful: mindful, steps: stepDays(steps), workouts: dedupeWorkouts(workouts), restinghr: restinghr, temperature: temperature, naps: sl.naps, inBedNights: ib.nights.filter(function (n) { return n.basis === 'in-bed'; }).length, skipped: skipped, skipDates: skipDates, skippedTotal: total, skippedKinds: Object.keys(skipped).length, counts: counts };
     }
     /* record(a): one HealthKit sample handed over by the native shell, already split into the export's
      * attributes (type, startDate, endDate, value, unit), so a direct read takes exactly the path a file does */
     function record(a) {
       if (!a || typeof a.type !== 'string') { counts.unreadable++; return; }
-      counts.records++; var t = a.type;
-      if (t === SLEEP_T || t === MASS_T || t === FLOW_T || t === SPOT_T || t === MIND_T || SYMPTOM_T[t]) one({ type: t, startDate: String(a.startDate || ''), endDate: String(a.endDate || ''), value: a.value === undefined || a.value === null ? '' : String(a.value), unit: a.unit ? String(a.unit) : '' });
+      var t = a.type;
+      if (t === WORKOUT_T) { workout({ workoutActivityType: String(a.workoutActivityType || ''), startDate: String(a.startDate || ''), endDate: String(a.endDate || ''), duration: a.duration, durationUnit: 'min', distanceKm: a.distanceKm }); return; }
+      counts.records++;
+      if (t === SLEEP_T || t === MASS_T || t === FLOW_T || t === SPOT_T || t === MIND_T || SYMPTOM_T[t] || isSignal(t)) one({ type: t, startDate: String(a.startDate || ''), endDate: String(a.endDate || ''), value: a.value === undefined || a.value === null ? '' : String(a.value), unit: a.unit ? String(a.unit) : '', sourceName: a.sourceName ? String(a.sourceName) : '' });
       else skip(t, 'startDate="' + String(a.startDate || '') + '"');
     }
     return { push: push, record: record, result: result };
@@ -288,7 +393,8 @@
     return Object.keys(out).sort().map(function (d) { return { date: d, kg: out[d] }; });
   }
   function googleBuilder() {
-    var segs = [], awakeSegs = [], weights = {}, minds = {}, cols = {}, counts = { files: 0, sleepSessions: 0, mindfulSessions: 0, otherSessions: 0, csvFiles: 0, weighIns: 0, unreadable: 0 }, otherKinds = {}, skipDates = {};
+    var segs = [], awakeSegs = [], weights = {}, minds = {}, cols = {}, counts = { files: 0, sleepSessions: 0, mindfulSessions: 0, workoutSessions: 0, otherSessions: 0, csvFiles: 0, weighIns: 0, unreadable: 0 }, otherKinds = {}, skipDates = {};
+    var stepSummary = {}, stepParts = {}, workouts = [];
     function seen(k, d) { if (!/^\d{4}-\d{2}-\d{2}$/.test(d || '')) return; var r = skipDates[k]; if (!r) skipDates[k] = { from: d, to: d }; else { if (d < r.from) r.from = d; if (d > r.to) r.to = d; } }
     return {
       json: function (text, name) {
@@ -301,20 +407,26 @@
         if (/meditat|mindful/.test(act) && st && en && en.ms > st.ms) {
           var mins = (en.ms - st.ms) / 60000; if (mins >= 0.5 && mins <= 600) { mindAdd(minds, st, en); counts.mindfulSessions++; return; }
         }
+        var wt = fitWorkoutType(act), w = wt && st && en && en.ms > st.ms ? workoutOf(wt, st, en, (en.ms - st.ms) / 60000, null) : null;
+        if (w) { workouts.push(w); counts.workoutSessions++; return; }
         counts.otherSessions++; otherKinds[act] = (otherKinds[act] || 0) + 1; if (st) seen(act, wallDate(st.wall));
       },
       csv: function (text, name) {
         counts.files++; counts.csvFiles++;
         googleDailyCsv(text, name).forEach(function (w) { weights[w.date] = w.kg; counts.weighIns++; });
-        var dc = googleDailyColumns(text, name); Object.keys(dc).forEach(function (n) { var m = cols[n] || (cols[n] = {}); dc[n].forEach(function (d) { m[d] = 1; }); });
+        var dc = googleDailyColumns(text, name); Object.keys(dc).forEach(function (n) { if (n === 'steps') return; var m = cols[n] || (cols[n] = {}); dc[n].forEach(function (d) { m[d] = 1; }); });
+        /* the summary file has one row per date; a per-day file has 15-minute rows to add up. The summary wins for a date it has. */
+        var gs = googleSteps(text, name); Object.keys(gs.days).forEach(function (d) { if (gs.summary) stepSummary[d] = gs.days[d]; else stepParts[d] = (stepParts[d] || 0) + gs.days[d]; });
       },
       result: function () {
         var sl = nightsFrom(segs, { awake: awakeSegs }); sl.nights.forEach(function (n) { n.basis = 'asleep'; });
         var weight = Object.keys(weights).sort().map(function (d) { return { date: d, kg: weights[d] }; });
-        var mindful = mindDays(minds);
+        var mindful = mindDays(minds), sd = {};
+        Object.keys(stepParts).forEach(function (d) { sd[d] = stepParts[d]; }); Object.keys(stepSummary).forEach(function (d) { sd[d] = stepSummary[d]; });
+        var steps = Object.keys(sd).sort().map(function (d) { return { date: d, steps: Math.round(sd[d]) }; }).filter(function (x) { return x.steps > 0 && x.steps <= 150000; });
         Object.keys(cols).forEach(function (name) { var ds = Object.keys(cols[name]).sort(); if (ds.length) { otherKinds[name] = ds.length; skipDates[name] = { from: ds[0], to: ds[ds.length - 1] }; } });
         var total = 0; Object.keys(otherKinds).forEach(function (k) { total += otherKinds[k]; });
-        return { source: SOURCE.google, sleep: sl.nights, weight: weight, period: [], spotting: [], symptoms: [], mindful: mindful, naps: sl.naps, inBedNights: 0, skipped: otherKinds, skipDates: skipDates, skippedTotal: total, skippedKinds: Object.keys(otherKinds).length, counts: counts };
+        return { source: SOURCE.google, sleep: sl.nights, weight: weight, period: [], spotting: [], symptoms: [], mindful: mindful, steps: steps, workouts: dedupeWorkouts(workouts), restinghr: [], temperature: [], naps: sl.naps, inBedNights: 0, skipped: otherKinds, skipDates: skipDates, skippedTotal: total, skippedKinds: Object.keys(otherKinds).length, counts: counts };
       }
     };
   }
@@ -336,6 +448,20 @@
       cs.forEach(function (c) { if (Number(r[c.i]) > 0) (out[c.name] = out[c.name] || {})[d] = 1; });
     });
     var res = {}; Object.keys(out).forEach(function (n) { res[n] = Object.keys(out[n]); }); return res;
+  }
+
+  /* the step column of a Takeout daily CSV: {summary: the file has a Date column, days: {date: steps}} */
+  function googleSteps(text, name) {
+    var rows = parseCsv(text), out = { summary: false, days: {} }; if (rows.length < 2) return out;
+    var header = rows[0].map(function (h) { return h.trim(); }), di = -1, si = -1;
+    header.forEach(function (h, i) { if (/^date$/i.test(h)) di = i; if (si < 0 && /^step count$/i.test(h.replace(/\s*\([^)]*\)\s*/g, ' ').trim())) si = i; });
+    if (si < 0) return out;
+    var fileDate = (/(\d{4}-\d{2}-\d{2})\.csv$/i.exec(name || '') || [])[1] || null; out.summary = di >= 0;
+    rows.slice(1).forEach(function (r) {
+      var d = di >= 0 ? String(r[di] || '').trim().slice(0, 10) : fileDate, v = Number(r[si]); if (!/^\d{4}-\d{2}-\d{2}$/.test(d || '') || !(v > 0)) return;
+      out.days[d] = (out.days[d] || 0) + v;
+    });
+    return out;
   }
 
   /* ---------- zip reading: central directory, one entry at a time ---------- */
@@ -502,7 +628,11 @@
     { id: 'spotting', type: 'period', label: 'Spotting between periods', icon: 'opacity', one: 'day', many: 'days', note: 'Shown as spotting; it never starts a new cycle' },
     { id: 'symptoms', type: 'symptom', label: 'Cycle symptoms', icon: 'spa', one: 'day', many: 'days', note: 'Only symptoms Rhythme has a chip for' },
     { id: 'weight', type: 'weight', label: 'Weight', icon: 'monitor_weight', one: 'weigh-in', many: 'weigh-ins', note: 'One per day, in kilograms' },
-    { id: 'mindful', type: 'mindfulness', label: 'Mindful minutes', icon: 'self_improvement', one: 'day', many: 'days', note: 'Minutes added up per day' }
+    { id: 'mindful', type: 'mindfulness', label: 'Mindful minutes', icon: 'self_improvement', one: 'day', many: 'days', note: 'Minutes added up per day' },
+    { id: 'steps', type: 'steps', label: 'Steps', icon: 'directions_walk', one: 'day', many: 'days', note: 'A total for each day, as your phone or watch counted' },
+    { id: 'workouts', type: 'exercise', label: 'Workouts', icon: 'fitness_center', one: 'workout', many: 'workouts', note: 'Type and minutes, into Movement; one you logged yourself counts once' },
+    { id: 'restinghr', type: 'restinghr', label: 'Resting heart rate', icon: 'favorite', one: 'day', many: 'days', note: 'One number a day' },
+    { id: 'temperature', type: 'temperature', label: 'Temperature', icon: 'device_thermostat', one: 'day', many: 'days', note: 'Sleeping wrist or basal body temperature, in °C' }
   ];
   function kindDef(id) { return KINDS.filter(function (k) { return k.id === id; })[0] || null; }
   function inRange(d, from) { return !from || d >= from; }
@@ -540,7 +670,7 @@
     var want = {}, from = opts.from || null;
     (opts.kinds || KINDS.map(function (k) { return k.id; })).forEach(function (id) { want[id] = true; });
     var src = result.source, index = {}, items = [], kept = 0, refreshed = 0, future = 0, dates = [], t = store.today();
-    var counts = { sleep: 0, weight: 0, period: 0, spotting: 0, symptoms: 0, mindful: 0 }, keptBy = { sleep: 0, weight: 0, period: 0, spotting: 0, symptoms: 0, mindful: 0 };
+    var counts = {}, keptBy = {}; KINDS.forEach(function (k) { counts[k.id] = 0; keptBy[k.id] = 0; });
     store.list().forEach(function (e) { (index[e.type + '|' + e.date] = index[e.type + '|' + e.date] || []).push(e); });
     function consider(kind, type, date, data) {
       if (!inRange(date, from)) return;
@@ -558,8 +688,33 @@
     if (want.spotting) (result.spotting || []).forEach(function (p) { consider('spotting', 'period', p.date, { flow: 'spotting' }); });
     if (want.symptoms) (result.symptoms || []).forEach(function (y) { consider('symptoms', 'symptom', y.date, { symptoms: y.symptoms.slice(), pain: null, mood: '', notes: 'From ' + label }); });
     if (want.mindful) (result.mindful || []).forEach(function (m) { consider('mindful', 'mindfulness', m.date, { kind: 'imported', minutes: m.minutes, sessions: m.sessions, completed: true, guide: 'From ' + label }); });
+    if (want.steps) (result.steps || []).forEach(function (x) { consider('steps', 'steps', x.date, { steps: x.steps }); });
+    if (want.restinghr) (result.restinghr || []).forEach(function (x) { consider('restinghr', 'restinghr', x.date, { bpm: x.bpm }); });
+    if (want.temperature) (result.temperature || []).forEach(function (x) { consider('temperature', 'temperature', x.date, { wrist: x.wrist, basal: x.basal }); });
+    /* Workouts: many a day, so a workout is matched by its own key (type and start minute) for a refresh, and a day
+       where another source (her own logging included) has the same activity keeps that one: counted once. */
+    if (want.workouts) (result.workouts || []).forEach(function (w) {
+      if (!inRange(w.date, from)) return;
+      if (w.date > t) { future++; return; }
+      var data = workoutData(w, label); if (!data) return;
+      var ex = index['exercise|' + w.date] || [];
+      var mine = ex.filter(function (e) { return e.source === src && e.data && e.data.importKey === w.key; })[0];
+      if (mine) { items.push({ id: mine.id, data: data }); refreshed++; counts.workouts++; dates.push(w.date); return; }
+      if (ex.some(function (e) { return e.source !== src && e.data && e.data.activity === w.activity; })) { kept++; keptBy.workouts++; return; }
+      items.push({ type: 'exercise', date: w.date, data: data, source: src }); counts.workouts++; dates.push(w.date);
+    });
     dates.sort();
     return { source: src, items: items, counts: counts, kept: kept, keptBy: keptBy, refreshed: refreshed, future: future, from: dates[0] || null, to: dates[dates.length - 1] || null, total: items.length };
+  }
+  /* the Movement entry a workout becomes: the Compendium variant chosen from pace when the record had it, strength
+     day left unticked (WHO's strength day is her own tick), and where it came from */
+  function workoutData(w, label) {
+    var EX = root.OvuExercise; if (!EX || !EX.makeEntry) return null;
+    var d; try { d = EX.makeEntry({ activity: w.activity, variant: w.variant, minutes: w.minutes, strength: false, note: '' }); } catch (e) { return null; }
+    if (w.paced === true) d.detail += ', from your pace';
+    else if (w.paced === false) d.detail = 'Pace not recorded, counted as ' + d.detail.charAt(0).toLowerCase() + d.detail.slice(1);
+    d.from = label; d.importKey = w.key; d.start = w.start; if (w.km) d.km = w.km;
+    return d;
   }
   function apply(result, store, opts) {
     var p = plan(result, store, opts);
@@ -569,7 +724,7 @@
   /* which picker kind an entry belongs to (null for kinds the importer never writes) */
   function kindOf(e) {
     if (e.type === 'period') return e.data && e.data.flow === 'spotting' ? 'spotting' : 'period';
-    return { sleep: 'sleep', weight: 'weight', symptom: 'symptoms', mindfulness: 'mindful' }[e.type] || null;
+    return { sleep: 'sleep', weight: 'weight', symptom: 'symptoms', mindfulness: 'mindful', steps: 'steps', exercise: 'workouts', restinghr: 'restinghr', temperature: 'temperature' }[e.type] || null;
   }
   function isImported(e) { return SOURCES.indexOf(e.source) > -1; }
   function importedCount(store, kind) { return store.list().filter(function (e) { return isImported(e) && (!kind || kindOf(e) === kind); }).length; }
@@ -587,7 +742,8 @@
   }
 
   root.OvuHealth = {
-    SOURCE: SOURCE, SOURCES: SOURCES, HK: { sleep: SLEEP_T, menstrualFlow: FLOW_T, intermenstrualBleeding: SPOT_T, bodyMass: MASS_T, mindful: MIND_T },
+    SOURCE: SOURCE, SOURCES: SOURCES, HK: { sleep: SLEEP_T, menstrualFlow: FLOW_T, intermenstrualBleeding: SPOT_T, bodyMass: MASS_T, mindful: MIND_T, steps: STEP_T, restingHeartRate: RHR_T, wristTemperature: WRIST_T, basalTemperature: BBT_T, workout: WORKOUT_T },
+    WORKOUT_MAP: WORKOUT_MAP, workoutOf: workoutOf, dedupeWorkouts: dedupeWorkouts, paceVariant: paceVariant, stepDays: stepDays, googleSteps: googleSteps, fitWorkoutType: fitWorkoutType, workoutData: workoutData, toC: toC,
     parseStamp: parseStamp, wallDate: wallDate, wallHM: wallHM, toKg: toKg, nightsFrom: nightsFrom, friendlyType: friendlyType,
     appleScanner: appleScanner, parseAppleXml: parseAppleXml,
     googleSession: googleSession, googleDailyCsv: googleDailyCsv, googleBuilder: googleBuilder, parseCsv: parseCsv,
