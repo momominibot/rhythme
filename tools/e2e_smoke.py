@@ -342,6 +342,33 @@ async def gym_checks(browser, gate):
     await pg.unroute("**/avatar-cozy*.webp")
     check("gym: a newer picture taking over while her own clothes load (a pose that will not load either) never leaves the workout clothes on her: she wears what she had on before", rd["src"] == "avatar-base.webp" and re2["src"] == "avatar-base.webp" and re2["costume"] is None and not re2["hidden"], [rd, re2])
     await pg.evaluate("()=>{ OvuRoom.restorePose(); OvuRoom.setOutfit('base', true); }"); await pg.wait_for_timeout(300)
+    # a floor tap mid-turn cuts her change back short: her own clothes are on, so the log still opens (Codex diff review 3)
+    await begin('gymtreadmill', 5); await pg.clock.run_for(65000)
+    await pg.click('#gpStop')
+    try:
+        await pg.wait_for_function("()=>document.querySelector('#avatar').classList.contains('twirling')", timeout=4000); tw = True
+    except Exception: tw = False
+    await pg.evaluate("""()=>{ const inner=document.querySelector('#sceneInner'), r=inner.getBoundingClientRect(); inner.dispatchEvent(new MouseEvent('click', {bubbles: true, clientX: r.left + r.width*0.40, clientY: r.top + r.height*0.58, detail: 1})); }""")
+    ft = await pg.evaluate("()=>({walking: OvuWalk.walking(), twirling: document.querySelector('#avatar').classList.contains('twirling')})")
+    for _ in range(20):
+        await pg.clock.run_for(400)
+        if await pg.evaluate("()=>OvuRoom.sheetId()==='move'"): break
+    fu = await pg.evaluate("()=>({sheet: OvuRoom.sheetOpen() ? OvuRoom.sheetId() : null, restoring: OvuRoom.restoring(), src: (document.querySelector('#avatarImg').getAttribute('src')||'').split('/').pop(), n: OvuStore.list().length})")
+    await pg.evaluate("()=>OvuRoom.closeSheet()"); await pg.clock.run_for(1500); await pg.wait_for_timeout(200)
+    check("gym: a floor tap while she turns back into her own clothes cuts the turn short and walks her, her own clothes on, and the movement log still opens", tw and ft["walking"] and not ft["twirling"] and fu["sheet"] == "move" and not fu["restoring"] and fu["src"] == "avatar-base.webp", [tw, ft, fu])
+    # Light Flower opened over a waiting log offer: the offer goes, never opening under the flower or after it (Codex diff review 3)
+    await begin('gymtreadmill', 5); await pg.clock.run_for(65000)
+    await pg.evaluate("()=>OvuRoom.openCalendar()"); await pg.wait_for_timeout(300)
+    await pg.evaluate("()=>document.querySelector('#gpStop').click()"); await pg.clock.run_for(3000)
+    ov0 = await pg.evaluate("()=>OvuGym.pendingAsk()")
+    await pg.evaluate("()=>document.querySelector('[data-tab=mind]').click()"); await pg.wait_for_timeout(400); await pg.clock.run_for(1000)
+    mind = await pg.evaluate("()=>({sheet: OvuRoom.sheetOpen() ? OvuRoom.sheetId() : null, med: OvuRoom.meditating(), ask: OvuGym.pendingAsk()})")
+    await pg.evaluate("()=>document.querySelector('#mindFlower').click()"); await pg.clock.run_for(1500); await pg.wait_for_timeout(200)
+    ov1 = await pg.evaluate("()=>({ask: OvuGym.pendingAsk(), sheet: OvuRoom.sheetOpen() ? OvuRoom.sheetId() : null, over: document.body.classList.contains('btap-open')})")
+    await pg.evaluate("()=>OvuLightFlower.close()"); await pg.clock.run_for(3000); await pg.wait_for_timeout(200)
+    ov2 = await pg.evaluate("()=>({ask: OvuGym.pendingAsk(), sheet: OvuRoom.sheetOpen() ? OvuRoom.sheetId() : null})")
+    check("gym: a log offer waiting behind a sheet stays waiting while Mind seats her on the mat, and goes when Light Flower opens: it never opens under the flower or after it", ov0 and mind["sheet"] == "mind" and mind["med"] and mind["ask"] and not ov1["ask"] and ov1["over"] and ov1["sheet"] != "move" and not ov2["ask"] and ov2["sheet"] != "move", [ov0, mind, ov1, ov2])
+    await pg.evaluate("()=>{ if (OvuRoom.sheetOpen()) OvuRoom.hideSheet(); if (OvuRoom.meditating()) OvuRoom.exitMeditation(); }"); await pg.wait_for_timeout(300)
     # a phone lock mid-workout: paused, time away not counted, Resume carries on
     await begin('gymtreadmill', 10)
     await pg.clock.run_for(5000)
@@ -354,10 +381,24 @@ async def gym_checks(browser, gate):
     pr0 = await pg.evaluate("()=>OvuGym.state().ms"); await pg.evaluate("()=>OvuRoom.renderProps()"); await pg.clock.run_for(2000)
     pr = await pg.evaluate(G)
     check("gym: a props rebuild keeps her on the belt with the clock running", pr["strip"] and pr["active"] and pr["st"]["ms"] > pr0 + 1500, [pr0, pr])
+    # the real path: an ordinary save in another tab reaches this one as 'external', and the room rebuilds its props
+    tb2 = await ctxg.new_page(); await tb2.route("**/*", gate)
+    await tb2.goto(BASE + "room.html", wait_until="domcontentloaded")
+    try: await tb2.wait_for_function("()=>window.OvuStore && window.OvuRoom", timeout=20000)
+    except Exception: pass
+    await tb2.evaluate("()=>OvuStore.setState({ smokeTouch: 1 })"); await tb2.close()
+    await pg.bring_to_front(); await pg.clock.run_for(1000)
+    if await pg.evaluate("()=>OvuGym.state() && OvuGym.state().paused"): await pg.click('#gpPause')  # a background tab may have paused it
+    ex1 = await pg.evaluate("()=>OvuGym.state().ms"); await pg.clock.run_for(2000)
+    xt = await pg.evaluate(G)
+    check("gym: an ordinary save in another tab keeps her on the belt: the room rebuilds its props and her strip and clock carry on", xt["strip"] and xt["active"] and xt["st"]["id"] == "treadmill" and xt["st"]["ms"] > ex1 + 1500, [ex1, xt])
     # one activity at a time: a breathing session asked for mid-workout is refused and the workout carries on
     await pg.evaluate("()=>OvuRoom.runSession('just', 1)"); await pg.wait_for_timeout(200)
     rf = await pg.evaluate("()=>({active: OvuGym.active(), session: OvuRoom.sessionOn(), panel: !!document.querySelector('#gpanel') && !document.querySelector('#gpanel').hidden, toast: document.querySelector('#toast').textContent})")
     check("gym: a breathing session started mid-workout is refused with a line, and the workout carries on with its panel showing", rf["active"] and not rf["session"] and rf["panel"] and "is running" in rf["toast"], rf)
+    await pg.evaluate("()=>document.querySelector('[data-tab=mind]').click()"); await pg.wait_for_timeout(300)
+    mr = await pg.evaluate("()=>({active: OvuGym.active(), med: OvuRoom.meditating(), sheet: OvuRoom.sheetOpen() ? OvuRoom.sheetId() : null, panel: !!document.querySelector('#gpanel') && !document.querySelector('#gpanel').hidden, toast: document.querySelector('#toast').textContent})")
+    check("gym: the Mind tab mid-workout is refused with a line: she stays on the machine, is not seated on the mat, and the workout panel shows", mr["active"] and not mr["med"] and mr["sheet"] != "mind" and mr["panel"] and "is running" in mr["toast"], mr)
     # a waiting log offer is dropped when a real session starts
     await pg.clock.run_for(60000); await pg.evaluate("()=>OvuRoom.openCalendar()"); await pg.wait_for_timeout(300)
     await pg.evaluate("()=>document.querySelector('#gpStop').click()"); await pg.clock.run_for(1500)  # the calendar sheet sits over the panel

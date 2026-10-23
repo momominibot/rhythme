@@ -258,7 +258,9 @@
     function ask() {
       if (pendingAsk !== tok) return;
       if (R.asleep() || !inGym() || (R.activityNow && R.activityNow()) || !R.openExercise) { dropAsk(); return; }
+      if (doc && doc.body && doc.body.classList.contains('btap-open')) { dropAsk(); return; } /* Light Flower or Koi Pond began: another practice, so the offer goes (Codex diff review 3) */
       if (R.sheetOpen()) return; /* never over another sheet: asked again when it closes */
+      if (R.meditating && R.meditating()) return; /* she sits on the mat (Mind open, or closing): asked once she is up, never pulling her off it */
       if (R.restoring && R.restoring()) return; /* not before her own picture is back on, so a save's moment never takes it over (Codex diff review 2, 23 Oct) */
       dropAsk(); R.openExercise(r.st.act, { minutes: mins, intro: intro, date: r.day, strengthTick: false });
     }

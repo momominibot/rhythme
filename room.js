@@ -621,12 +621,19 @@
   function watchRestore(rec) {
     clearTimeout(restoreTimer);
     restoreTimer = setTimeout(function () {
-      if (lastCostume !== rec || !leftOn()) return;
+      if (lastCostume !== rec) return;
+      if (!leftOn()) { rec.pending = false; return; } /* her own clothes (or a newer picture) are on: settled */
       if (rec.pending && rec.gen === imgGen) { watchRestore(rec); return; } /* her own picture is still on its way */
       ++imgGen; finishTwirl(); avatarImg.src = rec.back || ART + 'avatar-' + savedOutfit() + '.webp';
     }, 1200);
   }
-  function restoring() { return !!(lastCostume && lastCostume.pending && lastCostume.gen === imgGen); }
+  /* settled as soon as the workout clothes are off her picture, even when a walk cut the turn short and its callback never ran
+     (Codex diff review 3: a floor tap mid-turn left the log offer waiting for ever) */
+  function restoring() {
+    if (!(lastCostume && lastCostume.pending && lastCostume.gen === imgGen)) return false;
+    if (!leftOn()) { lastCostume.pending = false; return false; }
+    return true;
+  }
   /* her own picture; if it will not load (a pick made during the workout, offline), the picture she wore before the workout:
      never the workout clothes (Codex diff review, 22 Oct) */
   function wearOwn(own, back) {

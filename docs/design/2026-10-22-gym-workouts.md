@@ -182,3 +182,19 @@ kit shows in five of its eight walk frames, and its blink has faint smudges at t
   and no-float rule on all four machines in both kits (standing frames within 2% of her standing figure, the rider's head
   within 3% of her standing head, the strip's bottom within a pixel of the machine's spot, no gap), and a real breathing
   session: refused mid-workout, and dropping a waiting log offer when it starts.
+
+## After Codex diff review 3 (HOLD: 2 P2, 1 P3; docs/design/reviews/2026-10-23-codex-gym-diff-3.md)
+
+- A restore is settled as soon as the workout clothes are off her picture (`restoring()` and `watchRestore` read `leftOn()`),
+  so a floor tap that cuts her turn back short no longer leaves the log offer waiting for ever.
+- A waiting log offer goes when Light Flower or Koi Pond opens over the room (their `btap-open` overlay), and waits while she
+  sits on the mat, so it never opens under an overlay or pulls her off the mat.
+- The core meditate case now says what it tests (the hook, from any path); the browser checks the real Mind tab, refused
+  mid-workout.
+- Tests: browser checks for a floor tap mid-turn (the log still opens), Light Flower over a waiting offer (dropped, never
+  opened after), and the Mind tab refused; core cases for the overlay and the mat. Each fails on a one-line mutation of its
+  fix (the mat guard in core only: in the browser the Mind sheet already holds the offer).
+- A props rebuild is now also checked through the real path: an ordinary save in a second tab reaches this one as `external`,
+  the room rebuilds its props, and her strip and clock carry on.
+- Not changed: grounding is measured against the station's own spot (an evidence gap Codex named, not a defect); the spots
+  were placed by eye on zoomed screenshots of each pose on its machine, which Jamie has.
