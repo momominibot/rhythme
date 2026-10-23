@@ -2037,6 +2037,7 @@ async def main():
             q2 = await page.evaluate("()=>({sitting: OvuTones.sitting(), rem: OvuTones.remaining(), playing: OvuTones.playing()})")
             await page.click('#springStop'); await page.wait_for_timeout(300)
             check("a timed quiet sit stood up early leaves no timer: the next untimed sit has no remaining time", q1["sitting"] and q1["playing"] is None and q1["rem"] is not None and 590 <= q1["rem"] <= 600 and q2["sitting"] and q2["rem"] is None, {"q1": q1, "q2": q2})
+            await go_to('barn'); await go_to('farm')  # back where the block left her, for the farm gate check that follows
             await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('farmgate'))")
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout === 'garden'", timeout=12000)
             except Exception: pass
