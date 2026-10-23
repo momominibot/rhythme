@@ -25,7 +25,7 @@
  *    account and token of the delete itself. */
 (function (root) {
   'use strict';
-  var GAME_KEYS = ['rewards', 'farm', 'greenhouse', 'villagers', 'home', 'propPos', 'pets', 'garden', 'harbour', 'lane', 'stamina', 'visited', 'game'];
+  var GAME_KEYS = ['rewards', 'farm', 'greenhouse', 'villagers', 'home', 'propPos', 'pets', 'garden', 'harbour', 'lane', 'stamina', 'visited', 'game', 'tidy'];
   var REWARD_FIELDS = ['hearts', 'earned', 'owned', 'placed', 'treats', 'wear', 'gifts', 'mindDay', 'mindActs', 'seatDay'];
   var DAY_FIELDS = ['mindDay', 'mindActs', 'seatDay'];
   function practiceCap() { var R = root.OvuRewards; return R && R.PRACTICE && isFinite(R.PRACTICE.cap) ? R.PRACTICE.cap : 20; }
