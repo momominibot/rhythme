@@ -692,6 +692,127 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('villagers: original characters, no real names; game state only, no diary writes', V.VILLAGERS.map(function (v) { return v.name; }).join() === 'Shen Yuan,Lu Chen' && !/S\.add\(|OvuStore\.add\(/.test(fs.readFileSync(path.join(root, 'ovu-villagers.js'), 'utf8')));
 })();
 
+(function villagerTalks() {
+  console.log('2k3e. villagers at her height on open floor, and Harvest Moon talks (22 Oct): a greeting that knows the day, a topic a day, gifts named, never upset');
+  var w = scenes('2026-10-22'), K = w.OvuWalk, C = w.OvuCommunity, src = fs.readFileSync(path.join(root, 'ovu-villagers.js'), 'utf8');
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-friends.js'), 'utf8'), w, { filename: 'ovu-friends.js' });
+  ['ovu-farm.js', 'ovu-stamina.js', 'ovu-harbour.js', 'ovu-villagers.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w, { filename: f }); });
+  var V = w.OvuVillagers, F = w.OvuFriends, LAY = { plaza: w.LAYOUTS.plaza, harbour: w.OvuHarbour.LAYOUT };
+  /* the people and pets who stand in each scene: the sample neighbours, the friends' eight places, the neighbours' pets */
+  var others = { plaza: C.NEIGHBOURS.map(function (n) { return { id: n.id, x: n.spot.x, y: n.spot.y, w: 11 }; }).concat(C.NEIGHBOURS.map(function (n) { return { id: n.id + '-pet', x: n.petSpot.x, y: n.petSpot.y, w: n.pet.w }; })).concat(F.SPOTS.map(function (p, i) { return { id: 'friend' + i, x: p.x, y: p.y, w: 11 }; })), harbour: [] };
+  V.VILLAGERS.forEach(function (v) {
+    var L = LAY[v.scene], box = V.blockOf(v), bad = [];
+    var around = K.world(L, others[v.scene]), withMe = K.world(Object.assign({}, L, { solids: L.solids.concat([box]) }), others[v.scene]);
+    if (box.x1 - box.x0 > 6 || box.y1 - box.y0 > 4 || !K.inBox(box, v.spot.x, v.spot.y)) bad.push('his block is not a small box at his feet');
+    if (!K.inZones(L.zones, v.spot.x, v.spot.y) || K.blocked(around.solids, v.spot.x, v.spot.y)) bad.push('feet not on open floor');
+    var points = L.hotspots.map(function (h) { return [h.id, h.wp]; }).concat(L.doors.map(function (d) { return [d.id + ' door', d]; })).concat([['home', L.home]]).concat(others[v.scene].map(function (o) { return [o.id, o]; }));
+    points.forEach(function (p) { if (K.inBox(box, p[1].x, p[1].y)) bad.push(p[0] + ' inside his box'); });
+    if (!K.inZones(L.zones, v.talkAt.x, v.talkAt.y) || K.blocked(withMe.solids, v.talkAt.x, v.talkAt.y)) bad.push('her talk spot is not free');
+    if (v.talkAt.x >= v.spot.x || v.talkAt.flip) bad.push('she does not stand beside him facing him');
+    L.doors.forEach(function (d) { if (!K.plan(withMe, { x: d.x, y: d.y }, v.talkAt, 2)) bad.push('no walk from ' + d.id); });
+    L.hotspots.forEach(function (h) { if (!K.plan(withMe, v.talkAt, h.wp, 2)) bad.push('he blocks the walk to ' + h.id); });
+    check(v.name + ': feet on open floor in the ' + v.scene + ', clear of every stand point, door and person; she can walk to him and on to every hotspot', bad.length === 0, bad.join('; '));
+  });
+  var wsrc = fs.readFileSync(path.join(root, 'ovu-walk.js'), 'utf8'), css = fs.readFileSync(path.join(root, 'room.css'), 'utf8');
+  check('each villager is his own button (not a neighbour .nb a friends redraw clears), drawn at her width times his canvas factor, clipped to his traced outline, ranked with her by his feet and not a solid (his block is in the layout, added once)', /el\.style\.width = \(\(L\.avatarW \|\| 12\) \* \(v\.wk \|\| 1\)\)/.test(src) && /style\.clipPath = 'polygon\(' \+ v\.outline \+ '\)'/.test(src) && /el\.className = 'villager';/.test(src) && V.VILLAGERS.every(function (v) { return v.outline.split(',').length >= 20 && /^[0-9. %,]+$/.test(v.outline); }) && /\.villager\{[^}]*pointer-events:none/.test(css) && /\.villager img\{[^}]*pointer-events:auto/.test(css) && /#ownedProps \.villager, #plateOcc/.test(wsrc) && /!el\.classList\.contains\('villager'\)/.test(wsrc) && /if \(L\.solids && !L\.solids\.some\(function \(b\) \{ return b\.id === 'villager-' \+ v\.id; \}\)\) L\.solids\.push\(blockOf\(v\)\)/.test(src) && /closest\('\.hotspot,\.nb,\.prop\.owned[^']*,\.villager'/.test(fs.readFileSync(path.join(root, 'ovu-camera.js'), 'utf8')));
+  var looks = F.LOOKS.map(function (l) { return l[0]; }).concat(C.NEIGHBOURS.map(function (n) { return n.outfit; })), csrc = fs.readFileSync(path.join(root, 'ovu-community.js'), 'utf8');
+  check('every neighbour and friend look has its traced outline, and a neighbour\'s picture (on the plaza and on a visit) is clipped to it with only the picture taking a tap, so her empty canvas and name tag never hide Shen', looks.every(function (l) { return C.OUTLINE[l] && C.OUTLINE[l].split(',').length >= 20 && /^[0-9. %,]+$/.test(C.OUTLINE[l]); }) && (csrc.match(/clipTo\(el\.querySelector\('img'\), (n|visit)\.outfit\)/g) || []).length === 2 && /\.nbperson\{pointer-events:none;cursor:pointer\}\.nbperson img\{pointer-events:auto\}/.test(css));
+  check('nobody floats: a villager stands like her, his canvas bottom on the floor line (translate -100%), with her soft contact shadow at his feet sized to her footprint on any canvas width, and no offset drop shadow', /\.villager\{position:absolute;transform:translate\(-50%,-100%\)[^}]*filter:drop-shadow\(0 1px 2px rgba\(70,40,100,\.2\)\)/.test(css) && /\.avatar::before,[^{]*\.villager::before\{/.test(css) && /\.villager\{--cs:\.62\}/.test(css) && /\.avatar\{position:absolute;[^}]*transform:translate\(-50%,-100%\)/.test(css) && /setProperty\('--cs', \(0\.62 \/ \(v\.wk \|\| 1\)\)/.test(src));
+  check('a friends redraw (no props event) ranks the new neighbours with her and Shen; a cutout is ranked by its centre, not its left edge', /renderNeighbours\(\) \{[\s\S]*?if \(root\.OvuWalk && root\.OvuWalk\.sortDepth\) root\.OvuWalk\.sortDepth\(\);[^\n]*\n  \}/.test(csrc) && /cx: occ \? x \+ w \/ 2 : x/.test(wsrc) && /return \{ y: p\.y, x: p\.cx, w: p\.w \}/.test(wsrc));
+  /* the plaza's crowd: four neighbours, their pets, Shen and her (Codex, 22 Oct: Shen at 54.5 and her at 54.4 both had z 2) */
+  var crowd = C.NEIGHBOURS.map(function (n) { return { y: n.spot.y, x: n.spot.x, w: 11 }; }).concat(C.NEIGHBOURS.map(function (n) { return { y: n.petSpot.y, x: n.petSpot.x, w: n.pet.w }; })).concat([{ y: 52.6, x: 40, w: 12 }]);
+  var zBehind = K.depthRank(crowd.concat([{ y: 52.5 }])), zFront = K.depthRank(crowd.concat([{ y: 52.7 }])), sh = crowd.length, her = crowd.length;
+  var meiZ = zFront[0], shenZ = zFront[sh - 1];
+  check('in the plaza crowd she and Shen never share a level: just behind him he is in front, just in front she is, and Mei (in front of him) stays in front', zBehind[sh - 1] > zBehind[her] && zFront[her] > zFront[sh - 1] && meiZ > shenZ && Math.max.apply(null, zFront) <= 9 && Math.min.apply(null, zFront) >= 2, JSON.stringify({ behind: zBehind, front: zFront }));
+  var apart = K.depthRank(new Array(12).fill(0).map(function (_, i) { return { y: 50 + i, x: (i % 2) * 60 + 10, w: 10 }; }));
+  check('sprites that do not overlap across share levels, so twelve on two sides of the plate still each sit in front of the one behind on their side', apart.every(function (z, i) { return i < 2 || z > apart[i - 2]; }), apart.join());
+  /* the talk data */
+  var shape = [];
+  V.VILLAGERS.forEach(function (v) {
+    V.PARTS.forEach(function (p) { if (!(v.open[p] && v.open[p].length === 2)) shape.push(v.id + ' open ' + p); });
+    if (v.body.length !== 5 || v.body.some(function (b) { return b.length < 2; })) shape.push(v.id + ' body');
+    ['spring', 'summer', 'autumn', 'winter'].forEach(function (s) { if (!v.season[s]) shape.push(v.id + ' season ' + s); });
+    var ids = v.topics.map(function (t) { return t.id; }), mins = v.topics.map(function (t) { return t.min; });
+    if (v.topics.length < 6 || ids.some(function (x, i) { return ids.indexOf(x) !== i; })) shape.push(v.id + ' topics');
+    if (mins.filter(function (m) { return m === 0; }).length < 2 || mins.some(function (m, i) { return m < 0 || m > 10 || (i && m < mins[i - 1]); })) shape.push(v.id + ' topic hearts');
+    v.topics.forEach(function (t) { var rs = t.replies.map(function (r) { return r.id; }); if (t.replies.length < 2 || t.replies.length > 3 || rs.some(function (x, i) { return rs.indexOf(x) !== i; }) || t.replies.some(function (r) { return !r.say || !r.back; }) || !t.ask) shape.push(v.id + ' ' + t.id); });
+    ['loved', 'liked', 'dish', 'other'].forEach(function (k) { if (!(v.gifts[k].length >= 2 && v.gifts[k].every(function (g) { return /\{gift\}|\{Gift\}/.test(g); }))) shape.push(v.id + ' gifts ' + k); });
+  });
+  check('every villager has two openings for each part of the day, five friendship tiers, four seasons, at least six topics opening from 0 to 10 hearts with two or three replies each, and gift lines that name the gift', shape.length === 0, shape.join('; '));
+  var shen = V.byId('shen'), lu = V.byId('lu'), d = '2026-10-22';
+  var g0 = V.greeting(shen, { points: 0, part: 'morning', season: 'autumn', day: d }), g0b = V.greeting(shen, { points: 0, part: 'morning', season: 'autumn', day: d });
+  var gNight = V.greeting(shen, { points: 0, part: 'night', season: 'autumn', day: d }), gClose = V.greeting(shen, { points: 85, part: 'morning', season: 'autumn', day: d }), gWed = V.greeting(shen, { points: 100, engaged: true, part: 'morning', season: 'winter', day: d });
+  check('the greeting knows the part of the day, the season and her friendship, and holds all day', g0 === g0b && g0 !== gNight && g0 !== gClose && gClose !== gWed && g0.indexOf(shen.season.autumn) > -1 && gWed.indexOf(shen.season.winter) > -1 && gNight.indexOf(shen.open.night[0]) === 0 && gClose.indexOf(shen.open.morning[1]) === 0 && shen.body[3].some(function (b) { return gClose.indexOf(b) > -1; }) && shen.body[4].some(function (b) { return gWed.indexOf(b) > -1; }));
+  check('the part of the day follows the sky (sunrise and morning, afternoon, sunset, night) or an hour', V.partOfDay('sunrise') === 'morning' && V.partOfDay('morning') === 'morning' && V.partOfDay('afternoon') === 'afternoon' && V.partOfDay('sunset') === 'evening' && V.partOfDay('night') === 'night' && V.partOfDay(9) === 'morning' && V.partOfDay(15) === 'afternoon' && V.partOfDay(18) === 'evening' && V.partOfDay(23) === 'night' && V.partOfDay(2) === 'night' && V.partOfDay(null) === 'morning');
+  check('friendship tiers: new under 2 hearts, friendly to 4, close to 7, very close from 8, and engaged', V.tier(0) === 0 && V.tier(19) === 0 && V.tier(20) === 1 && V.tier(49) === 1 && V.tier(50) === 2 && V.tier(79) === 2 && V.tier(80) === 3 && V.tier(100) === 3 && V.tier(10, true) === 4);
+  /* topics: the first open one she has not heard, then the next; locked ones never offered */
+  var s0 = V.stateOf({}, 'shen'), t0 = V.topicFor(shen, s0, d);
+  var a1 = V.answer({}, 'shen', d, t0.id, t0.replies[0].id), s1 = V.stateOf({ villagers: a1.state }, 'shen');
+  var t1 = V.topicFor(shen, s1, '2026-10-23');
+  check('a first talk is the first topic; answering adds 3 points, remembers her reply for the day and opens the next topic tomorrow', t0.id === shen.topics[0].id && a1.ok && a1.gained === 3 && s1.points === 3 && s1.talked === d && s1.chat.topic === t0.id && s1.chat.reply === t0.replies[0].id && s1.heard.join() === t0.id && V.topicFor(shen, s1, d).id === t0.id && t1.id === shen.topics[1].id && a1.line === t0.replies[0].back && V.chatOf(shen, s1, d).reply.id === t0.replies[0].id && V.chatOf(shen, s1, '2026-10-23') === null);
+  var again = V.answer(a1.state, 'shen', d, t0.id, t0.replies[1].id), other = V.answer(a1.state, 'shen', d, t1.id, t1.replies[0].id), back = V.answer(a1.state, 'shen', '2026-10-21', t1.id, t1.replies[0].id), locked = V.answer({}, 'shen', d, 'years', 'here'), noReply = V.answer({}, 'shen', d, 'tea', 'nope'), nobody = V.answer({}, 'ghost', d, 'tea', 'plain'), notToday = V.answer({}, 'shen', d, 'stories', 'cosy');
+  check('talking counts once a day: once answered, any second reply (another tab, a double tap) returns the first exchange unchanged with no points', again.ok && again.already && again.gained === 0 && again.reply.id === t0.replies[0].id && JSON.stringify(again.state) === JSON.stringify(a1.state) && other.ok && other.already && other.reply.id === t0.replies[0].id);
+  check('a clock set back, a topic that is not today\'s (locked or another open one), an unknown reply or villager change nothing', !back.ok && back.why === 'clock' && !locked.ok && locked.why === 'topic' && !notToday.ok && notToday.why === 'topic' && !noReply.ok && noReply.why === 'reply' && !nobody.ok);
+  /* the day's topic is pinned when she taps Talk: a gift that opens a new topic before she answers never swaps it */
+  var heardTwo = { shen: { points: 19, heard: ['tea', 'stories'] } }, o1 = V.offer(heardTwo, 'shen', d), tPinned = o1.topic.id;
+  var afterGift = V.gift(o1.state, 'shen', d, 'pandanrice', 'dish', 'Pandan rice').state, o2 = V.offer(afterGift, 'shen', d);
+  var unpinnedWouldBe = V.topicFor(shen, V.stateOf({ villagers: { shen: { points: 27, heard: ['tea', 'stories'] } } }, 'shen'), d).id;
+  var aPinned = V.answer(afterGift, 'shen', d, tPinned, shen.topics.filter(function (t) { return t.id === tPinned; })[0].replies[0].id);
+  check('Talk pins today\'s topic before she answers: offering again is unchanged, a gift that opens a new topic does not swap it, and the pinned one is the one she can answer', o1.ok && !o1.already && o1.state.shen.chat.reply === null && o2.ok && o2.already && o2.topic.id === tPinned && unpinnedWouldBe === 'rain' && tPinned !== 'rain' && aPinned.ok && aPinned.gained === 3 && V.answer(afterGift, 'shen', d, 'rain', 'love').why === 'topic');
+  var legacy = V.answer({ shen: { points: 30, talked: d } }, 'shen', d, 'tea', 'plain');
+  check('an older save that already counted today\'s talk (talked, no exchange) can still have the exchange, for no more points', legacy.ok && legacy.gained === 0 && legacy.state.shen.points === 30 && legacy.state.shen.chat.reply === 'plain');
+  var anyAll = true;
+  V.VILLAGERS.forEach(function (v) { v.topics.forEach(function (t) { t.replies.forEach(function (r) { var st0 = {}; st0[v.id] = { points: 100, chat: { day: d, topic: t.id, reply: null } }; var x = V.answer(st0, v.id, d, t.id, r.id); if (!x.ok || x.gained !== 3 || x.line !== r.back) anyAll = false; }); }); });
+  check('there is no wrong answer: every reply to every topic is worth the same 3 points and gets its own answer', anyAll);
+  var opened = function (p) { return V.unlocked(shen, p).map(function (t) { return t.id; }); };
+  check('topics open as the hearts grow: two at the start, all of them at 8 hearts, and a locked topic is never today\'s', opened(0).length === 2 && opened(80).length === shen.topics.length && opened(0).indexOf('years') < 0 && V.topicFor(shen, V.stateOf({ villagers: { shen: { points: 0, heard: ['tea', 'stories'] } } }, 'shen'), d).min === 0);
+  var heardAll = { lu: { points: 100, heard: lu.topics.map(function (t) { return t.id; }) } }, sA = V.stateOf({ villagers: heardAll }, 'lu'), r1 = V.topicFor(lu, sA, d), r2 = V.topicFor(lu, sA, d), seenDays = {};
+  for (var k = 0; k < 16; k++) { var dd = new Date(Date.UTC(2026, 10, 1 + k)).toISOString().slice(0, 10); seenDays[V.topicFor(lu, sA, dd).id] = 1; }
+  check('once she has heard them all, the topic turns with the day and holds all day', r1.id === r2.id && Object.keys(seenDays).length === lu.topics.length);
+  /* friendship never goes down, whatever the order */
+  /* a fixed schedule: each op for each villager in turn, the day moving on every eighth step and set back by three days
+   * every 29th, so set-backs, repeats on one day and new days all happen; points must never go down */
+  var st = {}, last = { shen: 0, lu: 0 }, down = false, ran = {};
+  for (var i = 0; i < 400; i++) {
+    var who = Math.floor(i / 4) % 2 ? 'lu' : 'shen', vv = V.byId(who), op = i % 4, back = i % 29 === 28 ? 3 : 0, day = new Date(Date.UTC(2026, 9, 1 + Math.floor(i / 8) - back)).toISOString().slice(0, 10), r;
+    if (op === 0) r = V.talk(st, who, day); else if (op === 1) r = V.gift(st, who, day, vv.loves[i % 3], 'dish', 'Something'); else if (op === 2) r = V.offer(st, who, day); else { var tt = V.topicFor(vv, V.stateOf({ villagers: st }, who), day); r = V.answer(st, who, day, tt.id, tt.replies[i % tt.replies.length].id); }
+    if (r && r.ok) { st = r.state; ran[who + op] = (ran[who + op] || 0) + 1; }
+    ['shen', 'lu'].forEach(function (x) { var p = V.stateOf({ villagers: st }, x).points; if (p < last[x]) down = true; last[x] = p; });
+  }
+  check('friendship never goes down: 400 talks, offers, answers and gifts in a fixed order, with days repeated and the clock set back, never lower the points (every operation ran for both villagers)', !down && last.shen > 0 && last.lu > 0 && ['shen', 'lu'].every(function (x) { return [0, 1, 2, 3].every(function (o) { return ran[x + o] >= 10; }); }), JSON.stringify(ran));
+  /* every change keeps the rest: today's exchange survives a gift, a heart scene, the proposal's engagement and a reload */
+  var seqSt = V.answer({}, 'lu', d, 'sea', 'shore').state; seqSt = V.gift(seqSt, 'lu', d, 'egg', 'pantry', 'Egg').state;
+  var ls = V.stateOf({ villagers: seqSt }, 'lu'); ls.seen.push(2); seqSt.lu = ls; seqSt.lu = Object.assign({}, V.stateOf({ villagers: seqSt }, 'lu'), { engaged: true });
+  var reload = V.stateOf({ villagers: JSON.parse(JSON.stringify(seqSt)) }, 'lu');
+  check('answer, gift, a heart scene and the engagement keep each other: the exchange, the heard topic, the gift and the scene all survive a reload', reload.chat.reply === 'shore' && reload.heard.join() === 'sea' && reload.gave.key === 'egg' && reload.seen.join() === '2' && reload.engaged && reload.points === 8 && V.chatOf(lu, reload, d).reply.back === lu.topics[0].replies[1].back);
+  /* old and edited saves */
+  var dirty = V.stateOf({ villagers: { shen: { points: '42', talked: d, chat: { day: d, topic: 'nope', reply: 'x' }, heard: ['tea', 'tea', 'ghost', 5], gave: { day: d, key: {}, kind: 'dish' }, seen: [2, 3], extra: 1 } } }, 'shen');
+  var wrongReply = V.stateOf({ villagers: { shen: { chat: { day: d, topic: 'tea', reply: 'cosy' } } } }, 'shen'), offered = V.stateOf({ villagers: { shen: { chat: { day: d, topic: 'tea', reply: null } } } }, 'shen');
+  check('a saved reply must belong to its saved topic; an offered topic keeps its null reply and is not a talk yet', wrongReply.chat === null && offered.chat.topic === 'tea' && offered.chat.reply === null && V.chatOf(shen, offered, d) === null);
+  var kept = V.talk({ shen: { points: 10, chat: { day: d, topic: 'tea', reply: 'honey' }, heard: ['tea'] } }, 'shen', '2026-10-23').state.shen;
+  check('an old or edited save is cleaned: unknown topics, replies, heard ids and gifts drop; a talk keeps what was heard', dirty.points === 42 && dirty.chat === null && dirty.heard.join() === 'tea' && dirty.gave === null && dirty.seen.join() === '2' && !('extra' in dirty) && kept.heard.join() === 'tea' && kept.chat.topic === 'tea' && kept.points === 13);
+  /* gifts name the gift */
+  var gl = V.gift({}, 'shen', d, 'pandanrice', 'dish', 'Pandan rice'), gs = V.stateOf({ villagers: gl.state }, 'shen');
+  var named = [['shen', 'Pandan rice', 'pandanrice', 'dish'], ['shen', 'Milk', 'milk', 'pantry'], ['shen', 'Garlic pak choy', 'garlicpakchoy', 'dish'], ['shen', 'Chilli padi', 'chilli', 'crop'], ['lu', 'Tomato and egg', 'tomatoegg', 'dish'], ['lu', 'Egg', 'egg', 'pantry'], ['lu', 'Pumpkin soup', 'pumpkinsoup', 'dish'], ['lu', 'Lemongrass', 'lemongrass', 'crop']].every(function (x) {
+    return [d, '2026-10-23'].every(function (day) { var line = V.giftLine(V.byId(x[0]), x[1], x[2], x[3], 0, day); return line.toLowerCase().indexOf(x[1].toLowerCase()) > -1 && !/\{/.test(line); });
+  });
+  check('his thanks names the gift (loved, liked, another dish, anything else) and is remembered for the day; very close, he adds a warm line', named && gl.ok && gl.loved && gl.line.indexOf('Pandan rice') === 0 && gs.gave.name === 'Pandan rice' && gs.gifted === d && V.giftLine(shen, 'Milk', 'milk', 'pantry', 90, d).indexOf(shen.gifts.close) > 0 && V.giftLine(shen, 'Milk', 'milk', 'pantry', 10, d).indexOf(shen.gifts.close) < 0);
+  /* the words */
+  var words = [];
+  V.VILLAGERS.forEach(function (v) {
+    words.push(v.name, v.role); V.PARTS.forEach(function (p) { words = words.concat(v.open[p]); }); v.body.forEach(function (b) { words = words.concat(b); });
+    Object.keys(v.season).forEach(function (s) { words.push(v.season[s]); }); v.topics.forEach(function (t) { words.push(t.ask); t.replies.forEach(function (r) { words.push(r.say, r.back); }); });
+    Object.keys(v.gifts).forEach(function (g) { words = words.concat(v.gifts[g]); }); Object.keys(v.events).forEach(function (e) { words = words.concat(v.events[e]); });
+  });
+  var wrong = words.filter(function (t) { return /—|–|\p{Extended_Pictographic}|\p{Regional_Indicator}|995/u.test(t) || /\b(upset|angry|cross with you|disappointed|annoyed|hate|sulk|jealous|ignored|lonely without)\b/i.test(t) || /\b(period|cycle|diary|symptom|pain|weight|calorie|diet|ovulat|pregnan|fertil|hormone|mood|sleep|health|AI|GPT|Claude|Doubao)\b/i.test(t); });
+  check('every villager line is warm and original: no em or en dashes, no emoji, no emergency numbers, nobody upset, nothing about her health, cycle or diary, no model names', words.length > 150 && wrong.length === 0, wrong.join(' | '));
+  check('the villagers read only game state and the clock: no diary reads or writes, no hearts paid, the feather is the only spend', !/S\.add\(|OvuStore\.add\(|addMany\(|\.entries\(|S\.list\(|\.award\(|\.grant\(/.test(src) && (src.match(/RW\.spend\(/g) || []).length === 1 && /RW\.spend\(FEATHER/.test(src));
+  var scenesSrc = src.split('/* ---------- the scenes (browser) ---------- */')[1] || '';
+  check('every villager write (Talk, a reply, a gift, a heart scene, the proposal) runs inside the farm lock and only while its sheet is still the one open', (scenesSrc.match(/locked\(function \(\) \{\n\s*if \(!stillOpen\(/g) || []).length === 5 && (scenesSrc.match(/save\(\{ villagers/g) || []).length === 4 && !/S\.setState\(\{ villagers|S\.commit\(\{ villagers/.test(scenesSrc));
+  check('a tap walks her to his side only by a route the walk engine found, and a walk overtaken by travel, another tap or an activity opens nothing', /W\.canWalkTo\(v\.talkAt\)\) R\.walkTo\(v\.talkAt, go\); else go\(\)/.test(scenesSrc) && /tok !== tapTok \|\| R\.layout\(\) !== L/.test(scenesSrc) && /R\.on\('activity', function \(\) \{ tapTok\+\+; \}\)/.test(scenesSrc) && /W\.canWalkTo = function \(wp\)/.test(wsrc));
+  check('straight after a reply or a gift his answer shows first, with Continue to a heart scene that came due', /openVillager\(v\.id, \{ hold: true, say: true \}\)/.test(scenesSrc) && /openVillager\(id, \{ hold: true, say: true \}\)/.test(scenesSrc) && /if \(ev && !o\.hold\) \{ playEvent/.test(scenesSrc) && /data-v="scene"/.test(scenesSrc));
+})();
+
 (function barnAndSpring() {
   console.log('2k3. the barn, the hens, Clover and the hidden spring (Jamie, 20-21 Oct): no needs, no guilt, nothing that refills energy');
   var w = scenes('2026-10-21'); w.OvuRoom = null; w.OvuZones = null;
@@ -796,6 +917,164 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   var L = B.CAVE, bad = K.checkLayout(L), cry = L.hotspots.filter(function (h) { return h.id === 'crystals'; })[0];
   var wd = K.world(L, []), from = { x: L.doors[0].x, y: L.doors[0].y };
   check('the crystals are a cave hotspot whose stand point is on the floor, outside the pool and the crystals, and reachable from the way in', !!cry && bad.length === 0 && !!K.plan(wd, from, cry.wp, 2), JSON.stringify(bad));
+})();
+(function soothingTones() {
+  console.log('2k5b. the sung-bowl voice (22 Oct): slow fixed-hertz shimmer, a hum only where there is room, a dark room from seeded noise, nothing past the ceiling');
+  var w = scenes('2026-10-22'); w.OvuRoom = null; w.OvuZones = null;
+  ['ovu-farm.js', 'ovu-stamina.js', 'ovu-barn.js', 'ovu-tones.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w, { filename: f }); });
+  var T = w.OvuTones, TS = fs.readFileSync(path.join(root, 'ovu-tones.js'), 'utf8');
+  var ids = T.PARTIALS.map(function (p) { return p.id; });
+  check('the voice is a fundamental, its octave, the struck bowl’s next mode near 2.76 and a hum an octave below, the fundamental loudest', ids.join() === 'fundamental,octave,third,hum' && T.PARTIALS[0].ratio === 1 && T.PARTIALS[1].ratio === 2 && Math.abs(T.PARTIALS[2].ratio - 2.76) < 0.01 && T.PARTIALS[3].ratio === 0.5 && T.PARTIALS.every(function (p) { return p.level <= T.PARTIALS[0].level; }));
+  var offs = [].concat.apply([], T.PARTIALS.map(function (p) { return p.voices.map(function (v) { return v[0]; }); })), beats = [];
+  T.PARTIALS.forEach(function (p) { for (var i = 0; i < p.voices.length; i++) for (var j = i + 1; j < p.voices.length; j++) beats.push(Math.abs(p.voices[i][0] - p.voices[j][0])); });
+  var fundSwing = (function (p) { var s = p.voices.slice(1).reduce(function (a, v) { return a + v[1]; }, 0); return 20 * Math.log10((1 + s) / (1 - s)); })(T.PARTIALS[0]);
+  check('the fundamental’s twins together are under a sixth of it, so its worst swing is under 3 dB (Codex: a slow beat is not a shallow one)', fundSwing < 3 && T.PARTIALS.every(function (p) { return p.voices.slice(1).every(function (v) { return v[1] <= 0.1; }); }), fundSwing);
+  check('every partial has a centre sine and twins a fixed fraction of a hertz away: all beats between 0.1 and 1 Hz, so the shimmer never becomes a wobble (fluctuation strength peaks at 4 Hz)', T.PARTIALS.every(function (p) { return p.voices[0][0] === 0 && p.voices[0][1] === 1 && p.voices.length >= 2; }) && beats.every(function (b) { return b >= 0.1 && b <= 1; }) && T.PARTIALS.every(function (p) { return p.voices.slice(1).every(function (v) { return v[1] < 1 && v[1] > 0; }); }), JSON.stringify(beats));
+  var ok = T.FREQS.every(function (hz) {
+    var v = T.voices(hz), sL = 0, sR = 0; v.forEach(function (x) { var g = T.panGains(x.pan); sL += x.gain * g[0]; sR += x.gain * g[1]; });
+    var fund = v.filter(function (x) { return x.partial === 'fundamental'; }).reduce(function (a, x) { return a + x.gain; }, 0);
+    return v.length >= 7 && Math.abs(Math.max(sL, sR) - 1) < 0.002 && v.every(function (x) { return x.f > 80 && x.f < 2700 && x.gain > 0 && Math.abs(x.pan) <= 0.5; }) && fund > 0.5;
+  });
+  check('for every pitch the sines’ gains sum to one in the louder channel (the pre-ceiling peak), the fundamental carries more than half, and nothing sits above 2.7 kHz', ok, JSON.stringify(T.voices(963)));
+  check('a centred voice counts full in both channels (it skips the panner); a panned one counts by equal power', T.panGains(0)[0] === 1 && T.panGains(0)[1] === 1 && Math.abs(T.panGains(1)[0]) < 1e-12 && Math.abs(T.panGains(1)[1] - 1) < 1e-12 && Math.abs(T.panGains(0.35)[0] * T.panGains(0.35)[0] + T.panGains(0.35)[1] * T.panGains(0.35)[1] - 1) < 1e-12);
+  check('the hum sits under the higher pitches only: none below 300 Hz, full from 600 Hz, and 174 Hz has no 87 Hz sine a phone cannot play', T.humShare(174) === 0 && T.humShare(285) === 0 && T.humShare(450) === 0.5 && T.humShare(639) === 1 && !T.voices(174).some(function (x) { return x.partial === 'hum'; }) && T.voices(963).some(function (x) { return x.partial === 'hum' && Math.abs(x.f - 481.5) < 0.5; }));
+  check('the low-pass follows the pitch between 700 and 1800 Hz, so no bare high partial rings', T.cutoffFor(174) === 700 && Math.abs(T.cutoffFor(528) - 1161.6) < 1e-9 && T.cutoffFor(963) === 1800 && T.cutoffFor(5000) === 1800);
+  var ir = T.impulse(48000, 2.2, T.ROOM.seed), ir2 = T.impulse(48000, 2.2, T.ROOM.seed), same = true, diff = false, fin = true;
+  for (var i = 0; i < ir[0].length; i++) { if (ir[0][i] !== ir2[0][i]) same = false; if (ir[0][i] !== ir[1][i]) diff = true; if (!isFinite(ir[0][i]) || Math.abs(ir[0][i]) > 1) fin = false; }
+  var early = 0, late = 0; for (var k = 0; k < 4800; k++) early = Math.max(early, Math.abs(ir[0][k])); for (var k2 = ir[0].length - 4800; k2 < ir[0].length; k2++) late = Math.max(late, Math.abs(ir[0][k2]));
+  var dot = 0, nL = 0, nR = 0; for (var q0 = 0; q0 < ir[0].length; q0++) { dot += ir[0][q0] * ir[1][q0]; nL += ir[0][q0] * ir[0][q0]; nR += ir[1][q0] * ir[1][q0]; }
+  var corr = dot / Math.sqrt(nL * nR);
+  check('the room’s impulse is 2.2 s of seeded decaying noise: repeatable from its seed, finite, within one, at least 50 dB quieter at its end than its start, and one room heard with two ears (the channels differ but correlate above 0.7)', ir[0].length === 105600 && same && diff && fin && early > 0.5 && late < early / 316 && corr > 0.7 && corr < 0.95 && T.ROOM.spread > 0 && T.ROOM.spread <= 0.6, JSON.stringify([early, late, corr]));
+  var pink = T.noise('pink', 48000, 3), brown = T.noise('brown', 48000, 3), pk = 0, bk = 0; for (var j = 0; j < 48000; j++) { pk = Math.max(pk, Math.abs(pink[j])); bk = Math.max(bk, Math.abs(brown[j])); }
+  check('pink and brown noise come from the seed, peak near a half, and are not the same signal', Math.abs(pk - 0.5) < 1e-4 && Math.abs(bk - 0.5) < 1e-4 && pink[100] !== brown[100] && T.noise('pink', 48000, 3)[7] === pink[7] && T.noise('pink', 48000, 4)[7] !== pink[7]);
+  /* the room's own normalisation: the phasor gain equals a plain DFT at one frequency, and the per-pitch wet share bounds dry + wet at one */
+  var f0 = 528.21, sr0 = 48000, re = 0, im = 0; for (var q = 0; q < ir[0].length; q++) { re += ir[0][q] * Math.cos(2 * Math.PI * f0 * q / sr0); im -= ir[0][q] * Math.sin(2 * Math.PI * f0 * q / sr0); }
+  var hDirect = Math.sqrt(re * re + im * im), hFast = T.roomGain(ir[0], f0, sr0), wet528 = T.wetFor(ir, 528, sr0), maxH = 0;
+  T.voices(528).forEach(function (v) { maxH = Math.max(maxH, T.roomGain(ir[0], v.f, sr0), T.roomGain(ir[1], v.f, sr0)); });
+  check('the room’s gain at a sine is computed exactly (phasor against a plain DFT), and the pitch’s wet share makes its loudest sine exactly ROOM.wet, so dry + wet is at most one', Math.abs(hDirect - hFast) < 1e-6 * Math.max(1, hDirect) && Math.abs(wet528 * maxH - T.ROOM.wet) < 1e-9 && T.ROOM.dry + T.ROOM.wet <= 1 && /verb\.normalize = false/.test(TS), JSON.stringify([hDirect, hFast, wet528, maxH]));
+  check('the breath is a tenth of a hertz and under a decibel; the arrival has a 2.5 s time constant and the leaving five seconds; the room is mostly dry; the low-pass has no peak (Q in dB); the ceiling is unchanged', T.SWELL.hz === 0.1 && T.SWELL.base + T.SWELL.depth <= 1 && T.SWELL.depth <= 0.1 && T.ENV.attackTau >= 2.5 && T.ENV.releaseSeconds >= 4 && T.ENV.releaseAfter >= T.ENV.releaseSeconds + 1 && T.ROOM.dry > T.ROOM.wet && T.ROOM.dry + T.ROOM.wet <= 1 && T.CEILING === 0.35 && T.FILTER_Q_DB <= -6);
+  check('the envelope starts from exactly nothing, is let go by an exponential approach and then a short ramp to exactly zero, with every source stopped on the audio clock; never a ramp to a zero that cannot be', /env\.gain\.setValueAtTime\(0, now\); env\.gain\.setTargetAtTime\(1, now, ENV\.attackTau\)/.test(TS) && /p\.setTargetAtTime\(0, now, tau\); p\.setValueAtTime\(cur \* Math\.exp\(-secs \/ tau\), t0\); p\.linearRampToValueAtTime\(0, t0 \+ 0\.05\)/.test(TS) && /x\.stop\(t0 \+ 0\.1\)/.test(TS) && !/exponentialRampToValueAtTime/.test(TS) && /function liveNodes\(\)/.test(TS) && T.liveNodes() === 0);
+  check('the old twin at a share of the pitch is gone, and no voice reads a random number', !/1\.0035/.test(TS) && !/Math\.random/.test(TS));
+  var MS = fs.readFileSync(path.join(root, 'ovu-music.js'), 'utf8');
+  check('the cave’s own tune steps aside while a tone or a bed plays (ovu-music.js exclusive)', /OvuTones[^\n]*playing\(\)[^\n]*bed\(\)/.test(MS));
+})();
+(function tonesLifecycle() {
+  console.log('2k5c. the spring’s sound graph (22 Oct, Codex P1s): the app switch and slider reach a leaving sound, one sound at a time, Stop on the audio clock, housekeeping waits for the audio clock, nothing leaks');
+  function fakeAudio() {
+    var log = { created: [], gainCalls: 0, gainThrowsAt: 0, resumeMode: 'ok', state: 'running', ctx: null };
+    function Param(v) { this.value = v; this.events = []; }
+    ['setValueAtTime', 'setTargetAtTime', 'linearRampToValueAtTime', 'exponentialRampToValueAtTime', 'cancelScheduledValues'].forEach(function (m) { Param.prototype[m] = function () { var a = [].slice.call(arguments); this.events.push([m].concat(a)); if (m === 'setValueAtTime' && (a[1] == null || a[1] <= log.ctx.currentTime)) this.value = a[0]; return this; }; }); /* only a value set at or before now is the value now; a ramp's end is not */
+    function Node(kind) { this.kind = kind; this.outs = []; this.disconnected = false; log.created.push(this); }
+    Node.prototype.connect = function (n) { this.outs.push(n); return n; }; Node.prototype.disconnect = function () { this.outs = []; this.disconnected = true; };
+    function Src(kind) { Node.call(this, kind); this.started = null; this.stopped = null; } Src.prototype = Object.create(Node.prototype);
+    Src.prototype.start = function (t) { if (this.started !== null) throw new Error('InvalidStateError'); this.started = t || 0; };
+    Src.prototype.stop = function (t) { if (this.stopped !== null) throw new Error('InvalidStateError'); this.stopped = t == null ? -1 : t; };
+    function Ctx() { this.sampleRate = 48000; this.currentTime = 0; this.state = log.state; this.destination = new Node('destination'); log.ctx = this; }
+    Ctx.prototype.createGain = function () { log.gainCalls++; if (log.gainThrowsAt && log.gainCalls === log.gainThrowsAt) throw new Error('NotSupportedError'); var n = new Node('gain'); n.gain = new Param(1); return n; };
+    Ctx.prototype.createOscillator = function () { var n = new Src('osc'); n.frequency = new Param(440); n.type = 'sine'; return n; };
+    Ctx.prototype.createBiquadFilter = function () { var n = new Node('biquad'); n.frequency = new Param(350); n.Q = new Param(1); n.type = 'lowpass'; return n; };
+    Ctx.prototype.createConvolver = function () { var n = new Node('convolver'); n.buffer = null; n.normalize = true; return n; };
+    Ctx.prototype.createStereoPanner = function () { var n = new Node('panner'); n.pan = new Param(0); return n; };
+    Ctx.prototype.createBufferSource = function () { var n = new Src('bufsrc'); n.buffer = null; n.loop = false; return n; };
+    Ctx.prototype.createBuffer = function (ch, len, sr) { var chans = []; for (var c = 0; c < ch; c++) chans.push(new Float32Array(len)); return { numberOfChannels: ch, length: len, sampleRate: sr, getChannelData: function (c) { return chans[c]; } }; };
+    Ctx.prototype.resume = function () { if (log.resumeMode === 'throw') throw new Error('InvalidStateError'); return log.resumeMode === 'reject' ? Promise.reject(new Error('NotAllowedError')) : Promise.resolve(); }; /* a real promise: a refusal arrives after start() has returned, as in a browser */
+    return { Ctx: Ctx, log: log };
+  }
+  function world(setup) {
+    var w = scenes('2026-10-22'); w.OvuRoom = null; w.OvuZones = null;
+    var fa = fakeAudio(), timers = [], sw = { on: true, vol: 0.25 }; if (setup) setup(fa.log);
+    w.AudioContext = fa.Ctx; w.OvuSound = { volume: function () { return sw.vol; }, enabled: function () { return sw.on; } };
+    w.setTimeout = function (fn, ms) { timers.push({ fn: fn, ms: ms }); return timers.length; }; w.clearTimeout = function (id) { if (timers[id - 1]) timers[id - 1].fn = null; };
+    ['ovu-farm.js', 'ovu-stamina.js', 'ovu-barn.js', 'ovu-tones.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w, { filename: f }); });
+    function flush() { var t = timers.splice(0); t.forEach(function (x) { if (x.fn) x.fn(); }); return t; }
+    return { T: w.OvuTones, log: fa.log, timers: timers, flush: flush, sw: sw };
+  }
+  function gains(L) { return L.created.filter(function (n) { return n.kind === 'gain'; }); }
+  function vols(L, g) { return gains(L).filter(function (n) { return n.gain.events.length && n.gain.events[0][0] === 'setValueAtTime' && n.gain.events[0][1] === g && n.outs.some(function (o) { return o.kind === 'destination'; }); }); } /* a graph's vol: set to the ceiling share and wired to the output */
+  var W = world(), T = W.T, L = W.log, changes = []; T.onChange(function (hz) { changes.push(hz); });
+  check('a tone starts: nodes held, its vol at the ceiling for the app volume and wired to the output, the low-pass with a dB Q, the room unnormalised with a stereo impulse, every sine started at once', T.start(528, null) === true && T.playing() === 528 && T.liveNodes() > 20 && vols(L, T.gainFor(0.25)).length === 1 && vols(L, T.gainFor(0.25))[0].gain.value === T.gainFor(0.25) && L.created.filter(function (n) { return n.kind === 'biquad'; })[0].Q.value === T.FILTER_Q_DB && L.created.filter(function (n) { return n.kind === 'convolver'; })[0].normalize === false && L.created.filter(function (n) { return n.kind === 'convolver'; })[0].buffer.numberOfChannels === 2 && L.created.filter(function (n) { return n.kind === 'osc'; }).every(function (o) { return o.started === 0; }), T.liveNodes());
+  var envNode = gains(L).filter(function (n) { return n.gain.events.length > 1 && n.gain.events[0][0] === 'setValueAtTime' && n.gain.events[0][1] === 0 && n.gain.events[1][0] === 'setTargetAtTime'; })[0];
+  check('the envelope rises from exactly zero by an exponential approach with the 2.5 s time constant', !!envNode && envNode.gain.events[1][1] === 1 && envNode.gain.events[1][3] === T.ENV.attackTau);
+  var vol1 = vols(L, T.gainFor(0.25))[0]; W.sw.vol = 0.6; T.setVolume();
+  var ev = vol1.gain.events.map(function (e) { return e[0]; }).join();
+  check('the slider reaches the tone: its vol holds where it is, then approaches the new ceiling share; the vol never carries a ramp of its own', /^setValueAtTime,cancelScheduledValues,setValueAtTime,setTargetAtTime$/.test(ev) && vol1.gain.events[3][1] === T.gainFor(0.6) && !vol1.gain.events.some(function (e) { return e[0] === 'linearRampToValueAtTime'; }), ev);
+  var n0 = L.created.length;
+  check('a bed replaces the tone, and a tone replaces the bed: never both', T.startBed('rain', null) === true && T.playing() === null && T.bed() === 'rain' && T.start(396, null) === true && T.bed() === null && T.playing() === 396 && L.created.length > n0);
+  var bedVol = vols(L, T.gainFor(0.6)).filter(function (v) { return !v.outs.length || true; })[0];
+  check('a bed’s arrival is its own ramp, not a ramp on its vol, so a later slider move cannot be undone by a fade-in still scheduled', gains(L).some(function (n) { return n.gain.events.length > 1 && n.gain.events[0][1] === 0 && n.gain.events[1][0] === 'setTargetAtTime' && n.gain.events[1][1] === 1 && n.gain.events[1][3] === 1; }) && vols(L, T.gainFor(0.6)).every(function (v) { return !v.gain.events.some(function (e) { return e[0] === 'linearRampToValueAtTime'; }); }));
+  var sources = L.created.filter(function (n) { return n.kind === 'osc' || n.kind === 'bufsrc'; }), before = sources.filter(function (s) { return s.stopped === null; }).length;
+  L.ctx.currentTime = 30; T.stop();
+  var live = sources.filter(function (s) { return s.stopped === null; }), env396 = gains(L).filter(function (n) { return n.gain.events.some(function (e) { return e[0] === 'linearRampToValueAtTime' && e[1] === 0; }); });
+  check('Stop: playing clears at once, every source of the leaving voice gets a stop time on the audio clock just after the ramp to zero, its close shuts after the room, and the nodes stay held for housekeeping', T.playing() === null && before > 0 && live.length === 0 && sources.filter(function (s) { return s.stopped === 30 + T.ENV.releaseSeconds + 0.1; }).length >= 9 && env396.length >= 2 && T.liveNodes() > 0, JSON.stringify([before, live.length, sources.map(function (s) { return s.stopped; }).slice(-12)]));
+  var lastEnv = env396.filter(function (n) { return n.gain.events[0][1] === 0; }).pop().gain.events, idx = lastEnv.map(function (e) { return e[0]; }).join();
+  check('the leaving shape: hold, approach nothing, land where the approach is, then a 50 ms ramp to exactly zero', /cancelScheduledValues,setValueAtTime,setTargetAtTime,setValueAtTime,linearRampToValueAtTime$/.test(idx) && lastEnv[lastEnv.length - 1][1] === 0 && Math.abs(lastEnv[lastEnv.length - 1][2] - (30 + T.ENV.releaseSeconds + 0.05)) < 1e-9, idx);
+  var closeNode = gains(L).filter(function (n) { return n.gain.events.some(function (e) { return e[0] === 'linearRampToValueAtTime' && e[1] === 0 && Math.abs(e[2] - (30 + T.ENV.releaseSeconds + 0.3)) < 1e-9; }); })[0];
+  check('the close shuts 0.2 s after the sines stop, so the room’s tail cannot escape', !!closeNode);
+  W.sw.vol = 0.1; T.setVolume();
+  var reached = gains(L).filter(function (n) { return n.gain.events.some(function (e) { return e[0] === 'setTargetAtTime' && e[1] === T.gainFor(0.1); }); });
+  check('the slider still reaches the leaving voice (Codex P1 1): nothing plays, yet its vol approaches the new share', T.playing() === null && reached.length >= 1, reached.length);
+  T.hush();
+  check('the switch going off hushes the leaving voice at once', gains(L).some(function (n) { var e = n.gain.events[n.gain.events.length - 1]; return e[0] === 'setTargetAtTime' && e[1] === 0 && e[3] === 0.05; }));
+  var fired = W.flush();
+  check('housekeeping that fires while the audio clock is still before the final zero re-arms itself and lets nothing go (Codex P1 3)', fired.length >= 1 && T.liveNodes() > 0 && W.timers.some(function (t) { return t.fn; }), T.liveNodes());
+  L.ctx.currentTime = 36; W.flush();
+  check('once the audio clock is past the final zero the housekeeping lets every node go, disconnected, and nothing is live', T.liveNodes() === 0 && L.created.every(function (n) { return n.kind === 'destination' || n.disconnected; }), T.liveNodes());
+  T.stop(); T.stop();
+  check('every change was announced: the pitch, then null for the bed, then the pitch, then null at Stop (a Stop with nothing playing still tells listeners, as before)', changes.slice(0, 4).join() === '528,,396,' && changes.slice(4).every(function (x) { return x === null; }), changes.join());
+  W.sw.on = false; var n1 = L.created.length;
+  check('with the app’s sound off nothing starts: tone and bed refuse, no node is made, nothing is live', T.start(528, null) === false && T.startBed('waves', null) === false && L.created.length === n1 && T.liveNodes() === 0 && T.playing() === null && T.bed() === null);
+  W.sw.on = true; L.ctx.currentTime = 60;
+  check('a timed sit: ten minutes registers a timer whose firing stops the tone', T.start(741, 10) === true && W.timers.some(function (t) { return t.fn && t.ms === 600000; }) && T.remaining() > 590);
+  var n2 = L.created.length, calls = L.gainCalls; L.gainThrowsAt = calls + 8; /* vol, close, dry, wet, bus, swell, lg, then the envelope: the eighth gain of a start, made after the breath LFO has started */
+  var r2 = T.start(852, null), lfos = L.created.slice(n2).filter(function (n) { return n.kind === 'osc'; });
+  check('a start that fails half way (at the envelope, after the breath LFO started) returns false, stops that LFO, releases every node it had built, clears the earlier timed sit and tells listeners (Codex P1 4 and P2 7); the replaced tone is still leaving, so it stays held', r2 === false && T.playing() === null && lfos.length === 1 && lfos[0].stopped !== null && L.created.slice(n2).every(function (n) { return n.disconnected; }) && T.liveNodes() > 0 && T.remaining() === null && !W.timers.some(function (t) { return t.fn && t.ms === 600000; }) && changes[changes.length - 1] === null, JSON.stringify([r2, T.liveNodes(), lfos.length, T.remaining()]));
+  L.gainThrowsAt = 0; L.ctx.currentTime = 70; W.flush();
+  check('and once its audio clock is past, the replaced tone is gone too', T.liveNodes() === 0);
+  var W2 = world(function (log) { log.state = 'suspended'; log.resumeMode = 'reject'; }), T2 = W2.T, told = []; T2.onChange(function (hz) { told.push(hz); });
+  var r3 = T2.start(528, null), armed = T2.playing() === 528 && T2.liveNodes() > 0, settled = false;
+  process.on('exit', function () { if (!settled) { console.error('  FAIL the refused-resume check never ran'); process.exitCode = 1; } });
+  Promise.resolve().then(function () { }).then(function () { /* the refusal lands after start() returned, as in a browser */
+    settled = true;
+    check('a context whose resume is refused leaves nothing armed (Codex P1 5): the start had armed a tone, the refusal undoes it, nothing plays, nothing is held, listeners are told', r3 === true && armed && T2.playing() === null && T2.liveNodes() === 0 && told[told.length - 1] === null, JSON.stringify([r3, armed, T2.playing(), T2.liveNodes(), told]));
+  });
+  var W3 = world(function (log) { log.state = 'suspended'; log.resumeMode = 'throw'; }), T3 = W3.T, n3 = W3.log.created.length;
+  check('a resume that throws stops a start before it builds anything (only the context and its destination exist)', T3.start(528, null) === false && T3.playing() === null && T3.liveNodes() === 0 && W3.log.created.filter(function (n) { return n.kind !== 'destination'; }).length === n3);
+  var loop = T.loopable(new Float32Array([1, 2, 3, 4, 5, 6, 7, 8]), 6, 2), bn = T.bedNoise('pink', 48000, 19200, 617), bpk = 0; for (var q = 0; q < bn.length; q++) bpk = Math.max(bpk, Math.abs(bn[q]));
+  check('a loopable buffer blends its start with the tail past the loop point by equal power, and a bed’s loop is then scaled so its loudest sample is exactly a half (the overlap can lift a peak)', loop.length === 6 && Math.abs(loop[0] - 7) < 1e-6 && Math.abs(loop[1] - (2 * Math.SQRT1_2 + 8 * Math.SQRT1_2)) < 1e-6 && loop[2] === 3 && loop[5] === 6 && Math.abs(bpk - 0.5) < 1e-4, JSON.stringify([Array.prototype.slice.call(loop), bpk]));
+  var TS = fs.readFileSync(path.join(root, 'ovu-tones.js'), 'utf8');
+  var SA = T.stateAction;
+  check('what a store change means (the pure table): sleep or the switch off ends everything; the switch off also hushes whatever is leaving, whichever reason brought the news; another tab, clear, import and a sync end everything; otherwise the slider is followed', SA('state', true, true).join() === 'end' && SA('state', false, false).join() === 'end,hush' && SA('state', true, false).join() === 'end,hush' && SA('state', false, true).join() === 'volume' && SA('external', false, false).join() === 'end,hush' && SA('external', false, true).join() === 'end' && SA('clear', false, true).join() === 'end' && SA('import', false, false).join() === 'end,hush' && SA('sync-pull', false, false).join() === 'end,hush' && SA('props', false, false).join() === '' && SA('entries', false, true).join() === '');
+  var Wh = world(), Th = Wh.T, Lh = Wh.log; Th.start(528, null); Lh.ctx.currentTime = 10; Th.stop(); Th.hush(); Wh.sw.vol = 0.5; Th.setVolume();
+  var hushedVols = vols(Lh, Th.gainFor(0.25));
+  check('a hushed leaving graph stays hushed: the switch back on and a slider move never retarget its vol above zero (Codex round two P1)', hushedVols.length === 1 && hushedVols[0].gain.events[hushedVols[0].gain.events.length - 1][0] === 'setTargetAtTime' && hushedVols[0].gain.events[hushedVols[0].gain.events.length - 1][1] === 0 && !hushedVols[0].gain.events.some(function (e) { return e[0] === 'setTargetAtTime' && e[1] === Th.gainFor(0.5); }), JSON.stringify(hushedVols.map(function (v) { return v.gain.events.slice(-2); })));
+  var Wc = world(), Tc = Wc.T, realCtor = Wc.log.ctx; /* a browser with no working AudioContext: the constructor throws */
+  (function () { var w0 = scenes('2026-10-22'); w0.OvuRoom = null; w0.OvuZones = null; w0.AudioContext = function () { throw new Error('NotSupportedError'); }; w0.OvuSound = { volume: function () { return 0.25; }, enabled: function () { return true; } }; w0.setTimeout = function () { return 1; }; w0.clearTimeout = function () { };
+    ['ovu-farm.js', 'ovu-stamina.js', 'ovu-barn.js', 'ovu-tones.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w0, { filename: f }); });
+    var ok = true, r1, r2; try { r1 = w0.OvuTones.start(528, null); r2 = w0.OvuTones.startBed('rain', null); } catch (e) { ok = false; }
+    check('an AudioContext whose constructor throws makes a tone and a bed refuse quietly (false, no exception, nothing held)', ok && r1 === false && r2 === false && w0.OvuTones.playing() === null && w0.OvuTones.liveNodes() === 0, JSON.stringify([ok, r1, r2]));
+  })();
+  var Wg = world(function (log) { log.state = 'suspended'; log.resumeMode = 'reject'; }), Tg = Wg.T, gtold = []; Tg.onChange(function (hz) { gtold.push(hz); });
+  var ga = Tg.start(528, null); Wg.log.resumeMode = 'throw'; var gb = Tg.start(963, null), gArmed = Tg.playing() === 528 && Tg.liveNodes() > 0, gSettled = false;
+  process.on('exit', function () { if (!gSettled) { console.error('  FAIL the generation check never ran'); process.exitCode = 1; } });
+  Promise.resolve().then(function () { }).then(function () {
+    gSettled = true;
+    check('generation ownership (Codex round two P2): a second start whose resume throws takes no generation, so the first start’s later refusal still undoes the first tone', ga === true && gb === false && gArmed && Tg.playing() === null && Tg.liveNodes() === 0 && gtold[gtold.length - 1] === null, JSON.stringify([ga, gb, gArmed, Tg.playing(), Tg.liveNodes(), gtold]));
+  });
+  var Ws = world(function (log) { log.state = 'suspended'; log.resumeMode = 'reject'; }), Ts = Ws.T, stold = []; Ts.onChange(function (hz) { stold.push(hz); });
+  Ts.start(528, null); Ws.log.ctx.currentTime = 5; Ts.stop(); var sAfterStop = stold.length, sHeld = Ts.liveNodes(), sSettled = false;
+  process.on('exit', function () { if (!sSettled) { console.error('  FAIL the stale-refusal check never ran'); process.exitCode = 1; } });
+  Promise.resolve().then(function () { }).then(function () {
+    sSettled = true;
+    var fired = Ws.flush(), again = Ws.timers.filter(function (t) { return t.fn; }).length;
+    check('a refusal that lands after Stop took the stage lets the old graph go but tells no one and clears nothing newer; the released graph’s housekeeping never re-arms (Codex round two P2)', sHeld > 0 && Ts.liveNodes() === 0 && stold.length === sAfterStop && fired.length >= 1 && again === 0, JSON.stringify([sHeld, Ts.liveNodes(), stold.length, sAfterStop, fired.length, again]));
+  });
+  var Wb = world(), Tb = Wb.T, Lb = Wb.log, btold = []; Tb.onChange(function (hz) { btold.push(hz); });
+  Tb.start(741, 10); var nb = Lb.created.length; Lb.ctx.createBufferSource = function () { throw new Error('NotSupportedError'); };
+  check('a bed that fails half way (its source could not be made) returns false, releases what it built, clears the earlier timed sit and tells listeners (the bed’s own catch, Codex round two)', Tb.startBed('rain', null) === false && Tb.bed() === null && Tb.playing() === null && Lb.created.slice(nb).every(function (n) { return n.disconnected; }) && Tb.remaining() === null && btold[btold.length - 1] === null, JSON.stringify([Tb.bed(), Tb.remaining(), btold]));
+  check('Stop clears the sit timer before its early return, so a timed quiet sit ended early never stands her up later (Codex round three, a bug older than this branch)', /function stop\(\) \{ gen\+\+; clearTimer\(\); if \(!playing && !voice && !bed\) \{ notify\(\); return; \}/.test(TS));
+  var b44 = T.bedNoise('pink', 44100 * 6, Math.round(44100 * 0.4), 617), p44 = 0; for (var q4 = 0; q4 < b44.length; q4++) p44 = Math.max(p44, Math.abs(b44[q4]));
+  check('the six-second 44.1 kHz pink loop (the case Codex cited) peaks at exactly a half after its seam', Math.abs(p44 - 0.5) < 1e-6, p44);
+  check('the sheet says why nothing plays when sound is off; the store subscription applies the pure table; the page hidden still ends everything; every node joins its graph the moment it is made', /Sound is switched off in the room/.test(TS) && /stateAction\(reason, !!S\.state\(\)\.sleeping, soundOn\(\)\)\.forEach/.test(TS) && /visibilitychange[^\n]*if \(doc\.hidden\) endAll\(\)/.test(TS) && !/ctx\.create\w+\(\)(?![^\n]*make\()/.test(TS.split('function stage')[1].split('T.start = start')[0].replace(/make\(nodes, ctx\.create\w+\(\)\)/g, 'M')), (TS.split('function stage')[1].split('T.start = start')[0].replace(/make\(nodes, ctx\.create\w+\(\)\)/g, 'M').match(/ctx\.create\w+\(\)/g) || []).join());
 })();
 (function phase1ReviewFixes() {
   console.log('2k. Codex review of Phase 1: a full disk never half-buys, update day never pays twice, clocks cannot reopen caps');
@@ -3849,10 +4128,10 @@ var summarised = false;
   });
   var outlined = ids.every(function (id) { var o = KP.OUTLINE[KP.KEEPERS[id].id] || '', pts = o.split(','); return pts.length >= 12 && pts.every(function (p) { var m = /^\s*(\d+(?:\.\d)?)% (\d+(?:\.\d)?)%$/.exec(p); return m && +m[1] <= 100 && +m[2] <= 100; }); });
   var cssk = fs.readFileSync(path.join(root, 'room.css'), 'utf8');
-  check('nobody floats and everyone is one size (Jamie, 22 Oct): keepers share her ground shadow under the feet and her drop shadow (never one offset downward), and the meditate event invalidates a pending session fade like activity does (Codex)', /\.avatar::before,\.keeper::before\{content:''/.test(cssk) && /\.keeper::before\{--cs:\.62\}/.test(cssk) && /\.keeper\{[^}]*filter:drop-shadow\(0 1px 2px rgba\(70,40,100,\.2\)\)\}/.test(cssk) && !/\.keeper\{[^}]*drop-shadow\(0 4px/.test(cssk) && /name === 'layout' \|\| name === 'meditate'\) activityGen\+\+/.test(fs.readFileSync(path.join(root, 'room.js'), 'utf8')));
+  check('nobody floats and everyone is one size (Jamie, 22 Oct): keepers share her ground shadow under the feet and her drop shadow (never one offset downward), and the meditate event invalidates a pending session fade like activity does (Codex)', /\.avatar::before,\.keeper::before(,\.villager::before)?\{content:''/.test(cssk) && /\.keeper::before\{--cs:\.62\}/.test(cssk) && /\.keeper\{[^}]*filter:drop-shadow\(0 1px 2px rgba\(70,40,100,\.2\)\)\}/.test(cssk) && !/\.keeper\{[^}]*drop-shadow\(0 4px/.test(cssk) && /name === 'layout' \|\| name === 'meditate'\) activityGen\+\+/.test(fs.readFileSync(path.join(root, 'room.js'), 'utf8')));
   check('a keeper hides at most a third of any piece of stock and none of the showroom\'s house models; only her own figure takes a tap (each picture clipped to its traced outline, the button itself lets taps through)', cover.length === 0 && outlined && /\.keeper\{position:absolute;transform:translate\(-50%,-100%\);background:none;border:0;padding:0;cursor:pointer;pointer-events:none;/.test(fs.readFileSync(path.join(root, 'room.css'), 'utf8')), cover.join(' | ') + (outlined ? '' : ' | an outline is missing or malformed'));
   var wsrc = fs.readFileSync(path.join(root, 'ovu-walk.js'), 'utf8'), csrc = fs.readFileSync(path.join(root, 'ovu-camera.js'), 'utf8'), rmsrc = fs.readFileSync(path.join(root, 'room.js'), 'utf8');
-  check('keepers join the depth sort by their feet (never as a second solid: the block is in the layout) and rank themselves when drawn; keyboard focus on one brings it into view; opening Mind or the bench is an activity, so a soak or a sit by the water ends first (Codex, 22 Oct)', /#ownedProps \.keeper, #plateOcc/.test(wsrc) && /!el\.classList\.contains\('keeper'\)/.test(wsrc) && /wrap\.appendChild\(el\);\n    if \(root\.OvuWalk && root\.OvuWalk\.sortDepth\) root\.OvuWalk\.sortDepth\(\);/.test(fs.readFileSync(path.join(root, 'ovu-keepers.js'), 'utf8')) && /closest\('\.hotspot,\.nb,\.prop\.owned,\.keeper'\)/.test(csrc) && /endMoment\(\); emit\('meditate'\);/.test(rmsrc) && !/function enterMeditation\(\) \{[^\n]*\n[^\n]*emit\('activity'/.test(rmsrc) && ['ovu-soak.js', 'ovu-tones.js', 'ovu-barn.js', 'ovu-harbour.js', 'ovu-garden.js'].every(function (f) { return /R\.on\('meditate', /.test(fs.readFileSync(path.join(root, f), 'utf8')); }));
+  check('keepers join the depth sort by their feet (never as a second solid: the block is in the layout) and rank themselves when drawn; keyboard focus on one brings it into view; opening Mind or the bench is an activity, so a soak or a sit by the water ends first (Codex, 22 Oct)', /#ownedProps \.keeper, (#ownedProps \.villager, )?#plateOcc/.test(wsrc) && /!el\.classList\.contains\('keeper'\)/.test(wsrc) && /wrap\.appendChild\(el\);\n    if \(root\.OvuWalk && root\.OvuWalk\.sortDepth\) root\.OvuWalk\.sortDepth\(\);/.test(fs.readFileSync(path.join(root, 'ovu-keepers.js'), 'utf8')) && /closest\('\.hotspot,\.nb,\.prop\.owned,\.keeper(,\.villager)?'\)/.test(csrc) && /endMoment\(\); emit\('meditate'\);/.test(rmsrc) && !/function enterMeditation\(\) \{[^\n]*\n[^\n]*emit\('activity'/.test(rmsrc) && ['ovu-soak.js', 'ovu-tones.js', 'ovu-barn.js', 'ovu-harbour.js', 'ovu-garden.js'].every(function (f) { return /R\.on\('meditate', /.test(fs.readFileSync(path.join(root, f), 'utf8')); }));
   var k0 = KP.KEEPERS['lane-grocer'], r1 = KP.nextLine(k0, null, '2026-10-22', 9), r2 = KP.nextLine(k0, r1.mem, '2026-10-22', 9), r3 = KP.nextLine(k0, r2.mem, '2026-10-22', 9), r4 = KP.nextLine(k0, r3.mem, '2026-10-23', 20);
   check('a tap says hello first each day (by the hour), then the shop\'s own lines in turn, and a new day says hello again', r1.text === 'Good morning! I am ' + k0.name + '.' && r2.text === k0.lines[0] && r3.text === k0.lines[1] && r4.text === 'Good evening! I am ' + k0.name + '.' && KP.hello('X', 14) === 'Good afternoon! I am X.');
   var ksrc = fs.readFileSync(path.join(root, 'ovu-keepers.js'), 'utf8');
@@ -5414,7 +5693,7 @@ var summarised = false;
     var done = Fa.locked(Sa, function () { return Ba.care(Sa, 'clover', 'pet', DL); }).then(function (r) {
       var fa = Fa.farmState(Sa), fb2 = Fb.farmState(Sb);
       check('inside the farm lock the care save reads the farm again: Bao stays and the heart is kept, in both tabs', r.ok && r.gained && Rb.list(Rb.ranchOf(fa), 'hen').length === hensBefore + 1 && Rb.list(Rb.ranchOf(fa), 'hen').some(function (h) { return h.name === 'Bao'; }) && fa.love.clover.n === 1 && Sb.reload() && Rb.list(Rb.ranchOf(Fb.farmState(Sb)), 'hen').length === hensBefore + 1, JSON.stringify({ r: r, hens: Rb.list(Rb.ranchOf(fa), 'hen').map(function (h) { return h.name; }) }));
-      check('every barn, kitchen, villager and grocer farm writer goes through the one ovumind-farm lock, and no subscriber writes the farm back', names.length === 1 && names[0] === 'ovumind-farm' && (function () { var src = fs.readFileSync(path.join(root, 'ovu-barn.js'), 'utf8'), bare = src.replace(/locked\(function \(\) \{[\s\S]*?\n\s*\}\);/g, ''); return !/\n\s*var r = (care|giveTreat|collectEggs|milk|findCave|cookEggs)\(S/.test(bare) && /function settle\(\) \{ return locked\(settleNow\)/.test(src) && /function maybeHint\(\) \{\s*locked\(function/.test(src) && !/fixing = true/.test(src) && (src.split('S.subscribe(')[1] || '').indexOf('save(S') < 0; })() && /FM\(\)\.locked\(S, go\)/.test(fs.readFileSync(path.join(root, 'ovu-kitchen.js'), 'utf8')) && /FM\.locked\(S, go\)/.test(fs.readFileSync(path.join(root, 'ovu-villagers.js'), 'utf8')) && /FM\.locked\(S, go\)[\s\S]{0,120}/.test(fs.readFileSync(path.join(root, 'ovu-lane.js'), 'utf8')) && /buyStaple\(S, RW\(\), btn\.dataset\.staple\)/.test(fs.readFileSync(path.join(root, 'ovu-lane.js'), 'utf8').split('var go = function () {').slice(1).join('|')));
+      check('every barn, kitchen, villager and grocer farm writer goes through the one ovumind-farm lock, and no subscriber writes the farm back', names.length === 1 && names[0] === 'ovumind-farm' && (function () { var src = fs.readFileSync(path.join(root, 'ovu-barn.js'), 'utf8'), bare = src.replace(/locked\(function \(\) \{[\s\S]*?\n\s*\}\);/g, ''); return !/\n\s*var r = (care|giveTreat|collectEggs|milk|findCave|cookEggs)\(S/.test(bare) && /function settle\(\) \{ return locked\(settleNow\)/.test(src) && /function maybeHint\(\) \{\s*locked\(function/.test(src) && !/fixing = true/.test(src) && (src.split('S.subscribe(')[1] || '').indexOf('save(S') < 0; })() && /FM\(\)\.locked\(S, go\)/.test(fs.readFileSync(path.join(root, 'ovu-kitchen.js'), 'utf8')) && /function locked\(fn\) \{ return FM\.locked \? FM\.locked\(S, fn\)/.test(fs.readFileSync(path.join(root, 'ovu-villagers.js'), 'utf8')) && /FM\.locked\(S, go\)[\s\S]{0,120}/.test(fs.readFileSync(path.join(root, 'ovu-lane.js'), 'utf8')) && /buyStaple\(S, RW\(\), btn\.dataset\.staple\)/.test(fs.readFileSync(path.join(root, 'ovu-lane.js'), 'utf8').split('var go = function () {').slice(1).join('|')));
     });
     done.catch(function (e) { check('the locked care race test ran to the end', false, String(e && e.stack || e)); });
     (function () { /* round seven: a tester phone's resent link carries no tester rewards; the token wait has the request's deadline */

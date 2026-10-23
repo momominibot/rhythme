@@ -209,9 +209,11 @@ async def gym_checks(browser, gate):
     await pg.wait_for_timeout(500)
     G = "()=>({st: OvuGym.state(), active: OvuGym.active(), costume: OvuRoom.costume(), saved: OvuStore.profile().outfit, src: (document.querySelector('#avatarImg').getAttribute('src')||'').split('/').pop(), hidden: document.querySelector('#avatar').classList.contains('hidden'), strip: !!document.querySelector('#ownedProps .gymworker'), stripSrc: ((document.querySelector('#ownedProps .gymworker img')||{}).getAttribute ? document.querySelector('#ownedProps .gymworker img').getAttribute('src') : '').split('/').pop(), sheet: OvuRoom.sheetOpen() ? OvuRoom.sheetId() : null, pos: OvuRoom.pos(), ex: OvuStore.list('exercise').length, act: (OvuRoom.activityNow()||{}).kind || null, busy: OvuRoom.busy(), panel: !!document.querySelector('#gpanel') && !document.querySelector('#gpanel').hidden})"
     async def station(hid):
-        await pg.evaluate("(h)=>{ if (OvuRoom.sheetOpen()) OvuRoom.hideSheet(); OvuRoom.tap(OvuRoom.hotspot(h)); }", hid)
-        try: await pg.wait_for_function("()=>OvuRoom.sheetOpen()", timeout=12000)
-        except Exception: pass
+        for _ in range(2):  # a tap that lands while she is still settling (a moment after an overlay, a heavy machine) is tried once more
+            await pg.evaluate("(h)=>{ if (OvuRoom.sheetOpen()) OvuRoom.hideSheet(); OvuRoom.tap(OvuRoom.hotspot(h)); }", hid)
+            try:
+                await pg.wait_for_function("(h)=>OvuRoom.sheetOpen() && OvuRoom.sheetId()==='gym-'+h.slice(3)", arg=hid, timeout=12000); break
+            except Exception: await pg.clock.run_for(2000)
         await pg.wait_for_timeout(200)
     async def begin(hid, mins):
         await station(hid)
@@ -369,7 +371,7 @@ async def gym_checks(browser, gate):
     await pg.evaluate("()=>OvuLightFlower.close()"); await pg.clock.run_for(3000); await pg.wait_for_timeout(200)
     ov2 = await pg.evaluate("()=>({ask: OvuGym.pendingAsk(), sheet: OvuRoom.sheetOpen() ? OvuRoom.sheetId() : null})")
     check("gym: a log offer waiting behind a sheet stays waiting while Mind seats her on the mat, and goes when Light Flower opens: it never opens under the flower or after it", ov0 and mind["sheet"] == "mind" and mind["med"] and mind["ask"] and not ov1["ask"] and ov1["over"] and ov1["sheet"] != "move" and not ov2["ask"] and ov2["sheet"] != "move", [ov0, mind, ov1, ov2])
-    await pg.evaluate("()=>{ if (OvuRoom.sheetOpen()) OvuRoom.hideSheet(); if (OvuRoom.meditating()) OvuRoom.exitMeditation(); }"); await pg.wait_for_timeout(300)
+    await pg.evaluate("()=>{ if (OvuRoom.sheetOpen()) OvuRoom.hideSheet(); if (OvuRoom.meditating()) OvuRoom.exitMeditation(); }"); await pg.clock.run_for(2000); await pg.wait_for_timeout(300)
     # Mind, then one of its own sheets (Everyday, You), then close: she may still sit, but the waiting offer opens (Codex diff review 4)
     mc = []
     for child in ["#mindEveryday", "[data-tab=you]"]:
@@ -2319,7 +2321,11 @@ async def main():
             except Exception: pass
             t1 = await page.evaluate("(t0)=>({playing: OvuTones.playing(), rem: OvuTones.remaining(), sitting: OvuTones.sitting(), stop: document.querySelector('#springStop') && document.querySelector('#springStop').textContent.trim(), sheet: OvuRoom.sheetOpen(), fx: OvuSeats.fxKind(), glints: document.querySelectorAll('#seatfx .glint').length, pill: !!document.querySelector('#tonePill'), hearts: OvuRewards.ledger().hearts - t0.hearts, e: OvuStamina.value() - t0.e, d: OvuStore.list().length - t0.d})", t0)
             await page.click('#springStop'); await page.wait_for_timeout(300)
-            t2 = await page.evaluate("()=>({playing: OvuTones.playing(), sitting: OvuTones.sitting(), stop: !!document.querySelector('#springStop'), fx: OvuSeats.fxKind()})")
+            t2 = await page.evaluate("()=>({playing: OvuTones.playing(), sitting: OvuTones.sitting(), stop: !!document.querySelector('#springStop'), fx: OvuSeats.fxKind(), live: OvuTones.liveNodes()})")
+            try: await page.wait_for_function("()=>OvuTones.liveNodes()===0", timeout=12000)
+            except Exception: pass
+            t2["liveAfter"] = await page.evaluate("()=>OvuTones.liveNodes()")
+            check("the sung-bowl voice (22 Oct) holds its nodes while it fades after Stop and lets every one go within a few seconds", t2["live"] > 0 and t2["liveAfter"] == 0, t2)
             check("the warm stone offers nine pitches and a length with no promises; Sit by the water hums at the chosen pitch for the chosen time with her seated and crystal glints; one Stop sound and stand up ends both; nothing is written, paid or spent", t0["sheet"] == "cavetones" and t0["chips"] == 9 and not t0["claim"] and t0["btn"].endswith("Sit by the water") and t1["playing"] == 396 and 590 <= t1["rem"] <= 600 and t1["sitting"] and t1["stop"].endswith("Stop sound and stand up") and not t1["sheet"] and t1["fx"] == "crystals" and t1["glints"] == 7 and not t1["pill"] and t1["hearts"] == 0 and t1["e"] >= 0 and t1["d"] == 0 and t2["playing"] is None and not t2["sitting"] and not t2["stop"] and t2["fx"] is None, {"t0": t0, "t1": t1, "t2": t2})
             await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('crystals'))")
             try: await page.wait_for_function("()=>OvuRoom.sheetOpen() && OvuRoom.sheetId && OvuRoom.sheetId()==='cavetones'", timeout=12000)
@@ -2332,6 +2338,22 @@ async def main():
             await go_to('barn'); await go_to('farm')
             ta = await page.evaluate("()=>({playing: OvuTones.playing(), sitting: OvuTones.sitting()})")
             check("a tone left humming stops, and she is up, as soon as she leaves the spring", tb == 396 and ta["playing"] is None and not ta["sitting"], {"before": tb, "after": ta})
+            # a timed quiet sit (no sound) stood up early must leave no timer behind (Codex round three, 23 Oct): back in, Just sit for ten minutes, Stand up, Just sit again untimed
+            await go_to('barn'); await go_to('cave')
+            await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('warmstone'))")
+            try: await page.wait_for_function("()=>OvuRoom.sheetOpen() && OvuRoom.sheetId && OvuRoom.sheetId()==='cavetones'", timeout=12000)
+            except Exception: pass
+            await page.click("#toneSnd .chipbtn[data-snd='none']"); await page.click("#toneMin .chipbtn[data-min='10']"); await page.click("#toneActs [data-tone=start]"); await page.wait_for_timeout(300)
+            q1 = await page.evaluate("()=>({sitting: OvuTones.sitting(), rem: OvuTones.remaining(), playing: OvuTones.playing()})")
+            await page.click('#springStop'); await page.wait_for_timeout(300)
+            await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('warmstone'))")
+            try: await page.wait_for_function("()=>OvuRoom.sheetOpen() && OvuRoom.sheetId && OvuRoom.sheetId()==='cavetones'", timeout=12000)
+            except Exception: pass
+            await page.click("#toneSnd .chipbtn[data-snd='none']"); await page.click("#toneMin .chipbtn[data-min='0']"); await page.click("#toneActs [data-tone=start]"); await page.wait_for_timeout(300)
+            q2 = await page.evaluate("()=>({sitting: OvuTones.sitting(), rem: OvuTones.remaining(), playing: OvuTones.playing()})")
+            await page.click('#springStop'); await page.wait_for_timeout(300)
+            check("a timed quiet sit stood up early leaves no timer: the next untimed sit has no remaining time", q1["sitting"] and q1["playing"] is None and q1["rem"] is not None and 590 <= q1["rem"] <= 600 and q2["sitting"] and q2["rem"] is None, {"q1": q1, "q2": q2})
+            await go_to('barn'); await go_to('farm')  # back where the block left her, for the farm gate check that follows
             await page.evaluate("()=>OvuRoom.tap(OvuRoom.hotspot('farmgate'))")
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout === 'garden'", timeout=12000)
             except Exception: pass
@@ -3731,6 +3753,120 @@ async def main():
             check("fasting: no page errors in the fasting run", not ferr, ferr[:3])
             await ctxf.close()
 
+            # villagers (22 Oct): at her height on open floor, only the figure takes a tap, a Harvest Moon talk, a gift named, a heart scene after his answer
+            ctxV = await browser.new_context(viewport={"width": 390, "height": 844}); await ctxV.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB))); await ctxV.add_init_script(SESSION_SEED)
+            pv = await ctxV.new_page(); verr = []; pv.on("pageerror", lambda e: verr.append(str(e))); await pv.route("**/*", gate)
+            await pv.goto(BASE + "room.html", wait_until="networkidle"); await pv.wait_for_timeout(900)
+            await pv.evaluate("()=>{ if (OvuRoom.sheetOpen()) OvuRoom.closeSheet(); OvuRoom.isNight=function(){return false}; OvuRoom.asleep=function(){return false}; if (window.OvuPetWalk) OvuPetWalk.auto(false); OvuStore.setProfile({outfit: 'base'}); OvuRoom.restorePose(); OvuStore.setState({villagers: {lu: {points: 15}}}); window.__vspy = {add: 0, spend: 0}; var a = OvuStore.add, m = OvuStore.addMany, s = OvuRewards.spend; OvuStore.add = function(){ __vspy.add++; return a.apply(this, arguments); }; if (m) OvuStore.addMany = function(){ __vspy.add++; return m.apply(this, arguments); }; OvuRewards.spend = function(){ __vspy.spend++; return s.apply(this, arguments); }; OvuWalk.travel('plaza', {entry: {x: 20, y: 58, flip: false}}); }")  # she arrives by the arch, clear of him
+            try: await pv.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='plaza' && !document.querySelector('#scene').classList.contains('fading') && document.querySelector('#ownedProps .villager[data-id=shen] img').complete", timeout=12000)
+            except Exception: pass
+            await pv.evaluate("()=>{ document.querySelector('#ownedProps .villager[data-id=shen]').focus(); }"); await pv.wait_for_timeout(900)  # the follow camera brings him into view, as keyboard focus does
+            vfit = """(id)=>{ var el = document.querySelector('#ownedProps .villager[data-id=' + id + ']'), im = el && el.querySelector('img'), her = document.querySelector('#avatarImg');
+              /* where the shoes meet the ground (the canvas bottom less its 4 px air) against the floor line the sprite stands on (its top, in its parent's box), in screen px; and the contact shadow's width */
+              function feet(box, pic) { var p = box.offsetParent.getBoundingClientRect(), r = pic.getBoundingClientRect(), floor = p.top + p.height * parseFloat(box.style.top) / 100; return Math.round((r.bottom - r.height * 4 / 720 - floor) * 10) / 10; }
+              function shadowW(box) { var cs = getComputedStyle(box, '::before'); return cs.content === 'none' ? 0 : Math.round(parseFloat(cs.width) / box.getBoundingClientRect().width * box.offsetWidth * 10) / 10; }
+              if (!im) return null; var r = im.getBoundingClientRect(), hit = function (x, y) { var e = document.elementFromPoint(x, y); return !!(e && e.closest && e.closest('.villager[data-id=' + id + ']')); };
+              return { n: document.querySelectorAll('#ownedProps .villager').length, nat: [im.naturalWidth, im.naturalHeight], h: im.offsetHeight, herH: her.offsetHeight, herNat: [her.naturalWidth, her.naturalHeight], z: Number(el.style.zIndex), herZ: Number(document.querySelector('#avatar').style.zIndex),
+                chest: hit(r.left + r.width * 0.5, r.top + r.height * 0.42), corner: hit(r.left + r.width * 0.06, r.top + r.height * 0.04), tag: getComputedStyle(el).pointerEvents, imgPe: getComputedStyle(im).pointerEvents, solid: (OvuRoom.layout().solids || []).filter(function (b) { return b.id === 'villager-' + id; }).length,
+                feet: feet(el, im), herFeet: feet(document.querySelector('#avatar'), her), shadow: shadowW(el), herShadow: shadowW(document.querySelector('#avatar')) }; }"""
+            sh = await pv.evaluate(vfit, "shen")
+            mei = await pv.evaluate("()=>Number((document.querySelector('#ownedProps .nbperson[data-nb=mei]')||{style:{}}).style.zIndex)")
+            check("villagers: Shen stands in the plaza at her height (his picture within 1.5 px of hers, both on the 720 canvas), his floor block in the layout once", sh and sh["n"] == 1 and sh["nat"] == [318, 720] and sh["herNat"][1] == 720 and abs(sh["h"] - sh["herH"]) <= 1.5 and sh["solid"] == 1, sh)
+            check("villagers: nobody floats: Shen's shoes and hers sit on their floor lines (within 1.5 px), each with a contact shadow of her footprint", abs(sh["feet"]) <= 1.5 and abs(sh["herFeet"]) <= 1.5 and sh["shadow"] > 0 and abs(sh["shadow"] - sh["herShadow"]) <= 1.5, {k: sh[k] for k in ("feet", "herFeet", "shadow", "herShadow")})
+            check("villagers: only his figure takes a tap: his chest is his, the empty corner of his canvas is not; Mei in front of him draws in front", sh and sh["chest"] and not sh["corner"] and sh["tag"] == "none" and sh["imgPe"] == "auto" and mei > sh["z"] and sh["z"] != sh["herZ"], {"shen": sh, "meiZ": mei})
+            nbc = await pv.evaluate("""()=>{ var el = document.querySelector('#ownedProps .nbperson[data-nb=mei]'), r = el.querySelector('img').getBoundingClientRect(), at = function (x, y) { var e = document.elementFromPoint(r.left + r.width * x, r.top + r.height * y); return e && e.closest && e.closest('.nbperson') ? e.closest('.nbperson').dataset.nb : null; }; return {chest: at(0.5, 0.45), corner: at(0.03, 0.03), tag: getComputedStyle(el.querySelector('.nbtag')).pointerEvents, clip: !!el.querySelector('img').style.clipPath}; }""")
+            check("villagers: a neighbour takes taps only on her figure too (Mei's chest is hers, her canvas corner and name tag are not), so taps reach Shen behind her", nbc["chest"] == "mei" and nbc["corner"] is None and nbc["tag"] == "none" and nbc["clip"], nbc)
+            # a props render and a friends redraw (which clears every .nb) leave exactly one Shen
+            await pv.evaluate("()=>{ OvuRoom.renderProps(); OvuCommunity.redraw(); }"); await pv.wait_for_timeout(300)
+            one = await pv.evaluate("()=>({n: document.querySelectorAll('#ownedProps .villager').length, shenZ: Number(document.querySelector('#ownedProps .villager[data-id=shen]').style.zIndex), meiZ: Number(document.querySelector('#ownedProps .nbperson[data-nb=mei]').style.zIndex) || 0})")
+            check("villagers: a props render and a friends redraw leave exactly one Shen, and Mei (in front of him) is ranked in front again", one["n"] == 1 and one["meiZ"] > one["shenZ"], one)
+            # tap his chest: she walks to his side and his sheet opens with a greeting
+            box = await pv.evaluate("()=>{ var r = document.querySelector('#ownedProps .villager[data-id=shen] img').getBoundingClientRect(); return {x: r.left + r.width * 0.5, y: r.top + r.height * 0.42}; }")
+            await pv.mouse.click(box["x"], box["y"])
+            try: await pv.wait_for_function("()=>OvuRoom.sheetId()==='villager-shen' && document.querySelector('#vSay')", timeout=12000)
+            except Exception: pass
+            g = await pv.evaluate("()=>({id: OvuRoom.sheetId(), say: (document.querySelector('#vSay')||{}).textContent||'', talk: !!document.querySelector('#vActs [data-v=talk]:not([disabled])'), pos: OvuRoom.pos(), want: OvuVillagers.byId('shen').talkAt})")
+            check("villagers: a tap on Shen walks her to his side and opens his sheet with a greeting that knows the season", g["id"] == "villager-shen" and len(g["say"]) > 40 and g["talk"] and abs(g["pos"]["x"] - g["want"]["x"]) < 1.5 and abs(g["pos"]["y"] - g["want"]["y"]) < 1.5 and any(s in g["say"] for s in ["Spring", "Summer", "Autumn", "Winter"]), g)
+            await pv.click("#vActs [data-v=talk]")
+            try: await pv.wait_for_function("()=>document.querySelectorAll('#vActs [data-reply]').length >= 2", timeout=8000)
+            except Exception: pass
+            q = await pv.evaluate("()=>({n: document.querySelectorAll('#vActs [data-reply]').length, ask: document.querySelector('#vSay').textContent, pinned: (OvuStore.state().villagers.shen||{}).chat, pts: OvuStore.state().villagers.shen.points||0})")
+            check("villagers: Talk shows his question with two or three replies; the topic is pinned for the day and nothing is counted yet", 2 <= q["n"] <= 3 and q["pinned"] and q["pinned"]["reply"] is None and q["pts"] == 0 and "?" in q["ask"], q)
+            await pv.click("#vActs [data-reply] >> nth=1")
+            try: await pv.wait_for_function("()=>document.querySelector('#vSay .vyou')", timeout=8000)
+            except Exception: pass
+            a = await pv.evaluate("()=>{ var V = OvuVillagers, st = OvuStore.state().villagers.shen, t = V.topicById(V.byId('shen'), st.chat.topic), r = t.replies.filter(function(x){return x.id===st.chat.reply;})[0]; return {pts: st.points, said: document.querySelector('#vSay .vyou').textContent, ans: document.querySelector('#vSay .vline').textContent, want: r.back, mine: r.say, talked: (document.querySelector('#vActs [data-v=talk]')||{}).textContent, dis: document.querySelector('#vActs [data-v=talk]').disabled, focus: document.activeElement && document.activeElement.id}; }")
+            check("villagers: her reply is answered in character, counts once (3 points), Talk reads Talked today, and focus moves to his answer", a["pts"] == 3 and a["mine"] in a["said"] and a["ans"] == a["want"] and a["dis"] and "Talked today" in a["talked"] and a["focus"] == "vSay", a)
+            cr = await pv.evaluate("""()=>{ function rgb(c) { var m = c.match(/[0-9.]+/g).map(Number); return m; } function lum(c) { return [0, 1, 2].map(function (i) { var v = c[i] / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }).reduce(function (a, v, i) { return a + v * [0.2126, 0.7152, 0.0722][i]; }, 0); }
+              function bg(el) { while (el) { var c = rgb(getComputedStyle(el).backgroundColor); if (c.length < 4 || c[3] > 0.9) { if (c.length >= 3 && !(c.length === 4 && c[3] === 0)) return c; } el = el.parentElement; } return [255, 255, 255]; }
+              return ['.vask', '.vyou', '.vline'].map(function (sel) { var el = document.querySelector('#vSay ' + sel), a = lum(rgb(getComputedStyle(el).color)), b = lum(bg(el)); return Math.round((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05) * 100) / 100; }); }""")
+            check("villagers: his question, her reply and his answer all read at 4.5:1 or better on the sheet", all(x >= 4.5 for x in cr), cr)
+            await pv.evaluate("()=>OvuRoom.closeSheet()"); await pv.wait_for_timeout(300)
+            await pv.evaluate("()=>OvuVillagers.openVillager('shen')"); await pv.wait_for_timeout(300)
+            re_ = await pv.evaluate("()=>({recap: !!document.querySelector('#vSay .vyou'), dis: document.querySelector('#vActs [data-v=talk]').disabled, pts: OvuStore.state().villagers.shen.points})")
+            check("villagers: reopening the same day shows the exchange again and counts nothing more", re_["recap"] and re_["dis"] and re_["pts"] == 3, re_)
+            await pv.evaluate("()=>OvuRoom.closeSheet()"); await pv.wait_for_timeout(300)
+            # keyboard: Enter on his button opens his sheet
+            await pv.evaluate("()=>document.querySelector('#ownedProps .villager[data-id=shen]').focus()"); await pv.keyboard.press("Enter")
+            try: await pv.wait_for_function("()=>OvuRoom.sheetId()==='villager-shen'", timeout=10000)
+            except Exception: pass
+            kb = await pv.evaluate("()=>OvuRoom.sheetId()")
+            check("villagers: his button is a real button: Enter opens his sheet", kb == "villager-shen", kb)
+            await pv.evaluate("()=>OvuRoom.closeSheet()"); await pv.wait_for_timeout(300)
+            # the harbour: Lu at her height on his wider canvas; a loved dish named in his thanks; the 2-heart scene waits behind Continue
+            await pv.evaluate("()=>{ var f = OvuFarm.farmState(OvuStore); f.dishes = Object.assign({}, f.dishes || {}, {tomatoegg: 1}); OvuStore.setState({farm: f}); OvuWalk.travel('harbour', {entry: {x: 34, y: 73, flip: false}}); }")
+            try: await pv.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='harbour' && !document.querySelector('#scene').classList.contains('fading') && document.querySelector('#ownedProps .villager[data-id=lu] img').complete", timeout=12000)
+            except Exception: pass
+            await pv.evaluate("()=>{ document.querySelector('#ownedProps .villager[data-id=lu]').focus(); }"); await pv.wait_for_timeout(900)
+            lu = await pv.evaluate(vfit, "lu")
+            check("villagers: Lu stands at the harbour at her height on his wider canvas (364 wide, within 1.5 px of hers); only his figure takes a tap", lu and lu["nat"] == [364, 720] and abs(lu["h"] - lu["herH"]) <= 1.5 and lu["chest"] and not lu["corner"] and lu["solid"] == 1, lu)
+            check("villagers: nobody floats: Lu's shoes and hers sit on their floor lines (within 1.5 px), his contact shadow her footprint though his canvas is wider", abs(lu["feet"]) <= 1.5 and abs(lu["herFeet"]) <= 1.5 and lu["shadow"] > 0 and abs(lu["shadow"] - lu["herShadow"]) <= 1.5, {k: lu[k] for k in ("feet", "herFeet", "shadow", "herShadow")})
+            await pv.evaluate("()=>OvuVillagers.openVillager('lu')"); await pv.wait_for_timeout(300)
+            await pv.click("#vActs [data-v=talk]")
+            try: await pv.wait_for_function("()=>document.querySelectorAll('#vActs [data-reply]').length >= 2", timeout=8000)
+            except Exception: pass
+            await pv.click("#vActs [data-reply] >> nth=0")
+            try: await pv.wait_for_function("()=>document.querySelector('#vSay .vyou')", timeout=8000)
+            except Exception: pass
+            gift = await pv.evaluate("()=>{ var b = [...document.querySelectorAll('#vGifts [data-gift]')].filter(function(x){ return /Tomato and egg/.test(x.textContent); })[0]; if (!b) return null; b.click(); return true; }")
+            try: await pv.wait_for_function("()=>document.querySelector('#vSay .vthanks')", timeout=8000)
+            except Exception: pass
+            gv = await pv.evaluate("()=>({gift: true, thanks: (document.querySelector('#vSay .vthanks')||{}).textContent||'', id: OvuRoom.sheetId(), cont: !!document.querySelector('#vActs [data-v=scene]'), pts: OvuStore.state().villagers.lu.points, dish: (OvuFarm.farmState(OvuStore).dishes||{}).tomatoegg||0})")
+            check("villagers: a loved dish is named in Lu's thanks, leaves the bag in the same save, and the 2-heart scene waits behind Continue so his answer shows first", gift and "tomato and egg" in gv["thanks"].lower() and gv["id"] == "villager-lu" and gv["cont"] and gv["pts"] == 26 and gv["dish"] == 0, gv)
+            await pv.click("#vActs [data-v=scene]")
+            try: await pv.wait_for_function("()=>OvuRoom.sheetId()==='villager-event'", timeout=8000)
+            except Exception: pass
+            await pv.click("#vEvDone")
+            try: await pv.wait_for_function("()=>OvuRoom.sheetId()==='villager-lu'", timeout=8000)
+            except Exception: pass
+            ev = await pv.evaluate("()=>({seen: OvuStore.state().villagers.lu.seen, chat: !!OvuStore.state().villagers.lu.chat.reply, spy: window.__vspy})")
+            check("villagers: the heart scene is kept, today's exchange survives it, and nothing wrote a diary entry or spent hearts", ev["seen"] == [2] and ev["chat"] and ev["spy"]["add"] == 0 and ev["spy"]["spend"] == 0, ev)
+            # a change queued behind another tab's farm lock lands only if its sheet is still open: Talk, a reply and a gift, each closed before the lock frees
+            await pv.evaluate("()=>{ OvuRoom.closeSheet(); var f = OvuFarm.farmState(OvuStore); f.dishes = Object.assign({}, f.dishes || {}, {pandanrice: 1}); OvuStore.setState({farm: f, villagers: Object.assign({}, OvuStore.state().villagers, {shen: {points: 3, seen: []}})}); OvuWalk.travel('plaza', {entry: {x: 20, y: 58, flip: false}}); }")
+            await pv.wait_for_timeout(1500)
+            pl = await ctxV.new_page(); await pl.route("**/*", gate); await pl.goto(BASE + "404.html", wait_until="domcontentloaded")
+            BARRIER = "()=>navigator.locks.request('ovumind-farm', function () { return true; })"  # Web Locks grant in request order: this waits until the queued write has run (Codex round 2)
+            HOLD = "()=>{ window.__held = new Promise(function (got) { navigator.locks.request('ovumind-farm', function () { got(true); return new Promise(function (r) { window.__release = r; }); }); }); return window.__held; }"
+            async def queued(action):
+                await pl.evaluate(HOLD)
+                await pv.evaluate("()=>OvuVillagers.openVillager('shen')"); await pv.wait_for_timeout(300)
+                await pv.evaluate(action); await pv.wait_for_timeout(300)
+                await pv.evaluate("()=>OvuRoom.closeSheet()"); await pv.wait_for_timeout(200)
+                await pl.evaluate("()=>window.__release()"); await pv.evaluate(BARRIER)
+                return await pv.evaluate("()=>({shen: OvuStore.state().villagers.shen, dish: (OvuFarm.farmState(OvuStore).dishes || {}).pandanrice || 0, sheet: OvuRoom.sheetId()})")
+            q1 = await queued("()=>document.querySelector('#vActs [data-v=talk]').click()")
+            await pv.evaluate("()=>OvuVillagers.openVillager('shen')"); await pv.wait_for_timeout(300)
+            await pv.evaluate("()=>document.querySelector('#vActs [data-v=talk]').click()"); await pv.wait_for_timeout(700)  # offered with the lock free: the reply buttons show
+            await pl.evaluate(HOLD)
+            await pv.evaluate("()=>document.querySelector('#vActs [data-reply]').click()"); await pv.wait_for_timeout(300)
+            await pv.evaluate("()=>OvuRoom.closeSheet()"); await pv.wait_for_timeout(200)
+            await pl.evaluate("()=>window.__release()"); await pv.evaluate(BARRIER)
+            q2 = await pv.evaluate("()=>({shen: OvuStore.state().villagers.shen, sheet: OvuRoom.sheetId()})")
+            q3 = await queued("()=>[...document.querySelectorAll('#vGifts [data-gift]')].filter(function(x){ return /Pandan rice/.test(x.textContent); })[0].click()")
+            check("villagers: a Talk, a reply and a gift queued behind another tab's farm lock change nothing once she has closed the sheet (no topic pinned, no points, the dish still in her bag)", not (q1["shen"].get("chat")) and q1["shen"]["points"] == 3 and q1["sheet"] is None and q2["shen"]["chat"]["reply"] is None and q2["shen"]["points"] == 3 and q2["sheet"] is None and q3["dish"] == 1 and q3["shen"]["points"] == 3 and not q3["shen"].get("gifted"), {"talk": q1, "reply": q2, "gift": q3})
+            await pl.close()
+            check("villagers: no page errors", not verr, verr[:3])
+            await ctxV.close()
             await check_legacy_pages(browser)  # the older pages and the Settings sheet (22 Oct)
             await gym_checks(browser, gate)  # Tideline Gym workouts, in a context of their own with a fake clock
 
