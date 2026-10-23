@@ -240,3 +240,14 @@ opening view, and Home while the room starts); the clean CI run decides those.
 Checks after round 2: dry run 76/76 locally (live run after round 3, on the final text); races 11 checks, 23 assertions,
 all safe, with the commit-order race shown to lose the message under the round-1 cursor; core 1834/0; rooms and staff
 smoke 40/40 three runs in a row, the new checks each failing on the previous client or a one-line mutation.
+
+## 13. Codex diff review, round 3 (23 Oct): HOLD; work stopped here (usage limit)
+
+Full text: `docs/design/reviews/2026-10-23-plaza-rooms-codex-diff-r3.md`. Fixed: A3, A4, A6, A8, B1, B2, B4 to B9. Still open:
+A7 (direct instructions naming a medicine off the list, e.g. "Stop citalopram", publish in live mode; failed for the
+third time, so a word list may not be the answer: keep the rooms review-only, or hold any imperative treatment
+sentence), A10 (general domains such as medlineplus.gov, hse.ie), B3 (Report with "Also block her" skips the refetch).
+New, all P2/P3: a stale staff decision can reverse another owner's; a late Send reply restores a message after Off; an
+open Report sheet keeps a message that left the window; a late room action closes another feature's sheet; an older
+Join overrides a newer one; hide-then-show a card can exceed room capacity; report-decision feedback and the report
+filter (pre-existing staff paths); delayed consent ignores a rejoin's new entry. The live dry run waits for the final text.
