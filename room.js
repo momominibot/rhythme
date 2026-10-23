@@ -1213,7 +1213,8 @@
         '<div class="field flushrow" id="flushRow"' + ((sd.symptoms || []).indexOf('hot flushes') > -1 ? '' : ' hidden') + '><span class="lbl">Hot flushes</span><div class="chips"><label class="flushn">How many today <input class="input" id="flushN" type="number" min="0" max="60" inputmode="numeric" placeholder="optional" value="' + (typeof sd.flushes === 'number' ? sd.flushes : '') + '"></label><button type="button" class="chipbtn' + (sd.flushNight ? ' on' : '') + '" id="flushNight"><span class="ms">bedtime</span>Woke me at night</button></div></div>' +
         '<div class="field"><div class="lbl-row"><label for="pain" class="lbl" style="margin:0">Pain · <span id="painVal">' + (sd.pain || 0) + '</span>/10</label>' + infoBtn('pain') + '</div><input class="range" type="range" id="pain" min="0" max="10" step="1" value="' + (sd.pain || 0) + '">' + guideHTML('pain') + '</div>' +
         '<div class="field"><span class="lbl">Mood</span><div class="faces" id="moodFaces">' + [['great', 'sentiment_very_satisfied'], ['good', 'sentiment_satisfied'], ['ok', 'sentiment_neutral'], ['low', 'sentiment_dissatisfied'], ['bad', 'sentiment_very_dissatisfied']].map(function (m) { return '<button type="button" data-mood="' + m[0] + '" class="' + (sd.mood === m[0] ? 'on' : '') + '"><span class="ms">' + m[1] + '</span>' + cap(m[0]) + '</button>'; }).join('') + '</div></div>' +
-        '<p class="moodcare" id="moodCare"' + (sd.mood === 'low' || sd.mood === 'bad' ? '' : ' hidden') + '><span class="ms">favorite</span><span>If a low mood is weighing on you, you deserve support now, not after more logging. mindline 1771 is open 24 hours, or talk to your GP or clinic.</span></p>' +
+        '<p class="moodcare" id="moodCare"' + (sd.mood === 'low' || sd.mood === 'bad' ? '' : ' hidden') + '><span class="ms">favorite</span><span>If a low mood is weighing on you, you deserve support now, not after more logging. Talk to someone you trust or your doctor, or find a helpline near you at findahelpline.com.</span></p>' +
+        bodyLogHTML(sd, date) +
         '<div class="field"><label for="symNotes">Notes</label><textarea class="input" id="symNotes" placeholder="Anything else you noticed...">' + esc(sd.notes || '') + '</textarea></div>' +
         '<div class="row"><button class="btn primary" id="saveSym"><span class="ms">check</span>Save day</button>' + (cs ? '<button class="btn ghost" id="clearSym">Clear</button>' : '') + '<button class="btn soft" id="acuFromSym"><span class="ms">spa</span>Cramp relief points</button></div><div class="msg" id="calMsg"></div>';
       /* None (Jamie, 19 Oct) is its own answer: it clears the symptoms, and ticking a symptom clears it */
@@ -1223,19 +1224,58 @@
       $('#pain').addEventListener('input', function () { painTouched = true; $('#painVal').textContent = this.value; });
       $('#moodFaces').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; $$('button', $('#moodFaces')).forEach(function (x) { x.classList.toggle('on', x === b && !x.classList.contains('on')); }); var on = $('#moodFaces .on'); $('#moodCare').hidden = !(on && (on.dataset.mood === 'low' || on.dataset.mood === 'bad')); });
       $('#acuFromSym').addEventListener('click', openAcupressure);
+      var bl = wireBodyLog();
       $('#saveSym').addEventListener('click', function () {
         try {
           var list = $$('#symChips .on').map(function (b) { return b.dataset.sym; }).filter(Boolean), mood = ($('#moodFaces .on') || {}).dataset ? $('#moodFaces .on').dataset.mood : '';
           var none = !list.length && !!$('#symChips [data-none].on'), data = { symptoms: list, pain: painTouched || typeof sd.pain === 'number' ? Number($('#pain').value) : null, mood: mood, notes: $('#symNotes').value.trim() };
           if (none) data.none = true;
+          if (window.OvuBodyLog) Object.assign(data, OvuBodyLog.clean(bl.values())); /* discharge, sex, drive and pregnancy test (23 Oct) */
+          var basalIn = $('#basalT'), basalTxt = basalIn ? basalIn.value.trim() : '', basal = window.OvuBodyLog ? OvuBodyLog.basalC(basalTxt) : null;
+          if (basalTxt && basal === null) { message($('#calMsg'), 'A basal temperature is between 35 and 38.5 °C (or 95 and 101.3 °F).', false); return; }
           if (list.indexOf('hot flushes') > -1) { var fn = $('#flushN').value.trim(); if (fn !== '' && isFinite(Number(fn))) data.flushes = Math.max(0, Math.min(60, Math.round(Number(fn)))); if ($('#flushNight').classList.contains('on')) data.flushNight = true; }
           /* None replaces the day's symptoms rather than joining them; everything else keeps the usual same-day merge */
           var ev = none && cs ? S.update(cs.id, { data: Object.assign({}, data, { notes: data.notes || '' }) }) : S.add('symptom', date, data);
+          if (basal !== null) S.add('temperature', date, { basal: basal }, 'room', { merge: true });
           message($('#calMsg'), 'Saved for ' + prettyDate(date) + '.', true); renderCal(); afterSave(ev);
         } catch (e) { message($('#calMsg'), e.message, false); }
       });
       if (cs) $('#clearSym').addEventListener('click', function () { S.remove(cs.id); renderCal(); renderEditor(); renderDeck(); });
     }
+  }
+
+  /* ---------- the symptom day's body log (ovu-bodylog.js; Jamie, 23 Oct): discharge with Ovaria's reference photos, sex and
+   * sex drive, a pregnancy test and a basal temperature. One choice per row, tap again to clear; the care lines show the
+   * moment an answer needs one (a positive test's urgent signs, discharge worth a clinician's look). */
+  function bodyLogHTML(sd, date) {
+    var B = window.OvuBodyLog; if (!B) return '';
+    var tp = S.list('temperature', { from: date, to: date })[0], basal = tp && typeof tp.data.basal === 'number' ? tp.data.basal : '';
+    var chips = function (id, list, cur) { return '<div class="chips" id="' + id + '">' + list.map(function (o) { return '<button type="button" class="chipbtn' + (cur === o.id ? ' on' : '') + '" data-v="' + o.id + '" aria-pressed="' + (cur === o.id) + '">' + esc(o.label) + '</button>'; }).join('') + '</div>'; };
+    return '<div class="field"><span class="lbl">Discharge</span><div class="dcgrid" id="dcGrid">' + B.DISCHARGE.map(function (d) { return '<button type="button" class="dctile' + (sd.discharge === d.id ? ' on' : '') + '" data-v="' + d.id + '" aria-pressed="' + (sd.discharge === d.id) + '"><img src="assets/room/discharge/' + d.id + '.webp" alt="" width="64" height="64" loading="lazy"><span>' + esc(d.label) + '</span></button>'; }).join('') + '</div><p class="help bnote" id="dcNote" aria-live="polite"></p></div>' +
+      '<div class="field"><span class="lbl">Sex and sex drive</span>' + chips('sexChips', B.SEX, sd.sex) + '<span class="lbl sublbl">Sex drive</span>' + chips('driveChips', B.DRIVE, sd.drive) + '<p class="help">' + esc(B.COPY.sexPrivate) + '</p></div>' +
+      '<div class="field"><span class="lbl">Pregnancy test</span>' + chips('ptChips', B.PREG, sd.pregTest) + '<div id="ptNote" aria-live="polite"></div></div>' +
+      '<div class="field"><label for="basalT">Basal body temperature, °C</label><input class="input" id="basalT" type="number" inputmode="decimal" step="0.01" min="35" max="38.5" placeholder="optional, like 36.45" value="' + esc(basal) + '"><p class="help">' + esc(B.COPY.basal) + '</p></div>';
+  }
+  function wireBodyLog() {
+    var B = window.OvuBodyLog, pick = function (id) { var on = document.querySelector('#' + id + ' .on'); return on ? on.dataset.v : null; };
+    if (!B || !$('#dcGrid')) return { values: function () { return {}; } };
+    function paint() {
+      var v = { discharge: pick('dcGrid'), pregTest: pick('ptChips') }, d = B.discharge(v.discharge), dn = $('#dcNote'), pn = $('#ptNote');
+      dn.textContent = d ? d.note : ''; dn.classList.toggle('flag', !!(d && d.flag));
+      var ns = B.notes(v).filter(function (n) { return n.text.indexOf(B.COPY.negative) === 0 || n.text.indexOf(B.COPY.faint) === 0 || n.text.indexOf(B.COPY.positive) === 0; });
+      pn.innerHTML = ns.map(function (n) { return '<div class="flag ' + (n.level === 'urgent' ? 'high' : 'info') + '"><span class="ms">' + (n.level === 'urgent' ? 'emergency' : 'info') + '</span><div><span>' + esc(n.text) + '</span></div></div>'; }).join('');
+      if (d && d.flag) dn.textContent = d.note + ' ' + B.DISCHARGE_CARE;
+    }
+    ['dcGrid', 'sexChips', 'driveChips', 'ptChips'].forEach(function (id) {
+      $('#' + id).addEventListener('click', function (e) {
+        var b = e.target.closest('[data-v]'); if (!b) return; var was = b.classList.contains('on');
+        $$('[data-v]', this).forEach(function (x) { x.classList.remove('on'); x.setAttribute('aria-pressed', 'false'); });
+        if (!was) { b.classList.add('on'); b.setAttribute('aria-pressed', 'true'); }
+        chime('tap'); paint();
+      });
+    });
+    paint();
+    return { values: function () { return { discharge: pick('dcGrid'), sex: pick('sexChips'), drive: pick('driveChips'), pregTest: pick('ptChips') }; } };
   }
 
   /* ---------- diary: camera-assisted food journal ---------- */

@@ -2690,3 +2690,12 @@ button.rmgroup:focus-visible{outline:3px solid var(--rm-mauve);outline-offset:2p
 .rmlive{display:inline-block;margin-left:5px;padding:1px 7px;border-radius:99px;font:800 9.5px var(--sans);font-style:normal;letter-spacing:.06em;text-transform:uppercase;color:#2d7a4f;background:#e2f5ea;vertical-align:2px;animation:rmlive 2.4s ease-in-out infinite}
 @keyframes rmlive{0%,100%{box-shadow:0 0 0 0 rgba(95,174,138,.4)}50%{box-shadow:0 0 0 4px rgba(95,174,138,0)}}
 @media (prefers-reduced-motion:reduce){.rmlive{animation:none}}
+/* the symptom day's body log (23 Oct): Ovaria's discharge photos as small round tiles */
+.dcgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.dctile{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 4px 7px;border-radius:16px;border:2px solid transparent;background:#fff;box-shadow:0 2px 8px rgba(122,92,150,.10);cursor:pointer;font:700 11.5px var(--sans);color:var(--rm-ink-2);transition:transform .12s ease}
+.dctile img{width:100%;max-width:64px;aspect-ratio:1;object-fit:cover;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.05)}
+.dctile.on{border-color:#c9b6e6;background:linear-gradient(180deg,#fbf6fe,#f2eafb);color:var(--rm-plum);transform:translateY(-1px)}
+.dctile:active{transform:scale(.95)}
+.bnote{margin-top:6px;min-height:1em}.bnote.flag{color:#9a5a00;font-weight:700}
+.sublbl{display:block;margin-top:8px}
+@media (prefers-reduced-motion:reduce){.dctile{transition:none}}

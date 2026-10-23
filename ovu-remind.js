@@ -10,7 +10,9 @@
     { kind: 'sleep', label: 'Wind down for sleep', icon: 'bedtime', times: ['22:30'], days: ALL, note: 'Dim the lights, put the phone away, then tap the bed when you lie down.' },
     { kind: 'water', label: 'Drink some water', icon: 'water_drop', times: ['09:00', '11:00', '13:00', '15:00', '17:00', '19:00'], days: ALL, note: 'A glass now. Small sips through the day beat one big bottle at night.' },
     { kind: 'move', label: 'Stand up and move', icon: 'directions_walk', times: ['10:30', '14:30', '16:30'], days: WEEK, note: 'Two minutes of walking or stretching, shoulders down.' },
-    { kind: 'breathe', label: 'Two minutes of breathing', icon: 'air', times: ['14:00'], days: ALL, note: 'Breathe with Erin, the koi pond or the Light Flower.' }
+    { kind: 'breathe', label: 'Two minutes of breathing', icon: 'air', times: ['14:00'], days: ALL, note: 'Breathe with Erin, the koi pond or the Light Flower.' },
+    /* Jamie, 23 Oct: "oral contraceptives reminder" */
+    { kind: 'pill', label: 'Take your pill', icon: 'medication', times: ['21:00'], days: ALL, note: 'Same time each day. If you miss a pill, follow the leaflet that came with your pill or ask a pharmacist.' }
   ];
   var ICONS = ['notifications', 'bedtime', 'water_drop', 'directions_walk', 'air', 'self_improvement', 'medication', 'restaurant', 'favorite', 'spa', 'wb_sunny', 'local_cafe'];
 

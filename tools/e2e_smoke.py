@@ -559,6 +559,35 @@ async def check_body_signals(browser):
     check("bringing in only workouts adds the ride to Movement (45 min, no strength day) and nothing else", got == ["cycle:45:false", "walk:40:false"], got)
     check("body signals: no page errors", not errs, errs[:3]); await ctx.close()
 
+async def check_body_log(browser):
+    """The symptom day's body log (23 Oct): Ovaria's discharge photos, sex and sex drive, a pregnancy test with its urgent
+    signs, and a basal temperature that joins the day's temperature."""
+    ctx = await browser.new_context(viewport={"width": 390, "height": 844})
+    await ctx.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB))); await ctx.add_init_script(SESSION_SEED)
+    await ctx.route("**/functions/v1/**", lambda r: r.abort())
+    pg = await ctx.new_page(); errs = []
+    pg.on("pageerror", lambda e: errs.append(str(e)[:200]))
+    await pg.goto(BASE + "room.html", wait_until="domcontentloaded")
+    try: await pg.wait_for_function("()=>window.OvuRoom && !OvuRoom.busy()", timeout=15000)
+    except Exception: pass
+    await pg.evaluate("()=>OvuRoom.openCalendar('symptom')")
+    try: await pg.wait_for_selector("#dcGrid", timeout=8000)
+    except Exception: pass
+    await pg.evaluate("()=>document.fonts.ready.then(()=>1)")
+    b0 = await pg.evaluate("()=>({tiles: document.querySelectorAll('#dcGrid .dctile').length, loaded: [...document.querySelectorAll('#dcGrid img')].length, sex: document.querySelectorAll('#sexChips [data-v]').length, pt: document.querySelectorAll('#ptChips [data-v]').length, basal: !!document.querySelector('#basalT')})")
+    check("the symptom day has the body log: eight discharge photos, three sex answers, three test results and a basal temperature field", b0 == {"tiles": 8, "loaded": 8, "sex": 3, "pt": 3, "basal": True}, b0)
+    await pg.evaluate("()=>{document.querySelector('#dcGrid [data-v=grey]').click(); document.querySelector('#ptChips [data-v=positive]').click(); document.querySelector('#sexChips [data-v=unprotected]').click(); document.querySelector('#driveChips [data-v=low]').click(); document.querySelector('#basalT').value='36.6';}")
+    await pg.wait_for_timeout(200)
+    b1 = await pg.evaluate("()=>({dc: document.querySelector('#dcNote').innerText, pt: document.querySelector('#ptNote').innerText, urgent: !!document.querySelector('#ptNote .flag.high')})")
+    check("grey discharge brings the clinician line, and a positive test brings the confirm-with-a-doctor line and its urgent signs", "clinician" in b1["dc"] and "sexual health clinic" in b1["dc"] and "confirm" in b1["pt"] and "emergency" in b1["pt"] and b1["urgent"], b1)
+    await pg.evaluate("()=>document.querySelector('#saveSym').click()"); await pg.wait_for_timeout(500)
+    b2 = await pg.evaluate("()=>({sym: OvuStore.list('symptom').filter(e=>e.date===OvuStore.today()).map(e=>[e.data.discharge, e.data.sex, e.data.drive, e.data.pregTest]), t: OvuStore.list('temperature').map(e=>e.data.basal)})")
+    check("Save day keeps the answers on that day's symptom entry and the basal temperature as its temperature", b2["sym"] == [["grey", "unprotected", "low", "positive"]] and b2["t"] == [36.6], b2)
+    await pg.evaluate("()=>{document.querySelector('#basalT').value='42'; document.querySelector('#saveSym').click();}"); await pg.wait_for_timeout(400)
+    b3 = await pg.evaluate("()=>({msg: document.querySelector('#calMsg').innerText, t: OvuStore.list('temperature').map(e=>e.data.basal)})")
+    check("a basal temperature out of range is refused with a plain line, and nothing changes", "between 35 and 38.5" in b3["msg"] and b3["t"] == [36.6], b3)
+    check("body log: no page errors", not errs, errs[:3]); await ctx.close()
+
 async def main():
     server = serve()
     try:
@@ -4436,6 +4465,7 @@ async def main():
             await ctxV.close()
             await check_legacy_pages(browser)  # the older pages and the Settings sheet (22 Oct)
             await check_body_signals(browser)  # steps, workouts, resting heart rate and temperature (23 Oct)
+            await check_body_log(browser)  # discharge, sex and sex drive, pregnancy test, basal temperature (23 Oct)
             await gym_checks(browser, gate)  # Tideline Gym workouts, in a context of their own with a fake clock
 
             # 1t. tidy up (23 Oct): clutter on the floor by the clock, "Tidy up your room" with the magical broom (ovu-tidy.js).
