@@ -12,7 +12,8 @@ begin
     'bodies', (select jsonb_object_agg(n.nspname || '.' || p.proname, md5(p.prosrc)) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
       where (n.nspname, p.proname) in (('staff','worker_key'),('staff','review_why_not'),('staff','review_worth'),('staff','review_expire'),('staff','review_claimed'),('staff','review_order'),
         ('public','admin_refresh'),('public','admin_review_status'),('public','admin_proposals'),('public','admin_decide'),('public','admin_policy_set'),('public','admin_block_clear'),('staff','prune'),
-        ('public','worker_claim'),('public','worker_stage_begin'),('public','worker_beat'),('staff','review_report_error'),('public','worker_post'),('public','worker_fail'),('public','worker_finish'))),
+        ('public','worker_claim'),('public','worker_stage_begin'),('public','worker_beat'),('staff','review_report_error'),('public','worker_post'),('public','worker_fail'),('public','worker_finish'),
+        ('staff','key_active'),('staff','review_gate'))),
     'defaults', (select jsonb_object_agg(key, value) from staff.agent_policy where key in ('review_on', 'review_transfer_cleared')),
     'grants', jsonb_build_object(
       'anon_claim', has_function_privilege('anon', 'public.worker_claim(text, bigint)', 'execute'),
