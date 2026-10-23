@@ -139,6 +139,7 @@
   var me = null, inbox = null, people = [], peopleKey = '[]', peopleVisit = null, held = false, lastUid = null, inboxT = 0, peopleT = 0, peopleGen = 0, inboxGen = 0, sheetGen = 0, sheetOwner = null, wordsHash = '';
 
   function esc(s) { return R.esc ? R.esc(s) : String(s == null ? '' : s); }
+  function rooms() { var X = root.OvuRooms; return !!(X && X.available && X.available() && X.chatOff); } /* room chat exists on the server (ovu-rooms.js) */
   function uid() { var s = A.session && A.session(); return s && s.user ? s.user.id : null; }
   function inPlaza() { var L = R.layout && R.layout(); return !!(L && L.id === 'plaza'); }
   function img(look, cls) { return '<img' + (cls ? ' class="' + cls + '"' : '') + ' src="' + R.ART + 'avatar-' + lookOf(look) + '.webp" alt="">'; }
@@ -295,7 +296,7 @@
     if (missing) { frSheet('friends', 'Plaza friends', 'Friends you meet in the plaza groups', 'diversity_1', '<p class="help">Plaza friends is not open yet. Your plaza group works as usual.</p>'); return; }
     frSheet('friends', 'Plaza friends', 'Friends you meet in the plaza groups', 'diversity_1', '<p class="help">Looking…</p>');
     var g = ++sheetGen;
-    loadMe().then(function () { return loadInbox(true); }).then(function () { if (g === sheetGen && doc.getElementById('frSheet')) renderFriends(); }, function () {
+    loadMe().then(function () { return loadInbox(true); }).then(function () { var X = root.OvuRooms; return X && X.probe ? X.probe().catch(noop) : null; }).then(function () { if (g === sheetGen && doc.getElementById('frSheet')) renderFriends(); }, function () {
       if (g !== sheetGen) return; var el = doc.getElementById('frSheet'); if (el) el.innerHTML = '<p class="help">Could not reach Plaza friends. Check the connection; open this again to try once more.</p>';
     });
   }
@@ -326,7 +327,8 @@
     if (ib.blocked.length) html += '<div class="frsec"><span class="lbl">Blocked</span>' + ib.blocked.map(function (b) {
       return row({ name: b.name || 'Someone', look: b.look }, '<span>Since ' + esc(dayText(b.at)) + '</span><div class="fracts"><button type="button" class="frlink" data-fr="unblock" data-id="' + esc(b.id) + '">Unblock</button></div>');
     }).join('') + '</div>';
-    html += '<details class="frabout"><summary>What others see and what is kept</summary><p>' + esc(WORDS) + ' A report sends Rhythme staff your card, her card and the phrase, never your diary. Staff never see your account, your email or your group.</p></details>' +
+    html += '<details class="frabout"><summary>What others see and what is kept</summary><p>' + esc(WORDS) + ' A report sends Rhythme staff your card, her card and the phrase, never your diary. ' + (rooms() ? 'A room message held for a check or reported also shows staff its group and its room. ' : '') + (rooms() ? 'Staff never see your account or your email.' : 'Staff never see your account, your email or your group.') + '</p></details>' +
+      (rooms() ? '<div class="frsec"><span class="lbl">Room chat</span><p class="help">What you write in the rooms shows with this card. Turning Room chat off deletes your messages at once; you can read the rooms still.</p><div class="row"><button type="button" class="btn soft" data-fr="chatoff"><span class="ms">speaker_notes_off</span>Turn Room chat off</button></div></div>' : '') +
       '<div class="row"><button type="button" class="btn soft" data-fr="off"><span class="ms">toggle_off</span>Turn Plaza friends off</button></div>';
     el.innerHTML = html;
     if (ib.notes.some(function (n) { return !n.read; })) {
@@ -453,11 +455,14 @@
     if (what === 'note') { openNote(h, b.dataset.n || 'a friend', back); return; }
     if (what === 'report') { openReport(h, b.dataset.n || 'someone', b.dataset.note || null, back); return; }
     /* two taps for the quiet but lasting ones; the second tap shows the cue it carries */
-    if ((what === 'block' || what === 'unfriend' || what === 'off') && b.dataset.armed !== '1') {
+    if ((what === 'block' || what === 'unfriend' || what === 'off' || what === 'chatoff') && b.dataset.armed !== '1') {
       b.dataset.armed = '1'; b.classList.add('armed');
-      b.innerHTML = what === 'off' ? 'Tap again: turn off and delete my card, friends and notes' : what === 'block' ? 'Tap again to block. ' + esc(CUES.block) : 'Tap again to unfriend. ' + esc(CUES.unfriend);
+      b.innerHTML = what === 'off' ? 'Tap again: turn off and delete my card, friends and notes' + (rooms() ? ' and room messages' : '') : what === 'chatoff' ? 'Tap again: turn Room chat off and delete my messages' : what === 'block' ? 'Tap again to block. ' + esc(CUES.block) : 'Tap again to unfriend. ' + esc(CUES.unfriend);
       return;
     }
+    /* a late answer redraws Plaza friends only if it is still the sheet she has open (Codex diff review round 4, item 4) */
+    var seq = R.sheetSeq ? R.sheetSeq() : null, still = function () { return R.sheetOpen && R.sheetOpen() && (seq === null || R.sheetSeq() === seq); };
+    if (what === 'chatoff') { b.disabled = true; root.OvuRooms.chatOff().then(function () { if (still()) reshow(); }, function (e) { if (e && e.cancelled) return; offline(e); b.disabled = false; }); return; }
     b.disabled = true;
     var done = function (j, okText, icon) {
       if (!j || !j.ok) { R.toast(whyText(j), 'diversity_1'); b.disabled = false; return; }
@@ -488,7 +493,7 @@
         done(j, 'Plaza friends is off. Your card, friends, requests and notes are deleted.', 'toggle_off');
         if (!j || !j.ok) return;
         try { if (root.OvuConsent && root.OvuConsent.withdraw) root.OvuConsent.withdraw('social', 'you', { sent: true }); } catch (e) { }
-        me.card = null; me.on = false; inbox = null; setPeople([]); badge(); reshow();
+        me.card = null; me.on = false; inbox = null; setPeople([]); badge(); if (still()) reshow();
       });
     }
     if (call) call.catch(function (e) { if (e && e.cancelled) return; offline(e); b.disabled = false; });
