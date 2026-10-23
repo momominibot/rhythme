@@ -50,7 +50,7 @@
   /* her feet in plate percent, read from the avatar's own box (not its bobbing image) against the plate's rendered box:
    * covers the walk engine's per-frame transform, the room's CSS walks to hotspots and stairs, and any jump */
   function focus() {
-    if (!avatar || avatar.classList.contains('hidden')) return null;
+    if (!avatar || avatar.classList.contains('hidden')) { var g = root.OvuGym && root.OvuGym.focus && root.OvuGym.focus(); return g && isFinite(g.x) && isFinite(g.y) ? g : null; } /* on a gym machine: the middle of her there (Codex diff review, 22 Oct) */
     var a = avatar.getBoundingClientRect(), p = inner.getBoundingClientRect();
     if (!a.width || !p.width || !p.height) return null;
     var f = { x: ((a.left + a.width / 2) - p.left) / p.width * 100, y: (a.bottom - p.top) / p.height * 100 };

@@ -1,0 +1,128 @@
+{
+ "note": "22 Oct, Tideline Gym workouts (docs/design/2026-10-22-gym-workouts.md): her frames on the treadmill, bike, weights and mat in the yoga set, and a covered-head gym kit for a tudung wearer. References are her sprites on pure green. One run, no retries; the first failure stops it.",
+ "jobs": [
+  {
+   "id": "gym-tudung",
+   "out": "gym-tudung.png",
+   "size": "1024x1024",
+   "seed": 5201,
+   "ref": [
+    "/private/tmp/claude-501/-Users-michiyomimi-Doubao-chats-2026-10-16-new-chat-12-ovumind--claude-worktrees-gym-activities-e4aa60/7e4920ac-538e-47de-a131-7e509a0a97b2/scratchpad/gym/render/refs/yoga-on-green.png",
+    "/private/tmp/claude-501/-Users-michiyomimi-Doubao-chats-2026-10-16-new-chat-12-ovumind--claude-worktrees-gym-activities-e4aa60/7e4920ac-538e-47de-a131-7e509a0a97b2/scratchpad/gym/render/refs/tudung-on-green.png"
+   ],
+   "prompt": "Image 1 shows a chibi girl in a mint sports top and lilac leggings. Image 2 shows the same girl in a lilac tudung. Draw her standing exactly as in image 1, same face, proportions and soft 3D clay style, in a modest gym kit: a long-sleeved loose mint sports top reaching her hips, loose full-length lilac jogger trousers, white trainers, and a lilac sports tudung covering all her hair, ears and neck, with the gold star as a small brooch. No hair visible, no bag. Full body, centred. Solid flat pure chroma green background #00FF00, no shadow, no text."
+  },
+  {
+   "id": "bike-yoga-a",
+   "out": "bike-yoga-a.png",
+   "size": "1024x1024",
+   "seed": 5202,
+   "ref": [
+    "/private/tmp/claude-501/-Users-michiyomimi-Doubao-chats-2026-10-16-new-chat-12-ovumind--claude-worktrees-gym-activities-e4aa60/7e4920ac-538e-47de-a131-7e509a0a97b2/scratchpad/gym/render/refs/yoga-on-green.png"
+   ],
+   "prompt": "Keep this exact chibi girl: same face, hair bun with star clip, mint sports top, lilac leggings and soft 3D clay style. Draw her riding a small pastel lilac and cream exercise bike, seen from the side, facing LEFT: sitting on the saddle, hands on the handlebars, her near knee raised and the other leg pushed down on the pedal, white trainers. Whole bike and girl in frame, centred. Solid flat pure chroma green background #00FF00, no shadow, no text."
+  },
+  {
+   "id": "bike-yoga-b",
+   "out": "bike-yoga-b.png",
+   "size": "1024x1024",
+   "seed": 5203,
+   "ref": [
+    "/private/tmp/claude-501/-Users-michiyomimi-Doubao-chats-2026-10-16-new-chat-12-ovumind--claude-worktrees-gym-activities-e4aa60/7e4920ac-538e-47de-a131-7e509a0a97b2/scratchpad/gym/render/bike-yoga-a.png"
+   ],
+   "prompt": "Keep this exact picture: the same girl, bike, angle, colours, size and position. Change only her legs: the pedals have turned half a turn, so the raised knee is now pushed down and the other knee is raised. Everything else identical. Solid flat pure chroma green background #00FF00, no shadow, no text."
+  },
+  {
+   "id": "weights-yoga-a",
+   "out": "weights-yoga-a.png",
+   "size": "1024x1024",
+   "seed": 5204,
+   "ref": [
+    "/private/tmp/claude-501/-Users-michiyomimi-Doubao-chats-2026-10-16-new-chat-12-ovumind--claude-worktrees-gym-activities-e4aa60/7e4920ac-538e-47de-a131-7e509a0a97b2/scratchpad/gym/render/refs/yoga-on-green.png"
+   ],
+   "prompt": "Keep this exact chibi girl: same face, hair bun with star clip, mint sports top, lilac leggings and soft 3D clay style. She stands facing the viewer at a slight three-quarter angle, feet apart, white trainers, holding one small pastel lilac dumbbell in each hand, arms down by her sides, calm and smiling. Full body, centred. Solid flat pure chroma green background #00FF00, no shadow, no text."
+  },
+  {
+   "id": "weights-yoga-b",
+   "out": "weights-yoga-b.png",
+   "size": "1024x1024",
+   "seed": 5205,
+   "ref": [
+    "/private/tmp/claude-501/-Users-michiyomimi-Doubao-chats-2026-10-16-new-chat-12-ovumind--claude-worktrees-gym-activities-e4aa60/7e4920ac-538e-47de-a131-7e509a0a97b2/scratchpad/gym/render/weights-yoga-a.png"
+   ],
+   "prompt": "Keep this exact picture: the same girl, pose, feet, angle, colours, size and position. Change only her arms: she curls both dumbbells up to her shoulders, elbows by her sides. Everything else identical. Solid flat pure chroma green background #00FF00, no shadow, no text."
+  },
+  {
+   "id": "mat-yoga",
+   "out": "mat-yoga.png",
+   "size": "2048x1024",
+   "seed": 5206,
+   "ref": [
+    "/private/tmp/claude-501/-Users-michiyomimi-Doubao-chats-2026-10-16-new-chat-12-ovumind--claude-worktrees-gym-activities-e4aa60/7e4920ac-538e-47de-a131-7e509a0a97b2/scratchpad/gym/render/refs/yoga-on-green.png"
+   ],
+   "prompt": "Keep this exact chibi girl: same face, hair bun with star clip, mint sports top, lilac leggings and soft 3D clay style. Bare feet. A sprite sheet of a gentle standing yoga flow: exactly 4 frames in one row, evenly spaced, clear gaps, same size, feet on one ground line, facing the viewer: 1 standing tall, palms together at the chest; 2 arms reaching overhead; 3 tree pose, one foot on the other calf; 4 warrior two, legs wide, arms out to the sides. Solid flat pure chroma green background #00FF00, no shadows, no text, no numbers, no borders."
+  },
+  {
+   "id": "bike-tudung-a",
+   "out": "bike-tudung-a.png",
+   "size": "1024x1024",
+   "seed": 5207,
+   "ref": [
+    "/private/tmp/claude-501/-Users-michiyomimi-Doubao-chats-2026-10-16-new-chat-12-ovumind--claude-worktrees-gym-activities-e4aa60/7e4920ac-538e-47de-a131-7e509a0a97b2/scratchpad/gym/render/bike-yoga-a.png",
+    "/private/tmp/claude-501/-Users-michiyomimi-Doubao-chats-2026-10-16-new-chat-12-ovumind--claude-worktrees-gym-activities-e4aa60/7e4920ac-538e-47de-a131-7e509a0a97b2/scratchpad/gym/render/gym-tudung.png"
+   ],
+   "prompt": "Image 1 shows a chibi girl riding an exercise bike. Image 2 shows the same girl in a gym kit and a lilac sports tudung. Draw image 1 exactly: the same bike, angle, pose, size and position, same face and soft 3D clay style, but wearing exactly the outfit from image 2: long-sleeved mint top, loose lilac trousers, white trainers, and the tudung covering all her hair, ears and neck. Solid flat pure chroma green background #00FF00, no shadow, no text."
+  },
+  {
+   "id": "bike-tudung-b",
+   "out": "bike-tudung-b.png",
+   "size": "1024x1024",
+   "seed": 5208,
+   "ref": [
+    "/private/tmp/claude-501/-Users-michiyomimi-Doubao-chats-2026-10-16-new-chat-12-ovumind--claude-worktrees-gym-activities-e4aa60/7e4920ac-538e-47de-a131-7e509a0a97b2/scratchpad/gym/render/bike-tudung-a.png"
+   ],
+   "prompt": "Keep this exact picture: the same girl, bike, angle, colours, size and position. Change only her legs: the pedals have turned half a turn, so the raised knee is now pushed down and the other knee is raised. Everything else identical. Solid flat pure chroma green background #00FF00, no shadow, no text."
+  },
+  {
+   "id": "weights-tudung-a",
+   "out": "weights-tudung-a.png",
+   "size": "1024x1024",
+   "seed": 5209,
+   "ref": [
+    "/private/tmp/claude-501/-Users-michiyomimi-Doubao-chats-2026-10-16-new-chat-12-ovumind--claude-worktrees-gym-activities-e4aa60/7e4920ac-538e-47de-a131-7e509a0a97b2/scratchpad/gym/render/weights-yoga-a.png",
+    "/private/tmp/claude-501/-Users-michiyomimi-Doubao-chats-2026-10-16-new-chat-12-ovumind--claude-worktrees-gym-activities-e4aa60/7e4920ac-538e-47de-a131-7e509a0a97b2/scratchpad/gym/render/gym-tudung.png"
+   ],
+   "prompt": "Image 1 shows a chibi girl holding two dumbbells. Image 2 shows the same girl in a gym kit and a lilac sports tudung. Draw image 1 exactly: the same dumbbells, angle, pose, size and position, same face and soft 3D clay style, but wearing exactly the outfit from image 2: long-sleeved mint top, loose lilac trousers, white trainers, and the tudung covering all her hair, ears and neck. Solid flat pure chroma green background #00FF00, no shadow, no text."
+  },
+  {
+   "id": "weights-tudung-b",
+   "out": "weights-tudung-b.png",
+   "size": "1024x1024",
+   "seed": 5210,
+   "ref": [
+    "/private/tmp/claude-501/-Users-michiyomimi-Doubao-chats-2026-10-16-new-chat-12-ovumind--claude-worktrees-gym-activities-e4aa60/7e4920ac-538e-47de-a131-7e509a0a97b2/scratchpad/gym/render/weights-tudung-a.png"
+   ],
+   "prompt": "Keep this exact picture: the same girl, pose, feet, angle, colours, size and position. Change only her arms: she curls both dumbbells up to her shoulders, elbows by her sides. Everything else identical. Solid flat pure chroma green background #00FF00, no shadow, no text."
+  },
+  {
+   "id": "mat-tudung",
+   "out": "mat-tudung.png",
+   "size": "2048x1024",
+   "seed": 5211,
+   "ref": [
+    "/private/tmp/claude-501/-Users-michiyomimi-Doubao-chats-2026-10-16-new-chat-12-ovumind--claude-worktrees-gym-activities-e4aa60/7e4920ac-538e-47de-a131-7e509a0a97b2/scratchpad/gym/render/gym-tudung.png"
+   ],
+   "prompt": "Keep this exact chibi girl: same face, lilac sports tudung covering all hair, ears and neck, long-sleeved mint top, loose lilac trousers and soft 3D clay style. Bare feet. A sprite sheet of a gentle standing yoga flow: exactly 4 frames in one row, evenly spaced, clear gaps, same size, feet on one ground line, facing the viewer: 1 standing tall, palms together at the chest; 2 arms reaching overhead; 3 tree pose, one foot on the other calf; 4 warrior two, legs wide, arms out to the sides. Solid flat pure chroma green background #00FF00, no shadows, no text, no numbers, no borders."
+  },
+  {
+   "id": "walk-tudung-side",
+   "out": "walk-tudung-side.png",
+   "size": "2048x1024",
+   "seed": 5212,
+   "ref": [
+    "/private/tmp/claude-501/-Users-michiyomimi-Doubao-chats-2026-10-16-new-chat-12-ovumind--claude-worktrees-gym-activities-e4aa60/7e4920ac-538e-47de-a131-7e509a0a97b2/scratchpad/gym/render/gym-tudung.png"
+   ],
+   "prompt": "Keep this exact same chibi girl: identical face, lilac sports tudung covering all hair, ears and neck, long-sleeved mint top, loose lilac trousers, white trainers, proportions and soft 3D clay render style. Make a game sprite sheet of her WALK CYCLE: exactly 8 frames in a single horizontal row, evenly spaced with clear gaps, each frame the same size, feet on the same ground line, walking to the RIGHT, seen from the SIDE, walking naturally in place with arms swinging, the 8 frames covering one full stride. Solid flat pure chroma green background #00FF00 everywhere, no shadows on the ground, no text, no numbers, no frame borders."
+  }
+ ]
+}
