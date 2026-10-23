@@ -423,6 +423,10 @@ def main():
     check('raising the people floor holds every published run and names the floor as the reason; setting it to the same value holds nothing', same.get('ok') and ov_same['latest_run'] == r_f['run_id'] and raised.get('ok') and ov_up['latest_run'] is None and ov_up['held_runs'] >= 1 and (ov_up['latest'] or {}) == {} and any('floor' in (x.get('invalidation_reason') or '') for x in ov_up['runs']), {'same': ov_same['latest_run'], 'up': ov_up['held_runs']})
     r_f2 = run(c, owner); lowered = set_floor(base + 5); ov_dn = overview(c, owner)
     check('lowering the floor (still at least 20) keeps the run published under the higher one', lowered.get('ok') and ov_dn['latest_run'] == r_f2['run_id'] and ov_dn['held_runs'] == 0, {'dn': ov_dn['latest_run'], 'r': r_f2.get('run_id')})
+    frac = set_floor(20.5); big = set_floor(5000)
+    c.execute("update staff.agent_policy set value = '20.5'::jsonb where key = 'k_floor'")  # a malformed value left by an older setter
+    fixed = set_floor(base); stored = c.execute("select value::text from staff.agent_policy where key = 'k_floor'").fetchone()[0]
+    check('the floor accepts only a whole number from 20 to 1000, and a malformed stored floor can still be corrected through the setter', 'error' in frac and 'error' in big and fixed.get('ok') and stored == str(base), {'frac': frac, 'big': big, 'fixed': fixed, 'stored': stored})
     set_floor(base)
     body = c.execute("select pg_get_functiondef('public.admin_overview()'::regprocedure)").fetchone()[0]
     check('admin_overview reads the valid run, the hold count and the findings in one statement (one snapshot), never through a variable read earlier', 'with v as' in body and ' into valid' not in body and body.count('return (') == 1, body[:200])

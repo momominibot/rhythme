@@ -407,3 +407,34 @@ Ship order remains migration first, schema-cache refresh, eight-argument RPC ver
 FIX
 
 Fix: (1) any feed answer, full or incremental, that carries an invalidation event newer than the last one acted on clears the overview summaries on Today and Agents at once and asks for a new overview; a poll also drops the feed and owes a full reload (seenHold stops old events looping). (2) admin_overview now reads the valid run, hold count, runs and findings in one SQL statement, so one snapshot. (3) admin_policy_set takes the worker lock for the floor and invalidates published runs when the floor rises. Pipeline 67/67, core 1818/1818; each new rule mutated alone fails its check.
+
+
+# Round ten (commit 7cd7991, verdict FIX, no P1, two P2; fixed in the following commit)
+
+**The three round-nine fixes address their reported defects at `7cd7991`. Two ordinary-use P2 issues remain.**
+
+1. **P2: A confirmed floor increase leaves cached results visible when refresh fails.**  
+   [admin.js:309](/Users/michiyomimi/Doubao/chats/2026-10-16/new-chat-12/ovumind/.claude/worktrees/farm-barn-cave/admin.js:309) handles successful `admin_policy_set` by requesting an overview, without clearing existing results.
+
+   Independently reproduced through the actual change handler: cache a 21-person report at floor 20 → successfully set floor 30 → overview returns HTTP 500. Today, Agents and Feed still render the old results; `held:0` and `needsFull:false` remain. An in-memory cache-clearing mutation removes the exposure.
+
+   **Fix:** on confirmed floor increase, immediately clear overview/feed results, invalidate outstanding requests, and retain full-reload debt until reconciliation succeeds.
+
+2. **P2: A fractional floor can disable reporting and prevent correction through the setter.**  
+   [Migration:523](/Users/michiyomimi/Doubao/chats/2026-10-16/new-chat-12/ovumind/.claude/worktrees/farm-barn-cave/supabase/migrations/20261021100000_staff_data_contract_v3.sql:523) accepts `20.5`. The normal input handler sends it without checking validity. However, [staff.k_floor():202](/Users/michiyomimi/Doubao/chats/2026-10-16/new-chat-12/ovumind/.claude/worktrees/farm-barn-cave/supabase/migrations/20261019030000_team_dashboard.sql:202) casts stored JSON text directly to integer. Subsequent overviews/runs fail, and the new `old_floor` read prevents restoring an integer through this setter. The previous setter could perform that correction.
+
+   **Fix:** validate a bounded whole number and store its canonical integer representation. Ensure a valid corrective setting can recover malformed prior policy. This finding is source-confirmed, not database-reproduced.
+
+The feed fix clears overview summaries for both full and incremental invalidation responses, preserves clearing through failures, and rejects superseded overview answers. The overview CTE and its STABLE helpers now share one query snapshot, consistent with [PostgreSQL’s documented semantics](https://www.postgresql.org/docs/17/xfunc-volatility.html). Integer floor increases serialize with workers and invalidate publications transactionally.
+
+One existing contract distinction remains: the raw overview still returns exact `counts.consent_eligible` below the floor, while the client masks it. Prior documents discuss exact operational consent counts separately, so I have not classified that ambiguous boundary as a new confirmed regression.
+
+Swept client loading/rendering paths, server readers, run responses, invalidation triggers, policy changes, suppression and grants. No further concrete held-report bypass found; phase 0 has no reachable proposal producer.
+
+Verified **1,818/1,818 core checks**, **81 pages with zero static problems**, Python parsing, scoped diff checks and focused VM reproductions. PostgreSQL **67/67 remains owner-reported**. Its new overview check inspects function text rather than reproducing the race. No files or live state changed.
+
+Ship order remains: fresh dry run of the exact final migration, apply migration, refresh schema cache, verify the eight-argument RPC, then merge the client.
+
+FIX
+
+Fix: (1) a floor change the server confirms drops results on Today, Agents and Feed at once, ignores answers already on their way and owes a full reload; the client refuses a floor that is not a whole number from 20 to 1000. (2) The setter accepts only whole numbers 20 to 1000, stores the canonical integer, reads the old floor raw so a malformed stored value can still be corrected, and treats an unreadable old floor as raised. Pipeline 68/68, core 1819/1819.

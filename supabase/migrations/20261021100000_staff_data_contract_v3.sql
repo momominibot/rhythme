@@ -520,16 +520,17 @@ declare d jsonb; uid uuid := staff.caller(); old_floor numeric;
 begin
   d := staff.require('admin_policy_set', jsonb_build_object('key', p_key, 'value', p_value), true); if d is not null then return d; end if;
   if p_key not in ('k_floor', 'lever_days', 'model_on', 'autonomy_on') then return jsonb_build_object('error', 'that setting is not changeable here'); end if;
-  if p_key = 'k_floor' and (jsonb_typeof(p_value) <> 'number' or (p_value::text)::numeric < 20) then return jsonb_build_object('error', 'the floor cannot go below 20 people'); end if;
+  if p_key = 'k_floor' and (jsonb_typeof(p_value) <> 'number' or (p_value::text) !~ '^[0-9]{2,4}$' or (p_value::text)::integer not between 20 and 1000) then return jsonb_build_object('error', 'the floor is a whole number of people from 20 to 1000'); end if;
   if p_key = 'lever_days' and (jsonb_typeof(p_value) <> 'number' or (p_value::text)::numeric < 1 or (p_value::text)::numeric > 30) then return jsonb_build_object('error', 'lever days must be between 1 and 30'); end if;
   if p_key in ('model_on', 'autonomy_on') and jsonb_typeof(p_value) <> 'boolean' then return jsonb_build_object('error', 'that setting is on or off'); end if;
   if p_key = 'k_floor' then
     perform pg_advisory_xact_lock(hashtext('staff.run_begin')); /* the worker lock first, so a report being built cannot publish under the old floor after this */
-    select staff.k_floor() into old_floor;
+    select case when value::text ~ '^[0-9]+$' then (value::text)::numeric end into old_floor from staff.agent_policy where key = 'k_floor'; /* read raw, so a malformed stored value can still be corrected here */
   end if;
+  if p_key = 'k_floor' then p_value := to_jsonb((p_value::text)::integer); end if; /* stored in its canonical whole-number form */
   update staff.agent_policy set value = p_value, updated_at = now(), updated_by = uid where key = p_key;
   perform staff.event(null, 'staff', 'policy', 'staff set ' || p_key || ' to ' || p_value::text, jsonb_build_object('key', p_key, 'value', p_value));
-  if p_key = 'k_floor' and (p_value::text)::numeric > coalesce(old_floor, 20) then
+  if p_key = 'k_floor' and (old_floor is null or (p_value::text)::numeric > old_floor) then /* an unreadable old floor counts as raised: hold rather than guess */
     perform staff.invalidate_runs('people floor raised to ' || (p_value::text) || '; the next run recomputes under it');
   end if;
   return jsonb_build_object('ok', true);

@@ -306,7 +306,8 @@
     app.querySelectorAll('[data-pol]').forEach(function (el) {
       el.addEventListener('change', function () {
         var key = el.dataset.pol, v = el.type === 'checkbox' ? el.checked : Number(el.value), m = doc.getElementById('polMsg');
-        rpc('admin_policy_set', { p_key: key, p_value: v }).then(function (j) { m.textContent = j && j.error ? j.error : 'Saved.'; m.className = 'msg' + (j && j.error ? ' bad' : ''); return loadOverview(); }).then(function () { if (tab === 'queue') renderQueue(); }).catch(function (e) { m.textContent = e.message; m.className = 'msg bad'; });
+        if (key === 'k_floor' && !(Number.isInteger(v) && v >= 20 && v <= 1000)) { m.textContent = 'The floor is a whole number of people from 20 to 1000.'; m.className = 'msg bad'; return; }
+        rpc('admin_policy_set', { p_key: key, p_value: v }).then(function (j) { m.textContent = j && j.error ? j.error : 'Saved.'; m.className = 'msg' + (j && j.error ? ' bad' : ''); if (key === 'k_floor' && j && j.ok) dropResults(); return loadOverview(); }).then(function () { if (tab === 'queue') renderQueue(); }).catch(function (e) { m.textContent = e.message; m.className = 'msg bad'; });
       });
     });
   }
@@ -335,6 +336,7 @@
   var releaseKey = null; /* the published run and the hold count as last seen: when either changes, the cached feed is dropped at once and reloaded whole, so words from a run held since never stay on screen */
   var feedGen = 0, feedNeedsFull = false, ovGen = 0, seenHold = 0; /* only the newest feed or overview request may write; a full feed reload stays owed until one succeeds; seenHold is the newest invalidation event already acted on, so old ones never loop */
   function holdOverview() { if (!ov) return; ov = Object.assign({}, ov, { latest: {}, latest_run: null, held_runs: Math.max(1, ov.held_runs || 0), runs: (ov.runs || []).map(function (r) { return Object.assign({}, r, { summary: null }); }) }); if (tab === 'today') renderToday(); if (tab === 'agents') renderAgents(); } /* a hold seen anywhere clears the summaries on screen until a newer overview answers */ /* only the newest feed or overview request may write; a full feed reload stays owed until one succeeds */
+  function dropResults() { feedGen++; holdOverview(); feed = []; feedTop = 0; feedNeedsFull = true; if (tab === 'feed') renderFeed(); } /* a floor change the server confirmed: what is on screen was computed under the old floor, so it goes now, and any answer already on its way is ignored */
   function loadOverview() { var gen = ++ovGen; return rpc('admin_overview').then(function (j) { if (gen !== ovGen) return; /* a newer overview was sent since: this answer may predate a hold */ if (denied(j)) return bootStaffOnly(); ov = j; pill('on', 'live'); var rk = String(j && j.latest_run) + '|' + String(j && j.held_runs); if (releaseKey === null || rk !== releaseKey) { feed = []; feedTop = 0; feedNeedsFull = true; if (tab === 'feed') renderFeed(); } /* the first overview counts as a change: anything the boot feed showed may predate a hold, so it is dropped and reloaded whole */ releaseKey = rk; if (feedNeedsFull) loadFeed(true); if (tab === 'today') renderToday(); if (tab === 'agents') renderAgents(); if (tab === 'queue') renderQueue(); }).catch(function (e) { pill('bad', 'offline'); }); }
   function loadFeed(all) {
     all = all || feedNeedsFull;
@@ -383,7 +385,7 @@
     }).catch(function (e) { gate('Could not check your account: ' + e.message, true); });
   }
   doc.addEventListener('visibilitychange', function () { if (!doc.hidden && me) { loadFeed(false); loadOverview(); loadPlaza(); } });
-  if (root.__ADMIN_TEST__) root.__ADMIN_TEST__.api = { loadOverview: loadOverview, loadFeed: loadFeed, setTab: function (t) { tab = t; }, state: function () { return { feed: feed, feedTop: feedTop, needsFull: feedNeedsFull, releaseKey: releaseKey, latest: ov && ov.latest, held: ov && ov.held_runs }; } }; /* core tests only */
+  if (root.__ADMIN_TEST__) root.__ADMIN_TEST__.api = { loadOverview: loadOverview, loadFeed: loadFeed, setTab: function (t) { tab = t; }, dropResults: dropResults, state: function () { return { feed: feed, feedTop: feedTop, needsFull: feedNeedsFull, releaseKey: releaseKey, latest: ov && ov.latest, held: ov && ov.held_runs }; } }; /* core tests only */
   /* finish a Google round trip (?code= in the URL) before deciding what to show */
   (A && A.init ? A.init() : Promise.resolve({})).then(function (r) { if (r && r.error && !A.session()) return gate('Sign-in did not finish: ' + r.error, true); boot(); }, function () { boot(); });
 })(window);

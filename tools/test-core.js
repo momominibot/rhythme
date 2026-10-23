@@ -2742,6 +2742,8 @@ function scenes(todayIso) {
           var again = c.T.loadFeed(true);
           return tick().then(function () { c.feed.shift().res([{ id: 9, kind: 'invalidated', title: 'x', detail: { runs: 1 } }]); return again; }).then(tick).then(function () {
             check('a hold already acted on does not ask again, so old invalidation events never loop', c.ov.length === 0, String(c.ov.length));
+            c.T.dropResults(); var sd = c.T.state();
+            check('a confirmed floor change drops results on Today, Agents and Feed at once and owes a full reload, so a failed refresh cannot leave them up', Object.keys(sd.latest || {}).length === 0 && sd.feed.length === 0 && sd.needsFull === true, JSON.stringify(sd));
             delete openHarness.dashboardHoldPaths;
           });
         });
