@@ -154,8 +154,8 @@
     if (!st) return;
     var now = root.performance.now();
     if (st.plan && now - st.t0 >= st.plan * 60000) { var s = sound(); if (s) s.play('save'); stop(true); return; }
+    raf = root.requestAnimationFrame(tick); /* the next frame is booked first, so one bad frame can never stop the flower */
     draw(now);
-    raf = root.requestAnimationFrame(tick);
   }
   function stop(completed, silent) {
     if (!st) return null;
@@ -210,7 +210,11 @@
     for (var j = n; j >= 0; j--) { var v = j / n, hv = Wd * Math.pow(Math.sin(Math.PI * Math.min(1, v * 1.04)), 0.75) * (1 - 0.18 * v) * (1 + 0.05 * Math.sin(v * 17 + 1)); pts.push([v * L, -hv]); }
     return pts;
   }
-  function dot(c, x, y, r, col) { var g = c.createRadialGradient(x, y, 0, x, y, r * 3); g.addColorStop(0, col); g.addColorStop(0.35, col.replace(/[\d.]+\)$/, function (a) { return (parseFloat(a) * 0.45) + ')'; })); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.beginPath(); c.arc(x, y, r * 3, 0, Math.PI * 2); c.fill(); }
+  /* a soft point of light. The alpha is read and rewritten as a fixed decimal: a fading spark's alpha can reach 1e-7, which
+   * JavaScript prints as 8.6e-7, and the old rewrite turned that into a colour the canvas refused, which threw inside the
+   * frame and stopped the flower halfway (Jamie, 23 Oct: "the light flowers are not working. It hangs halfway") */
+  function rgba(col, k) { var m = /^(rgba\([^,]+,[^,]+,[^,]+,)\s*([^)]+)\)$/.exec(col), a = m ? Number(m[2]) : 1; a = isFinite(a) ? Math.max(0, Math.min(1, a * k)) : 0; return (m ? m[1] : 'rgba(255,255,255,') + a.toFixed(4) + ')'; }
+  function dot(c, x, y, r, col) { var g = c.createRadialGradient(x, y, 0, x, y, r * 3); col = rgba(col, 1); g.addColorStop(0, col); g.addColorStop(0.35, rgba(col, 0.45)); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.beginPath(); c.arc(x, y, r * 3, 0, Math.PI * 2); c.fill(); }
   /* one petal, drawn once on its own small canvas so lighting it costs one extra draw */
   function makePetal(k, geo) {
     var L = geo.R * (0.96 + 0.06 * Math.sin(k * 2.1)), Wd = geo.R * 0.4, pad = 18, p = document.createElement('canvas');
@@ -259,7 +263,7 @@
   function draw(now) {
     if (!ctx || !base || !head) return;
     var geo = st.geo, t = (now - st.t0) / 1000, hd = headAt(t, reduced, st.pace), br = breathAt(t, st.pace), breath = reduced ? 0 : br.v;
-    if (br.phase !== st.lastPhase) { st.lastPhase = br.phase; var bw = $('#lfBreath'); if (bw) bw.textContent = br.phase || ''; } /* in, out: words only while a pace with words is chosen */
+    if (br.phase !== st.lastPhase) { st.lastPhase = br.phase; var bw = $('#lfBreath'); if (bw) bw.textContent = br.phase ? 'breathe ' + br.phase : ''; } /* breathe in, breathe out (as on the koi pond, Jamie 23 Oct): words only while a pace with words is chosen */
     geo.rot = hd.rot; /* taps follow the turning petals */
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; ctx.drawImage(base, 0, 0);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.globalCompositeOperation = 'lighter';
@@ -305,5 +309,5 @@
       var x = p.x + p.vx * slow / 1.2 + Math.sin(q * 2 + p.r * 9) * 4, y = p.y + p.vy * slow / 1.2 - q * 6; dot(ctx, x, y, p.r, 'rgba(255,238,214,' + (0.75 * f * f) + ')'); return true;
     });
   }
-  root.OvuLightFlower = { PACES: PACES, breathAt: breathAt, LENGTHS: LENGTHS, PETALS: PETALS, headAt: headAt, BREATH_S: BREATH_S, RISE_MS: RISE_MS, SETTLE_MS: SETTLE_MS, MIN_GAP_MS: MIN_GAP_MS, glowAt: glowAt, holdFrom: holdFrom, petalFor: petalFor, entryFor: entryFor, open: open, close: close, start: start, stop: stop, running: function () { return !!st; } };
+  root.OvuLightFlower = { rgba: rgba, PACES: PACES, breathAt: breathAt, LENGTHS: LENGTHS, PETALS: PETALS, headAt: headAt, BREATH_S: BREATH_S, RISE_MS: RISE_MS, SETTLE_MS: SETTLE_MS, MIN_GAP_MS: MIN_GAP_MS, glowAt: glowAt, holdFrom: holdFrom, petalFor: petalFor, entryFor: entryFor, open: open, close: close, start: start, stop: stop, running: function () { return !!st; } };
 })(typeof window !== 'undefined' ? window : this);

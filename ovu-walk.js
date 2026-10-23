@@ -590,7 +590,7 @@
     if (root.MutationObserver && hud) new MutationObserver(function () { scene.classList.toggle('hudon', hud.classList.contains('on')); }).observe(hud, { attributes: true, attributeFilter: ['class'] });
   }
   function lightMini(L) {
-    if (!mini) return; var s = sceneOf(L);
+    if (!mini) return; var s = sceneOf(L), visit = !!R.visiting();
     mini.classList.remove('hidden');
     var name = root.OvuMap && root.OvuMap.hereName ? root.OvuMap.hereName() : s === 'home' ? 'Home' : String((L && L.name) || '').replace(/^(?:your|the)\s+/i, ''), t = doc.getElementById('mapHere'), b = doc.getElementById('mapBtn');
     if (t) t.textContent = name; if (b) b.setAttribute('aria-label', 'Map. You are ' + (name === 'Home' ? 'at home' : 'in ' + name) + '.');

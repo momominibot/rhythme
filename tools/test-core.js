@@ -5430,6 +5430,11 @@ var summarised = false;
 (function pondAndFlowerBreathing() {
   console.log('2k19. the koi pond and Light Flower with the breath (21 Oct): paces in and out only, the flower sways to the chosen pace, words only with a pace, how-to lists on both cards');
   var w = fresh(), LF = w.OvuLightFlower;
+  /* Jamie, 23 Oct: "it hangs halfway". A fading spark's alpha printed as 8.6e-7 became a colour the canvas refused, the frame
+   * threw, and the flower stopped. Every alpha is now written as a plain decimal, and the next frame is booked before drawing */
+  var okCol = function (c) { return /^rgba\(\d+,\d+,\d+,(0|1)\.\d{4}\)$/.test(c); }, lfsrc = fs.readFileSync(path.join(root, 'ovu-lightflower.js'), 'utf8');
+  check('Light Flower: a tiny alpha in exponent form gives a colour the canvas reads, scaled and clamped', okCol(LF.rgba('rgba(255,238,214,' + (0.75 * 1e-4 * 1e-4) + ')', 0.45)) && LF.rgba('rgba(255,238,214,' + 8.6e-7 + ')', 0.45) === 'rgba(255,238,214,0.0000)' && LF.rgba('rgba(1,2,3,0.8)', 0.45) === 'rgba(1,2,3,0.3600)' && LF.rgba('rgba(1,2,3,0.9)', 2) === 'rgba(1,2,3,1.0000)');
+  check('Light Flower: the next frame is booked before the frame is drawn, so one bad frame cannot stop it', /raf = root\.requestAnimationFrame\(tick\);[^\n]*\n\s*draw\(now\);/.test(lfsrc));
   var paces = Object.keys(LF.PACES);
   check('four paces: the flower’s own rhythm and the koi pond’s three; in and out only, never a hold, none longer than six seconds a side', paces.join() === 'own,easy,steady,longout' && paces.every(function (k) { var p = LF.PACES[k]; return p.inS > 0 && p.outS > 0 && p.inS <= 6 && p.outS <= 6 && Object.keys(p).indexOf('holdS') < 0; }) && !LF.PACES.own.word && LF.PACES.longout.inS === 4 && LF.PACES.longout.outS === 6);
   var ownOk = true; for (var q = 0; q < 12; q += 0.5) { if (Math.abs(LF.breathAt(q, 'own').v - Math.sin(q * 2 * Math.PI / LF.BREATH_S)) > 1e-9 || LF.breathAt(q, 'own').phase !== null) ownOk = false; }
