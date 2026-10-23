@@ -247,7 +247,7 @@
     }
   };
   function infoBtn(topic) { return '<button type="button" class="ibtn" data-guide="' + topic + '" aria-label="Evidence and guidance">i</button>'; }
-  function guideHTML(topic) { var g = GUIDES[topic]; if (!g) return ''; var ev = window.OvuEvidence ? OvuEvidence.forTopic(topic) : []; return '<div class="guide" data-guide-panel="' + topic + '"><h4><span class="ms">' + g.icon + '</span>' + esc(g.title) + '</h4>' + g.body + '<div class="ev">' + (ev.length ? '<b>Sources</b><p class="evrefs">' + ev.map(function (e) { return '<a href="evidence.html#' + e.id + '" target="_blank" rel="noopener">' + esc(e.short) + ' <i>' + e.id + '</i></a>'; }).join('') + '</p>' : '') + '<span>Guidance, not a diagnosis. Bring the pattern to a clinician you trust. Look up any number on the <a href="evidence.html" target="_blank" rel="noopener">Evidence page</a>.</span></div></div>'; }
+  function guideHTML(topic) { var g = GUIDES[topic]; if (!g) return ''; var ev = window.OvuEvidence ? OvuEvidence.forTopic(topic) : []; return '<div class="guide" data-guide-panel="' + topic + '"><h4><span class="ms">' + g.icon + '</span>' + esc(g.title) + '</h4>' + g.body + '<div class="ev">' + (ev.length ? '<b>Sources</b><p class="evrefs">' + ev.map(function (e) { return '<a href="evidence.html#' + e.id + '">' + esc(e.short) + ' <i>' + e.id + '</i></a>'; }).join('') + '</p>' : '') + '<span>Guidance, not a diagnosis. Bring the pattern to a clinician you trust. Look up any number on the <a href="evidence.html">Evidence page</a>.</span></div></div>'; }
   function wireGuides(root) {
     root.addEventListener('click', function (e) {
       var b = e.target.closest('.ibtn'); if (!b) return;
@@ -1005,7 +1005,6 @@
     /* bedtime: a running practice, breathing session, Moon Tap or garden task ends quietly before she sleeps */
     try { if (practice) stopPractice(); } catch (e) { }
     try { if (session) stopSession(true, true); } catch (e) { }
-    try { if (erinAudio) erinAudio.pause(); } catch (e) { } /* Just breathe can still be speaking its opening line. */
     try { if (window.OvuBreathTap) OvuBreathTap.close(); } catch (e) { }
     try { if (window.OvuLightFlower) OvuLightFlower.close(); } catch (e) { }
     try { if (window.OvuMorning) OvuMorning.cancel(); } catch (e) { } /* Morning start ends at once, with no save prompt */
@@ -1816,7 +1815,7 @@
   /* Jamie, 22 Oct: "some may not want the mindfulness part and we shouldn't force". A choice on the You tab: slow mindful
      steps and gentle cues (the default), or quick steps with no cues. Practices she opens on purpose are unchanged. */
   function mindfulQuick() { return (S.profile() || {}).mindfulPace === 'quick'; }
-  function erinCuesOn() { return !!(window.OvuVoice && !OvuVoice.muted()); } /* Erin's voice is one switch, off until she turns it on (You tab); it covers her everyday lines too */
+  function erinCuesOn() { return !!(window.OvuVoice && !OvuVoice.muted()); } /* Erin's voice is one switch, off until she turns it on (You tab) */
   function applyMindful() { document.documentElement.dataset.mindful = mindfulQuick() ? 'quick' : 'slow'; }
   function openYou(confirmDelete) {
     var P = S.profile(), l = RW.ledger(), dates = {};
@@ -1828,7 +1827,7 @@
       '<div class="field"><label for="youName">What should I call you?</label><div class="row" style="margin-top:0"><input class="input" id="youName" maxlength="24" placeholder="Your name" value="' + esc(P.name || '') + '"><button type="button" class="btn soft" id="youNameSave" style="flex:0 0 auto;min-width:0"><span class="ms">check</span>Save</button></div></div>' +
       '<div id="youBirthday"></div>' +
       '<div id="youAccount"></div>' +
-      '<div class="ygroup"><span class="lbl">Your room</span>' + row('waving_hand', 'Getting to know you', 'Update your answers any time', 'intro') + row('checkroom', 'Wardrobe', 'Change your outfit', 'wardrobe') + row('format_size', 'Text size', 'Bigger words and buttons', 'text') + row('self_improvement', 'Mindful pace', mindfulQuick() ? 'Quick steps, no cues. Tap to bring the slow steps back' : 'Slow steps and gentle cues. Tap for quick steps instead', 'mindful') + row('record_voice_over', 'Erin\'s voice', erinCuesOn() ? 'On: her lines play in practices and on everyday actions. Tap to keep her quiet' : 'Off. Her words show as text; tap to hear her voice', 'erinvoice') + row('storefront', 'Dream Street', 'Pet shop, furniture store, property showroom', 'shop') + row('diversity_1', 'Plaza friends', (window.OvuFriends && OvuFriends.summaryNow ? OvuFriends.summaryNow() : 'Friends you meet in the plaza groups'), 'friends') + (RW.tester && RW.tester() ? row('science', 'Tester mode is on', 'Unlimited hearts for trying things out. Tap to turn off', 'testeroff') : '') + row('alarm', 'Reminders', 'Gentle nudges, set by you', 'clock') + '</div>' +
+      '<div class="ygroup"><span class="lbl">Your room</span>' + row('waving_hand', 'Getting to know you', 'Update your answers any time', 'intro') + row('checkroom', 'Wardrobe', 'Change your outfit', 'wardrobe') + row('format_size', 'Text size', 'Bigger words and buttons', 'text') + row('self_improvement', 'Mindful pace', mindfulQuick() ? 'Quick steps, no cues. Tap to bring the slow steps back' : 'Slow steps and gentle cues. Tap for quick steps instead', 'mindful') + row('record_voice_over', 'Erin\'s voice', erinCuesOn() ? 'On: she speaks in her practices and sessions. Tap to keep her quiet' : 'Off. Her words show as text; tap to hear her voice', 'erinvoice') + row('storefront', 'Dream Street', 'Pet shop, furniture store, property showroom', 'shop') + row('diversity_1', 'Plaza friends', (window.OvuFriends && OvuFriends.summaryNow ? OvuFriends.summaryNow() : 'Friends you meet in the plaza groups'), 'friends') + (RW.tester && RW.tester() ? row('science', 'Tester mode is on', 'Unlimited hearts for trying things out. Tap to turn off', 'testeroff') : '') + row('alarm', 'Reminders', 'Gentle nudges, set by you', 'clock') + '</div>' +
       '<div class="ygroup"><span class="lbl">Your records</span>' + row('auto_stories', 'My journal', 'Daily logs and Luna’s readings', '', 'journal.html') + row('medical_services', 'Share with my doctor', 'A 4-week summary card', '', 'journal.html#share') + row('menu_book', 'Evidence', 'Every source behind the guides, by number', '', 'evidence.html') + '</div>' +
       '<div class="ygroup"><span class="lbl">Your data</span>' + row('settings', 'Settings', 'Your life chapter, files from health apps, a sleep file', 'settings') + row('auto_awesome', 'Rhythme Plus', (window.OvuPodcast && OvuPodcast.plusActive() ? 'On for this phone' : 'Erin’s full library · preview'), 'plus') + row('fact_check', 'Your choices', 'Each use of your data, on or off, and your receipt', 'choices') + row('dark_mode', 'Luna’s settings', 'Reading, food photos and readings', 'luna') + row('move_to_inbox', 'Apple Health and Google', (window.OvuHealth ? OvuHealth.importedCount(S) : 0) ? OvuHealth.importedCount(S).toLocaleString() + ' entries brought in · see them or bring in more' : 'Choose what comes in: sleep, cycle, weight and more', 'import') + (window.OvuHealthNative && OvuHealthNative.available() ? (function (P) { return row(P.origin === 'healthkit' ? 'ios' : 'android', 'Connect ' + P.name, 'Read sleep, cycle days and more from ' + P.name + ' on ' + P.device + '; you choose what comes in', 'healthkit'); })(OvuHealthNative.info()) : '') + row('download', 'Export my data', 'A copy of everything, as a file', 'export') + row('delete', 'Delete everything', 'Start fresh on this phone', 'delete') + '</div>' +
       (confirmDelete ? '<div class="flag high" id="yDel"><span class="ms">warning</span><div><b>Delete everything on this phone?</b><span>Every entry, answer, photo thumbnail and heart is removed, and this cannot be undone. Your sign-in, cloud backup and Rhythme Plus access stay. Export a copy first if you want to keep it.' + (function () { var h = window.OvuSync && OvuSync.status ? OvuSync.status().held || 0 : 0; return h ? ' ' + h + ' Movement ' + (h === 1 ? 'entry is' : 'entries are') + ' not in your cloud backup yet, so ' + (h === 1 ? 'it' : 'they') + ' would be lost.' : ''; })() + '</span><div class="row"><button type="button" class="btn danger" data-yact="delete-yes"><span class="ms">delete</span>Delete everything</button><button type="button" class="btn ghost" data-yact="delete-no">Keep my data</button></div></div></div>' : '') +
@@ -1841,7 +1840,7 @@
       var b = e.target.closest('[data-yact]'); if (!b) return; var act = b.dataset.yact; chime('tap');
       if (act === 'intro') { openOnboarding(0, introAnswers()); return; } /* her answers as they are now, not as they were when You opened (Codex, 21 Oct) */
       if (act === 'text') return window.OvuTextSize && OvuTextSize.open ? OvuTextSize.open() : undefined;
-      if (act === 'erinvoice') { if (window.OvuVoice) OvuVoice.set(erinCuesOn()); chime('tap'); toast(erinCuesOn() ? 'Erin will speak her lines. Each practice still has its own Voice button.' : 'Erin stays quiet. Her words show as text; any practice can turn her voice on for that run.', 'record_voice_over'); openYou(); return; }
+      if (act === 'erinvoice') { if (window.OvuVoice) OvuVoice.set(erinCuesOn()); chime('tap'); toast(erinCuesOn() ? 'Erin will speak in her practices and sessions. Each practice still has its own Voice button.' : 'Erin stays quiet. Her words show as text; any practice can turn her voice on for that run.', 'record_voice_over'); openYou(); return; }
       if (act === 'mindful') { S.setProfile({ mindfulPace: mindfulQuick() ? 'slow' : 'quick' }); applyMindful(); chime('tap'); toast(mindfulQuick() ? 'Quick steps from now on. The practices you open on purpose are unchanged.' : 'Slow steps and gentle cues are back.', 'self_improvement'); openYou(); return; }
       if (act === 'wardrobe') return openWardrobe();
       if (act === 'shop') return openShop();
@@ -2917,7 +2916,7 @@
       sec('elderly_woman', 'Later in life', C.later) +
       sec('medical_services', 'When to see a doctor', C.redFlags) +
       sec('calculate', 'How Rhythme counts', C.counting) +
-      '<div class="guide on mvsec"><div class="ev"><b>Sources</b><p class="evrefs">' + refs.map(function (e) { return '<a href="evidence.html#' + e.id + '" target="_blank" rel="noopener">' + esc(e.short) + ' <i>' + e.id + '</i></a>'; }).join('') + '</p><span>Guidance, not a diagnosis. Bring questions to a clinician you trust, and look up any number on the <a href="evidence.html" target="_blank" rel="noopener">Evidence page</a>.</span></div></div>' +
+      '<div class="guide on mvsec"><div class="ev"><b>Sources</b><p class="evrefs">' + refs.map(function (e) { return '<a href="evidence.html#' + e.id + '">' + esc(e.short) + ' <i>' + e.id + '</i></a>'; }).join('') + '</p><span>Guidance, not a diagnosis. Bring questions to a clinician you trust, and look up any number on the <a href="evidence.html">Evidence page</a>.</span></div></div>' +
       '<div class="row"><button type="button" class="btn primary" id="mgLog"><span class="ms">add</span>Log movement</button></div>');
     $('#mgLog').addEventListener('click', function () { chime('tap'); openExercise(); });
   }
@@ -2925,7 +2924,7 @@
   /* ---------- recipes and the Mediterranean check (ovu-recipes.js) ---------- */
   function recSources(ids) {
     var refs = window.OvuEvidence ? OvuEvidence.forTopic('recipes').filter(function (e) { return !ids || ids.indexOf(e.id) > -1; }) : [];
-    return '<div class="guide on mvsec"><div class="ev"><b>Sources</b><p class="evrefs">' + refs.map(function (e) { return '<a href="evidence.html#' + e.id + '" target="_blank" rel="noopener">' + esc(e.short) + ' <i>' + e.id + '</i></a>'; }).join('') + '</p><span>Guidance, not a diagnosis. Bring questions to a clinician you trust, and look up any number on the <a href="evidence.html" target="_blank" rel="noopener">Evidence page</a>.</span></div></div>';
+    return '<div class="guide on mvsec"><div class="ev"><b>Sources</b><p class="evrefs">' + refs.map(function (e) { return '<a href="evidence.html#' + e.id + '">' + esc(e.short) + ' <i>' + e.id + '</i></a>'; }).join('') + '</p><span>Guidance, not a diagnosis. Bring questions to a clinician you trust, and look up any number on the <a href="evidence.html">Evidence page</a>.</span></div></div>';
   }
   /* a recipe opens its source's own page in a new tab; we only add a line on what is in it */
   function recCard(r) {
@@ -3047,7 +3046,7 @@
     bl23: ['Low-back discomfort', 'Traditional use; one small trial after childbirth, so direct evidence is limited.', ['E32', 'E28']],
     gv4: ['Low-back ache', 'Traditional use only; a benefit from pressing it yourself is not established.', ['E28']]
   };
-  function acuRefs(ids) { return ids.map(function (id) { var e = window.OvuEvidence && OvuEvidence.get(id); return e ? '<a href="evidence.html#' + id + '" target="_blank" rel="noopener">' + esc(e.short) + ' <i>' + id + '</i></a>' : ''; }).join(''); }
+  function acuRefs(ids) { return ids.map(function (id) { var e = window.OvuEvidence && OvuEvidence.get(id); return e ? '<a href="evidence.html#' + id + '">' + esc(e.short) + ' <i>' + id + '</i></a>' : ''; }).join(''); }
   function regionOf(id) { var r = null; Object.keys(ACU_REGIONS).forEach(function (k) { if (ACU_REGIONS[k].pts[id]) r = k; }); return r; }
   function openAcupressure() {
     if (current !== 'mind' && meditating && !session) exitMeditation();
@@ -3186,23 +3185,14 @@
   }
   /* returns the line, so a caller can also show it in its own sheet; the pose is skipped while she sleeps, meditates,
    * practises, walks or the room is being arranged, and the line still shows */
-  /* Erin's short line for an action (Jamie, 22 Oct: "All actions must have Erin's mindfulness voice"): one clip per action in
-   * assets/audio/erin-actions (voiced with her cloned voice by tools/voice/erin_lines.py, checked by transcription). Silent
-   * while her own guided practice speaks, while she sleeps or with sound off; the same line never twice within 20 s. */
-  var ERIN_ACT = 'assets/audio/erin-actions/', erinAudio = null, erinLast = {};
-  /* no line for the spring: the cave stays without a voice (Jamie, 21 Oct: "just sound in the cave") */
-  var MOMENT_ERIN = { period: 'saved', symptom: 'saved', food: 'saved', reflection: 'saved', farmmeal: 'cook-taste', exercise: 'gym', lightflower: 'light-flower', moontap: 'koi-pond', acupressure: 'acupressure', greenhouse: 'arrive', tea: 'tea-sip', plant: 'plant', weed: 'pull-weeds', farmwater: 'water-bed', well: 'draw-water', eggs: 'collect-eggs', treat: 'give-treat', hentreat: 'give-treat', milk: 'milk-clover', brush: 'brush-clover', springlower: 'spring-lower', springsteam: 'spring-wait', springlift: 'spring-lift', cast: 'cast', bite: 'bite', release: 'release-fish', watchwater: 'ripple', herbplant: 'plant-herb', herbwater: 'water-herb', herbharvest: 'pick-herb', brew: 'brew', plantcare: 'plant-care', harvest: 'harvest', shop: 'shop', seedswap: 'shop', gym: 'gym', letter: 'post-letter', letterread: 'read-letter', cookwash: 'cook-wash', cookchop: 'cook-chop', cooksmell: 'cook-smell', cooktaste: 'cook-taste', cookdish: 'cook-taste', adopt: 'arrange', petfeed: 'feed-pet', petplay: 'play-ball', petcuddle: 'cuddle', pettidy: 'tidy', petdress: 'dress-pet', wardrobe: 'change-outfit', plaza: 'arrive', friend: 'say-hello', hello: 'say-hello' };
-  function erin(id) {
-    if (!id || !erinCuesOn() || !soundOn() || asleep() || session || practice || meditating || (window.OvuMorning && OvuMorning.active())) return false;
-    var now = Date.now(); if (erinLast[id] && now - erinLast[id] < 20000) return false; erinLast[id] = now;
-    try { if (erinAudio) erinAudio.pause(); erinAudio = new Audio(ERIN_ACT + id + '.mp3'); erinAudio.play().catch(function () { }); } catch (e) { return false; }
-    return true;
-  }
+  /* Erin's short line for an action is gone (Jamie, 23 Oct: "remove all erin voice for activities"; it had been "All actions must
+   * have Erin's mindfulness voice" on 22 Oct). erin() stays as a no-op so the places that asked for a line (the barn, the
+   * garden, the harbour, the pet walk) need no change; her voice in her own practices and sessions is untouched. */
+  function erin() { return false; }
   function moment(key, opt) {
     if (!MO || !MO.MOMENTS[key]) return '';
     opt = opt || {};
     if (mindfulQuick()) { opt = Object.assign({}, opt, { quiet: true, line: '' }); } /* quick pace: no cue, no Erin line */
-    if (!opt.tries && !mindfulQuick()) erin(opt.erin || (key === 'brush' && L && L.id === 'heninside' ? 'brush-hen' : MOMENT_ERIN[key]));
     var text = mindfulQuick() ? '' : (opt.line || MO.line(key)), pose = opt.pose === undefined ? MO.pose(key) : opt.pose;
     if (asleep() || meditating || practice || session || arranging || current === 'care' || careOn || (window.OvuMorning && OvuMorning.active()) || (window.OvuSeats && OvuSeats.active())) return text; /* Morning start and a seated practice keep their own pose */
     /* while she walks the pose waits, a few times at most, and never starts over a walk (Codex branch review, 20 Oct) */
@@ -3813,7 +3803,7 @@
   hooks.on.layout = (hooks.on.layout || []).concat([function (L2) { if (trying && (!L2 || L2.id !== trying.at)) endTryOn(true); if (costume && (!L2 || L2.id !== costume.at)) undress(true); }]);
   function emit(name, a, b) { if (name === 'activity' || name === 'beforeWalk' || name === 'layout' || name === 'meditate') activityGen++; /* meditate too: a saved session's pending fade must not close a reopened Mind (Codex, 22 Oct) */ (hooks.on[name] || []).forEach(function (f) { try { f(a, b); } catch (e) { console.error('room hook ' + name, e); } }); }
   window.OvuRoom = { openCalendar: openCalendar, openScores: openScores, mindfulQuick: mindfulQuick, erinCuesOn: erinCuesOn,
-    erin: erin, /* Erin's short line for an action, by id (assets/audio/erin-actions/lines.json) */
+    erin: erin, /* a no-op since 23 Oct: no voice lines for everyday actions */
     LAYOUTS: LAYOUTS, ART: ART, OUTFITS: OUTFITS, hotspotHandlers: hooks.hotspotHandlers,
     on: function (name, f) { (hooks.on[name] = hooks.on[name] || []).push(f); if (name === 'boot' && booted) f(); },
     setFallbackHotspot: function (f) { hooks.fallbackHotspot = f; }, setHudStop: function (f) { hooks.hudStop = f; }, setMoving: function (f) { hooks.moving = f; }, emit: emit,

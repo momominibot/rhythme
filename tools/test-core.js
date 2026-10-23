@@ -620,8 +620,8 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
       p.call('stopPractice()'); p.call('runPractice("teeth", 0)'); var nextP = p.c.practice; if (fin) fin(); if (meta) meta();
       return flush().then(function () {
         check('Everyday callbacks and captions belong to the originating practice, with the old audio and wait cancelled', p.c.practice === nextP && oldP.audio.paused && oldP.cancelWait === null && p.clips.length === 2 && p.clips[0].indexOf('plants-0-0') > -1 && p.clips[1].indexOf('teeth-0-0') > -1 && p.captions.length === 2, p.clips.join(' | '));
-        var b = env(); b.call('runSession("erin", 3)'); var bedRun = b.c.session; b.advance(5000); var openingPaused = false; b.c.erinAudio = { pause: function () { openingPaused = true; } }; b.call('stopEverything()');
-        check('bedtime stops the session audio and pending callbacks, saving nothing below a full minute', b.c.session === null && bedRun.audio.paused && openingPaused && bedRun.cancelWait === null && !b.timers.some(function (t) { return t.live; }) && b.w.OvuStore.list('mindfulness').length === 0 && !b.c.clock);
+        var b = env(); b.call('runSession("erin", 3)'); var bedRun = b.c.session; b.advance(5000); b.call('stopEverything()'); /* no opening action line to pause since 23 Oct: Erin's action clips are gone */
+        check('bedtime stops the session audio and pending callbacks, saving nothing below a full minute', b.c.session === null && bedRun.audio.paused && bedRun.cancelWait === null && !b.timers.some(function (t) { return t.live; }) && b.w.OvuStore.list('mindfulness').length === 0 && !b.c.clock);
         var long = env(); long.call('runSession("erin", 3)'); var lr = long.c.session; long.advance(61000); long.call('stopEverything()');
         check('bedtime and Stop share the one-minute rule and stopped-session duration, with no delayed fade into night', long.c.session === null && lr.audio.paused && long.w.OvuStore.list('mindfulness').length === 1 && long.w.OvuStore.list('mindfulness')[0].data.minutes === 1 && !long.timers.some(function (t) { return t.live; }));
         var failed = env(); failed.call('runSession("erin", 3)'); var fr = failed.c.session; failed.advance(61000); failed.w.localStorage.setItem = function () { throw new Error('quota'); }; failed.call('stopEverything()');
@@ -648,17 +648,13 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   }).then(function () { finished = true; }).catch(function (e) { check('runner regression chain completes', false, e.stack); finished = true; });
 })();
 
-(function erinOnEveryAction() {
-  console.log('2k3c. Erin speaks for every action (Jamie, 22 Oct): one clip per action, each one on disk with its script');
-  var rj = fs.readFileSync(path.join(root, 'room.js'), 'utf8'), lines = JSON.parse(fs.readFileSync(path.join(root, 'assets/audio/erin-actions/lines.json'), 'utf8'));
-  var ids = lines.map(function (l) { return l.id; }), m = /var MOMENT_ERIN = (\{[^}]*\});/.exec(rj), map = m ? (new Function('return ' + m[1]))() : {};
-  var used = Object.keys(map).map(function (k) { return map[k]; }).concat(['brush-hen']);
+(function erinNoActionLines() {
+  console.log('2k3c. no Erin voice on everyday actions (Jamie, 23 Oct: "remove all erin voice for activities"): her practices keep their own');
+  var rj = fs.readFileSync(path.join(root, 'room.js'), 'utf8');
   var src = fs.readdirSync(root).filter(function (f) { return /^ovu-.*\.js$/.test(f); }).map(function (f) { return fs.readFileSync(path.join(root, f), 'utf8'); }).join('\n') + rj;
-  (src.match(/\.erin\('([a-z-]+)'\)/g) || []).forEach(function (x) { used.push(/'([a-z-]+)'/.exec(x)[1]); });
-  var missing = used.filter(function (id) { return ids.indexOf(id) < 0 || !fs.existsSync(path.join(root, 'assets/audio/erin-actions', id + '.mp3')); });
-  check('every Erin line the app plays has a script and an mp3', m && Object.keys(map).length > 40 && missing.length === 0, missing.join());
-  check('every scripted line has its clip, and no script has an em dash', lines.every(function (l) { return fs.existsSync(path.join(root, 'assets/audio/erin-actions', l.id + '.mp3')) && l.text.indexOf('\u2014') < 0; }));
-  check('moment() plays her line before any early return, and stays quiet while her guided practice speaks', /if \(!opt\.tries && !mindfulQuick\(\)\) erin\(/.test(rj) && /function erin\(id\) \{\n    if \(!id \|\| !erinCuesOn\(\) \|\| !soundOn\(\) \|\| asleep\(\) \|\| session \|\| practice \|\| meditating/.test(rj));
+  check('erin() is a no-op and nothing maps an action to a line any more', /function erin\(\) \{ return false; \}/.test(rj) && !/MOMENT_ERIN/.test(rj) && !/erinAudio/.test(rj));
+  check('the action clips and their scripts are gone, and no page or module asks for one', !fs.existsSync(path.join(root, 'assets/audio/erin-actions')) && !/erin-actions\//.test(src));
+  check('saving a log plays no line: the "thank you for taking a moment to notice" clip is gone (Jamie, 23 Oct)', !/thank you for taking a moment to notice/i.test(src));
 })();
 
 (function scoresAndVillagers() {
@@ -6009,8 +6005,7 @@ var summarised = false;
     check('the sea animals keep one plain fact and no citation, on screen or in the data (Jamie, 22 Oct)', !/class="fishsrc"/.test(hb) && !/source: '/.test(hb) && !/url: 'https/.test(hb));
   })();
   check('the PULSE flow asks before saving, ends the break when she leaves the sheet or the app, and joins the one-activity rule', /Log what I did/.test(rs) && /current !== 'pulse' \|\| document\.hidden/.test(rs) && /function openPulse\(id\) \{[\s\S]{0,200}refuseBusy\(\)/.test(rs));
-  var lines = JSON.parse(fs.readFileSync(path.join(root, 'assets/audio/erin-actions/lines.json'), 'utf8')).map(function (x) { return x.id; });
-  check("Erin's voice for before, start, stop and log, each with its clip", ['pulse-before', 'pulse-start', 'pulse-stop', 'pulse-log'].every(function (id) { return lines.indexOf(id) > -1 && fs.existsSync(path.join(root, 'assets/audio/erin-actions/' + id + '.mp3')); }));
+  check('PULSE plays no Erin action line (23 Oct)', !/erin\('pulse-/.test(rs) || /function erin\(\) \{ return false; \}/.test(fs.readFileSync(path.join(root, 'room.js'), 'utf8')));
 })();
 
 (function () {
@@ -6076,7 +6071,7 @@ var summarised = false;
   check('a full dish shelf refuses before anything is used: tomatoes, rice and the egg all stay', !full.ok && /99/.test(full.why) && fa.harvest.tomato === 2 && fa.kitchen.rice === 1 && fa.pantry.egg === 1 && fa.dishes.tomatoegg === 99);
   var bought = Kb.buyStaple(Sb, wb.OvuRewards, 'egg');
   check('a grocer egg joins the mix as a small one', !bought.ok || Rb.ranchOf(Fb.farmState(Sb)).sizes.egg.small >= 1);
-  check('every Erin ranch line has its script and clip', ['ranch-open', 'ranch-room', 'ranch-arrive', 'ranch-egg', 'ranch-hatch', 'ranch-calf', 'ranch-born', 'ranch-grown'].every(function (id) { return fs.existsSync(path.join(root, 'assets/audio/erin-actions/' + id + '.mp3')); }));
+  check('the ranch plays no Erin action line (23 Oct)', !fs.existsSync(path.join(root, 'assets/audio/erin-actions')));
   check('the farm keeps every animal\'s collection day, not only the three starters, and the ranch record rides along in farmState', /Object\.keys\(f\.animals/.test(fs.readFileSync(path.join(root, 'ovu-farm.js'), 'utf8')) && /ranch: f\.ranch/.test(fs.readFileSync(path.join(root, 'ovu-farm.js'), 'utf8')));
   /* Codex, 22 Oct (second review): a care save read before another tab's purchase overwrote the purchase. Two tabs share
      one storage and one lock; the care runs inside the lock, so it reads the farm after the hen was bought. */
