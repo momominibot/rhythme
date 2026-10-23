@@ -6188,6 +6188,13 @@ var summarised = false;
   check('the sweep ends on practiceStop, activity, layout, clear and import, sleep and a replaced floor; pauses by the frame clamp while hidden; writes through the farm lock, after a re-read, before any puff', /R\.on\('practiceStop', end\)/.test(tj) && /R\.on\('activity', function \(kind, id\) \{ end\(\);/.test(tj) && /R\.on\('layout', function \(\) \{ end\(\); draw\(\); \}\)/.test(tj) && /reason === 'clear' \|\| reason === 'import'/.test(tj) && /if \(sweep && R\.asleep && R\.asleep\(\)\) \{ end\(\); return; \}/.test(tj) && /FMl\.locked\(S, go\)/.test(tj) && /S\.reload\(\)/.test(tj) && /Math\.min\(0\.1, \(t - last\) \/ 1000\)/.test(tj) && tj.indexOf('puffAt(target.x') > tj.indexOf("(S.commit || S.setState)({ tidy: r.state })"));
 })();
 
+(function plusCompare() {
+  console.log('2pc. Rhythme Plus compares Free and Plus (23 Oct)');
+  var rm = fs.readFileSync(path.join(root, 'room.js'), 'utf8'), css = fs.readFileSync(path.join(root, 'room.css'), 'utf8');
+  var m = /var PLUS_ROWS = (\[[\s\S]*?\n  \]);/.exec(rm), rows = m ? vm.runInNewContext('(' + m[1] + ')') : [];
+  check('the Plus table: everything that logs or keeps her diary is free; the podcast counts episodes; perks not built yet say soon; no price anywhere; the support note names the creators and merchandise', rows.length === 9 && rows.slice(0, 3).every(function (r) { return r.free === true && r.plus === true; }) && rows[3].free === 'eps' && rows.filter(function (r) { return r.plus === 'soon'; }).length === 4 && !/\$|S\$|SGD|\bprice\b[^s]/.test(JSON.stringify(rows)) && /plusCompareHTML\(free, d\.episodes\.length\)/.test(rm) && /supports us as the creators of Rhythme/.test(rm) && /merchandise collaborations/.test(rm) && /\.plustable\{/.test(css), JSON.stringify(rows).slice(0, 200));
+})();
+
 (function dashboardTeamReview() {
   console.log('review worker (23 Oct): the dashboard says plainly why the team was or was not asked, never shows a failed proposals load as empty, and drops replies meant for another account');
   var el = function () { return { innerHTML: '', textContent: '', className: '', style: {}, dataset: {}, classList: { add: function () { }, remove: function () { }, toggle: function () { } }, setAttribute: function () { }, addEventListener: function () { }, querySelector: function () { return null; }, querySelectorAll: function () { return []; }, insertAdjacentHTML: function () { }, appendChild: function () { } }; };

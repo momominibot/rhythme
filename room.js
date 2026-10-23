@@ -2550,13 +2550,43 @@
       body.addEventListener('input', function (e) { if (e.target.id === 'podSeek') POD.seekTo(Number(e.target.value) / 1000); });
     }).catch(function (err) { toast(err.message, 'error'); });
   }
+  /* Free and Plus side by side (Jamie, 23 Oct: "a table comparison of what is available in the free plan and what is
+   * available in the Plus plan", with a line that Plus supports the team and brings member prices on merchandise
+   * collaborations). Everything that logs, stores or keeps her safe is free; perks not built yet say Coming soon. */
+  var PLUS_ROWS = [
+    { what: 'Cycle, sleep, food and journal', free: true, plus: true },
+    { what: 'Your room, garden, farm and town', free: true, plus: true },
+    { what: 'Mindful practices and breathing', free: true, plus: true },
+    { what: 'Erin’s Take A Pause podcast', free: 'eps', plus: 'all' },
+    { what: 'Plus outfits, starting with the Starlight gown', free: false, plus: true },
+    { what: 'Plus furniture for your home', free: false, plus: 'soon' },
+    { what: 'A birthday outfit, yours on your birthday', free: false, plus: 'soon' },
+    { what: 'First to try new Rhythme events', free: false, plus: 'soon' },
+    { what: 'Member prices on merchandise collaborations', free: false, plus: 'soon' }
+  ];
+  function plusCompareHTML(freeEps, allEps) {
+    function cell(v) {
+      if (v === true) return '<span class="ms fill pc-yes" aria-hidden="true">check_circle</span><span class="sr-only">Included</span>';
+      if (v === false) return '<span class="pc-no" aria-hidden="true">·</span><span class="sr-only">Not included</span>';
+      if (v === 'eps') return '<span class="pc-txt">' + freeEps + ' episodes</span>';
+      if (v === 'all') return '<span class="pc-txt">All ' + allEps + '</span>';
+      return '<span class="pc-soon">Coming soon</span>';
+    }
+    return '<table class="plustable"><caption class="sr-only">What the free plan and Rhythme Plus include</caption>' +
+      '<thead><tr><th scope="col"><span class="sr-only">Feature</span></th><th scope="col">Free</th><th scope="col"><span class="pluschip">Plus</span></th></tr></thead><tbody>' +
+      PLUS_ROWS.map(function (r) { return '<tr><th scope="row">' + esc(r.what) + '</th><td>' + cell(r.free) + '</td><td>' + cell(r.plus) + '</td></tr>'; }).join('') +
+      '</tbody></table>' +
+      '<div class="plussupport"><span class="ms fill" aria-hidden="true">favorite</span><p>Choosing Plus supports us as the creators of Rhythme, so we can keep making more: new places to explore, more of Erin’s episodes, and a member discount on selected merchandise collaborations as they arrive.</p></div>';
+  }
   /* Rhythme Plus preview: access codes until purchases open (Codex review: say plainly it is a preview) */
   function openPlus() {
     if (!POD) return;
     POD.load().then(function (d) {
       var prem = d.episodes.filter(function (e) { return e.access === 'premium'; }), mins = Math.round(prem.reduce(function (a, e) { return a + e.durationSeconds; }, 0) / 60), on = POD.plusActive(), p = POD.plus();
+      var free = d.episodes.length - prem.length;
       openSheet('rhythme-plus', 'Rhythme Plus', 'A preview, opened with an access code', 'auto_awesome',
         '<div class="plushero"><img src="assets/avatars/erin/erin-chibi.webp" alt=""><div><b>Erin’s full Take A Pause library</b><span>' + prem.length + ' more episodes, about ' + (mins >= 120 ? (Math.round(mins / 6) / 10) + ' hours' : mins + ' minutes') + ', on patience, honesty, kindness and steady effort, listened to right here in your room.</span></div></div>' +
+        plusCompareHTML(free, d.episodes.length) +
         (on ? '<div class="flag info"><span class="ms">check_circle</span><div><b>Plus is on for this phone</b><span>Until ' + esc(new Date(p.expiresAt).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })) + '.</span></div></div><div class="row"><button type="button" class="btn soft" data-pod-open=""><span class="ms">headphones</span>Listen now</button><button type="button" class="btn ghost" id="plusRemove">Remove from this phone</button></div>'
           : '<div class="field"><label for="plusCode">I have an access code</label><div class="row" style="margin-top:0"><input class="input" id="plusCode" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="RHY-XXXXX-XXXXX-…"><button type="button" class="btn primary" id="plusGo" style="flex:0 0 auto;min-width:0"><span class="ms">lock_open</span>Unlock</button></div><div class="msg" id="plusMsg"></div></div>') +
         '<p class="help">Purchases are not open yet. During this preview, an access code from the Rhythme team opens Plus on this phone for 12 months from when you use it. If you clear this browser or change phones, ask the team for help.</p>' +
