@@ -3088,6 +3088,20 @@ function scenes(todayIso) {
   var msrc = fs.readFileSync(path.join(root, 'ovu-music.js'), 'utf8');
   check('the music players are never counted as a voice (no ducking under itself) and live outside assets/audio (the voice mute never touches them)', /el\.__ovuMusic\) return false;/.test(msrc) && M.MUSIC_DIR === 'assets/music/' && M.audible({ tagName: 'AUDIO', __ovuMusic: true, paused: false, ended: false, muted: false, volume: 1, src: 'assets/music/home.mp3' }) === false);
 })();
+(function sourcesStayInTheApp() {
+  console.log('sources stay in the app (Jamie, 23 Oct): no link leaves; an (i) popup names the source and its points');
+  var w = {}; vm.createContext(w); w.window = w;
+  ['ovu-evidence.js', 'ovu-recipes.js', 'ovu-sources.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w, { filename: f }); });
+  var SR = w.OvuSources, E = w.OvuEvidence, R = w.OvuRecipes, here = 'https://momominibot.github.io/rhythme/room.html';
+  check('only addresses on another site count as leaving; phone numbers, mail and in-app links do not', SR.leaves('https://www.nhs.uk/x', here) && SR.leaves('http://example.org', here) && !SR.leaves('tel:995', here) && !SR.leaves('journal.html#share', here) && !SR.leaves('https://momominibot.github.io/rhythme/evidence.html', here) && !SR.leaves('mailto:hello@ranklore.ai', here));
+  var ev = E.LIST[1], ei = SR.info(ev.url), rc = R.byId('cod'), ri = SR.info(rc.url), hi = SR.info('https://findahelpline.com/');
+  check('an evidence source shows its number, its checked summary as points and its publisher; a recipe shows our line and its charity', ei.title.indexOf(ev.id) > -1 && ei.points.length >= 1 && ei.org && ri.title === rc.title && ri.org === 'Bone Health & Osteoporosis Foundation' && ri.points.join(' ').indexOf('olive') > -1);
+  check('every evidence source and every recipe has at least one point and a named publisher', E.LIST.every(function (e) { var i = SR.info(e.url); return i.points.length > 0 && i.org && i.org !== 'Another website'; }) && R.RECIPES.concat(R.LOCAL).every(function (r) { return SR.info(r.url).points.length > 0; }), E.LIST.filter(function (e) { var i = SR.info(e.url); return !(i.points.length > 0 && i.org && i.org !== 'Another website'); }).map(function (e) { return e.id + ' ' + SR.host(e.url); }).join(', '));
+  check('the helpline popup still says how to reach help: the address as text, the local emergency number', hi.points.join(' ').indexOf('findahelpline.com') > -1 && /local emergency number/.test(hi.points.join(' ')) && hi.address === 'findahelpline.com');
+  var ssrc = fs.readFileSync(path.join(root, 'ovu-sources.js'), 'utf8'), pages = fs.readdirSync(root).filter(function (f) { return /\.html$/.test(f); });
+  check('the guard catches every link click and window.open in the capture phase, and uses no regex lookbehind (older iPhones cannot parse it)', /addEventListener\('click'[\s\S]*?\}, true\);/.test(ssrc) && /root\.open = function/.test(ssrc) && !/\(\?<[=!]/.test(ssrc));
+  check('every page of the app loads the guard', pages.every(function (f) { return fs.readFileSync(path.join(root, f), 'utf8').indexOf('<script src="ovu-sources.js"></script>') > -1; }), pages.filter(function (f) { return fs.readFileSync(path.join(root, f), 'utf8').indexOf('ovu-sources.js') < 0; }).join(', '));
+})();
 (function lighterOnSlowPhones() {
   console.log('the lighter look for slower phones (23 Oct): her choice wins, a small phone starts lighter, a slow measured room turns lighter for a week');
   var w = { localStorage: { getItem: function () { return null; }, setItem: function () { } } }; vm.createContext(w); w.window = w;

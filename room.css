@@ -1867,7 +1867,10 @@ span.frchip{cursor:default}
 .rcook{display:grid;gap:6px}
 .rcook .rcard{margin:0}
 .rcookbtn{justify-content:flex-start;gap:8px;min-height:44px;margin-left:12px;font-size:13px}
-.rcookbtn .croppic{width:30px;height:30px}
+.rcookbtn .dishbig{width:64px;height:64px;object-fit:contain;flex:none}
+.btn img.croppic.dishlist{width:72px;height:72px;border-radius:16px}
+.learnline{display:flex;gap:6px;align-items:flex-start}
+.rcard{position:relative}.rcard .rtx{flex:1}
 .learnline a{color:var(--rm-plum);font-weight:700}
 .rcard b{display:block;font:800 13px/1.3 var(--sans);color:var(--rm-ink)}
 .rcard small{display:block;font:600 11.5px/1.45 var(--sans);color:var(--rm-ink-2);margin-top:3px}

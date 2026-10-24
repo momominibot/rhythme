@@ -172,7 +172,7 @@
   }
   function openKitchen() {
     var here = where();
-    var list = RECIPES.map(function (r) { var c = canCook(S, r.id); return '<button type="button" class="btn soft" data-recipe="' + r.id + '"' + (c.ok ? '' : ' disabled') + '><img class="croppic" src="assets/food/dish-' + r.id + '.webp" alt=""><span><b>' + esc(r.name) + '</b><small>' + esc(needsText(r)) + ' · ' + esc(state(r, c)) + '</small></span></button>'; }).join('');
+    var list = RECIPES.map(function (r) { var c = canCook(S, r.id); return '<button type="button" class="btn soft" data-recipe="' + r.id + '"' + (c.ok ? '' : ' disabled') + '><img class="croppic dishlist" src="assets/food/dish-' + r.id + '.webp" alt=""><span><b>' + esc(r.name) + '</b><small>' + esc(needsText(r)) + ' · ' + esc(state(r, c)) + '</small></span></button>'; }).join('');
     R.openSheet('kitchen', here === 'farm' ? 'Cook from the basket' : 'The kitchen', 'A dish, one step at a time', 'skillet',
       mind('Choose one dish. Cooking here is slow on purpose.') + '<div class="seedlist one" id="kitchenList">' + list + '</div>' + stockLine(S) +
       '<p class="help">Cooking uses what the dish needs from the basket and the pantry. It earns no hearts, takes no energy and logs nothing for you.</p>');
@@ -182,11 +182,11 @@
   /* a Learn dish names its real recipe and opens the source's own page; the cooking here is the game's short version */
   function learnLine(r) {
     var L = r.learn && root.OvuRecipes && root.OvuRecipes.byId(r.learn); if (!L) return '';
-    return '<p class="help learnline"><span class="ms">menu_book</span>From Learn: <a href="' + esc(L.url) + '" target="_blank" rel="noopener">' + esc(L.title) + '</a> (' + esc(L.src) + '), the full recipe for your real kitchen.</p>';
+    return '<p class="help learnline"><span class="ms">menu_book</span><span>From Learn: <b>' + esc(L.title) + '</b> (' + esc(L.src) + '), the full recipe for your real kitchen.</span><button type="button" class="srcinfo" data-src="' + esc(L.url) + '" data-srct="' + esc(L.title) + '" aria-label="About this source"><span class="ms">info</span></button></p>';
   }
   function openRecipe(id) {
     var r = recipe(id); if (!r) return; var c = canCook(S, id);
-    R.openSheet('kitchen-recipe', r.name, needsText(r), r.icon, stepsHTML(r, -1) +
+    R.openSheet('kitchen-recipe', r.name, needsText(r), r.icon, '<div class="dishpic"><img src="assets/food/dish-' + r.id + '.webp" alt="' + esc(r.name) + '"></div>' + stepsHTML(r, -1) +
       '<div class="row" id="cookActs">' + (c.ok ? '<button type="button" class="btn primary" id="cookBegin"><span class="ms">skillet</span>Begin cooking</button>' : '') + '<button type="button" class="btn soft" id="cookBack"><span class="ms">arrow_back</span>All dishes</button></div>' +
       (c.ok ? '' : '<p class="help">' + esc(c.why) + '</p>') +
       learnLine(r) +

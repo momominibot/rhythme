@@ -2934,9 +2934,10 @@
   }
   /* a recipe opens its source's own page in a new tab; we only add a line on what is in it */
   function recCard(r) {
-    var card = '<a class="rcard" href="' + esc(r.url) + '" target="_blank" rel="noopener"><span class="ms ric">' + esc(r.icon) + '</span><span class="rtx"><b>' + esc(r.title) + '</b><small>' + esc(r.why) + '</small><i>' + esc(r.src) + '<span class="ms">open_in_new</span></i></span></a>';
+    /* the source stays in the app (Jamie, 23 Oct): the card is not a link; its (i) opens who published it and its points */
+    var card = '<div class="rcard"><span class="ms ric">' + esc(r.icon) + '</span><span class="rtx"><b>' + esc(r.title) + '</b><small>' + esc(r.why) + '</small><i>' + esc(r.src) + '</i></span><button type="button" class="srcinfo" data-src="' + esc(r.url) + '" data-srct="' + esc(r.title) + '" aria-label="About this source: ' + esc(r.title) + '"><span class="ms">info</span></button></div>';
     var k = window.OvuKitchen && OvuKitchen.forLearn ? OvuKitchen.forLearn(r.id) : null; /* a Learn dish that cooks in the game too (Jamie, 23 Oct) */
-    return k ? '<div class="rcook">' + card + '<button type="button" class="btn soft rcookbtn" data-cook="' + esc(k.id) + '"><img class="croppic" src="assets/food/dish-' + esc(k.id) + '.webp" alt=""><span>Cook it in your kitchen</span></button></div>' : card;
+    return k ? '<div class="rcook">' + card + '<button type="button" class="btn soft rcookbtn" data-cook="' + esc(k.id) + '"><img class="dishbig" src="assets/food/dish-' + esc(k.id) + '.webp" alt=""><span>Cook it in your kitchen</span></button></div>' : card;
   }
   function openRecipes(group, refocus) {
     var R = window.OvuRecipes; if (!R) return;
