@@ -80,3 +80,15 @@ a harbour to explore. Your diary stays on your phone.
 - Blocker found: inside the phone apps, the Apple and Google buttons cannot finish (the sign-in page leaves the app's
   web view and Google refuses embedded web views), so only the emailed code works there, capped at 2 emails an hour by
   Supabase's built-in mailer. Open question 1 above is still the gate for submitting.
+
+## App Store record, 24 Oct 2026 (afternoon)
+
+- Jamie created the record on his phone: **Rhythme: Cosy Cycle Diary** (Apple app id 6826516943, SKU RHYTHME001,
+  en-US). Google Play listing renamed to match.
+- Subtitle "Log your days, grow your world"; Health and Fitness, then Lifestyle; release type MANUAL (nothing goes
+  live after approval until Jamie releases it).
+- Description and promotional text rewritten to sell (Jamie: "update and upsell it"), every claim checked against the
+  app. Source of truth: docs/store/rhythme_metadata.cjs, which pushes them (re-runnable, submits nothing).
+- The eight 21 Oct frames are the iPhone screenshots (docs/store/rhythme_screenshots.cjs uploads them).
+- First upload was refused for a missing NSHealthUpdateUsageDescription (Apple asks for it with the HealthKit
+  entitlement even when the app only reads); added a line saying Rhythme never writes to Health. Build 1 uploaded.
