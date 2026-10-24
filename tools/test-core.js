@@ -3144,6 +3144,20 @@ function scenes(todayIso) {
   var hsrc = fs.readFileSync(path.join(root, 'ovu-harbour.js'), 'utf8'), rsrc = fs.readFileSync(path.join(root, 'room.js'), 'utf8');
   check('the catch sheet offers Keep for the kitchen only for a fish that can be kept, and a Learn card with a kitchen version offers Cook it', /canKeep \? '<button type="button" class="btn soft" id="fishKeep"/.test(hsrc) && /OvuKitchen\.forLearn\(r\.id\)/.test(rsrc) && /data-cook=/.test(rsrc));
 })();
+(function rheaIn3dPreview() {
+  console.log('Rhea in 3D, a preview (Jamie, 24 Oct: "show me in the github.io"): off unless switched on, sweater pictures only');
+  var src = fs.readFileSync(path.join(root, 'room.js'), 'utf8');
+  var keys = (/var THREE_D = \{([^}]*)\}/.exec(src) || [, ''])[1].match(/'([a-z0-9-]+)'/g).map(function (k) { return k.replace(/'/g, ''); });
+  function size(f) { var b = fs.readFileSync(f); var i = 12; while (i < b.length) { var t = b.toString('ascii', i, i + 4), n = b.readUInt32LE(i + 4);
+    if (t === 'VP8X') return [1 + b.readUIntLE(i + 12, 3), 1 + b.readUIntLE(i + 15, 3)];
+    if (t === 'VP8 ') return [b.readUInt16LE(i + 14) & 0x3fff, b.readUInt16LE(i + 16) & 0x3fff];
+    if (t === 'VP8L') { var v = b.readUInt32LE(i + 9); return [1 + (v & 0x3fff), 1 + ((v >> 14) & 0x3fff)]; }
+    i += 8 + n + (n & 1); } return null; }
+  var bad = keys.filter(function (k) { var a = path.join(root, 'assets/room/dream/avatar-' + k + '.webp'), b = path.join(root, 'assets/room/dream/3d/avatar-' + k + '.webp');
+    if (!fs.existsSync(b)) return true; var sa = size(a), sb = size(b); return !sa || !sb || sa[0] !== sb[0] || sa[1] !== sb[1]; });
+  check('each 3D picture exists and sits on exactly its painted picture\'s canvas, so the room\'s sizing numbers hold (' + keys.length + ' pictures)', keys.length === 7 && bad.length === 0, bad);
+  check('the preview is off unless this phone switched it on, and a 3D face never gets a painted blink', /localStorage\.getItem\('rhythme_3d'\) === '1'/.test(src) && /indexOf\('\/3d\/'\) > -1\) \{ scheduleBlink\(\); return; \}/.test(src));
+})();
 (function plazaHasOnlyRealPeople() {
   console.log('the plaza shows only real people (Jamie, 23 Oct: no sample neighbours; nobody there means an empty plaza)');
   var w = scenes('2026-10-18'), C = w.OvuCommunity;
