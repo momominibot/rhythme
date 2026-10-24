@@ -3088,6 +3088,21 @@ function scenes(todayIso) {
   var msrc = fs.readFileSync(path.join(root, 'ovu-music.js'), 'utf8');
   check('the music players are never counted as a voice (no ducking under itself) and live outside assets/audio (the voice mute never touches them)', /el\.__ovuMusic\) return false;/.test(msrc) && M.MUSIC_DIR === 'assets/music/' && M.audible({ tagName: 'AUDIO', __ovuMusic: true, paused: false, ended: false, muted: false, volume: 1, src: 'assets/music/home.mp3' }) === false);
 })();
+(function lighterOnSlowPhones() {
+  console.log('the lighter look for slower phones (23 Oct): her choice wins, a small phone starts lighter, a slow measured room turns lighter for a week');
+  var w = { localStorage: { getItem: function () { return null; }, setItem: function () { } } }; vm.createContext(w); w.window = w;
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-perf.js'), 'utf8'), w, { filename: 'ovu-perf.js' });
+  var P = w.OvuPerf, now = Date.UTC(2026, 9, 23), fast = new Array(120).fill(16.7), slow = new Array(120).fill(16.7).concat(new Array(80).fill(40));
+  check('her choice wins over everything', P.decide('full', { look: 'lite', at: now }, { cores: 2 }, now).look === 'full' && P.decide('lite', null, { cores: 8, memory: 8 }, now).look === 'lite');
+  check('on automatic a small phone (2 cores or 2 GB) starts lighter; a big one is measured', P.decide('auto', null, { cores: 2 }, now).look === 'lite' && P.decide('auto', null, { memory: 2 }, now).look === 'lite' && P.decide('auto', null, { cores: 8, memory: 8 }, now).why === 'measure');
+  check('a measured answer holds for a week, then the room measures again', P.decide('auto', { look: 'lite', at: now - 86400000 }, {}, now).look === 'lite' && P.decide('auto', { look: 'lite', at: now - 8 * 86400000 }, {}, now).why === 'measure');
+  check('60 frames a second is full; one frame in four over 28 ms is lighter; too few frames (a hidden page) gives no answer, and stalls over 250 ms are ignored', P.judge(fast) === 'full' && P.judge(slow) === 'lite' && P.judge(new Array(10).fill(16)) === null && P.judge(fast.concat([900, 1200, 4000])) === 'full');
+  var css = fs.readFileSync(path.join(root, 'room.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ''), rh = fs.readFileSync(path.join(root, 'room.html'), 'utf8'), lf = fs.readFileSync(path.join(root, 'ovu-lightflower.js'), 'utf8');
+  var glass = (css.match(/[^}{]*\{[^}]*backdrop-filter:blur[^}]*\}/g) || []).map(function (r) { return r.split('{')[0].trim(); }).filter(function (sel) { return sel && sel.indexOf('html[data-perf') < 0 && sel !== '.veil' && sel.indexOf('@') < 0; });
+  var liteRule = (css.match(/html\[data-perf=lite\] \.icon-btn[^{]*\{[^}]*\}/) || [''])[0];
+  check('every frosted-glass panel in room.css loses its blur in the lighter look', glass.length > 10 && glass.every(function (sel) { return sel.split(',').every(function (one) { return liteRule.indexOf('html[data-perf=lite] ' + one.trim()) > -1; }); }), glass.filter(function (sel) { return liteRule.indexOf('html[data-perf=lite] ' + sel) < 0; }).join(' | '));
+  check('the look is set before the room script runs, and the Light Flower draws fewer points and pixels when lighter', rh.indexOf('<script src="ovu-perf.js"></script>') > -1 && rh.indexOf('<script src="ovu-perf.js"></script>') < rh.indexOf('<script src="room.js"></script>') && /nb = lite\(\) \? 12 : 34/.test(lf) && /dpr = Math\.min\(lite\(\) \? 1\.5 : 2/.test(lf));
+})();
 (function cookTheLearnDishes() {
   console.log('cooking the Learn dishes (Jamie, 23 Oct): cod from the grocer or a white fish kept at the harbour, six Learn recipes in the kitchen');
   var w = scenes('2026-10-23'); w.OvuRoom = null; w.OvuZones = null;
