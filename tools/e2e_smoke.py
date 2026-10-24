@@ -665,6 +665,34 @@ async def check_cycle_tab(browser):
           t0["enhanced"] and "Tap to choose" in t0["pill"] and t1["v"] == "06:45" and "6:45 am" in t1["pill"] and not t1["panel"] and t1["sheet"] == "sleep", [t0, t1])
     check("cycle tab and picker: no page errors", not errs, errs[:3]); await ctx.close()
 
+async def check_cooking(browser):
+    """Cooking the Learn dishes (Jamie, 23 Oct): a Learn recipe with a kitchen version offers Cook it; the recipe names its Learn
+    source; with a cod fillet, olives and tomatoes the four steps make the dish, using the fillet, and the grocer sells cod."""
+    ctx = await browser.new_context(viewport={"width": 390, "height": 844})
+    await ctx.add_init_script("if(!localStorage.getItem('ovumind_db_v1')) localStorage.setItem('ovumind_db_v1', %s);" % json.dumps(json.dumps(DB))); await ctx.add_init_script(SESSION_SEED)
+    await ctx.route("**/functions/v1/**", lambda r: r.abort())
+    pg = await ctx.new_page(); errs = []; pg.on("pageerror", lambda e: errs.append(str(e)[:200]))
+    await pg.goto(BASE + "room.html", wait_until="domcontentloaded")
+    try: await pg.wait_for_function("()=>window.OvuRoom && window.OvuKitchen && !OvuRoom.busy()", timeout=15000)
+    except Exception: pass
+    await pg.evaluate("()=>{ OvuCare.slowMs = 0; OvuKitchen.stepMs = 0; var f = OvuFarm.farmState(OvuStore); f.harvest = Object.assign({}, f.harvest, {tomato: 2}); f.kitchen = Object.assign({}, f.kitchen, {cod: 1, olives: 1}); OvuStore.setState({farm: f}); OvuRoom.openRecipes('meno'); }")
+    try: await pg.wait_for_selector('[data-cook=codtomato]', timeout=8000)
+    except Exception: pass
+    c0 = await pg.evaluate("()=>({cook: [...document.querySelectorAll('[data-cook]')].map(b=>b.dataset.cook), card: !!document.querySelector('.rcook a.rcard')})")
+    check("cooking: Learn's menopause recipes offer Cook it on the dishes that have a kitchen version (cod, salmon croquettes, tofu stir-fry)", set(["codtomato", "salmoncroquettes", "tofusesame"]) <= set(c0["cook"]) and c0["card"], c0)
+    await pg.evaluate("()=>document.querySelector('[data-cook=codtomato]').click()")
+    try: await pg.wait_for_selector('#cookBegin', timeout=8000)
+    except Exception: pass
+    c1 = await pg.evaluate("()=>({title: document.querySelector('#sheetTitle').textContent, learn: (document.querySelector('.learnline')||{}).textContent||'', href: (document.querySelector('.learnline a')||{}).href||''})")
+    check("cooking: the cod dish names its Learn recipe and source, opening the source's own page", "Cod with tomatoes and olives" in c1["title"] and "Cod with Tomatoes and Black Olives" in c1["learn"] and "bonehealthandosteoporosis.org" in c1["href"], c1)
+    await pg.evaluate("()=>document.querySelector('#cookBegin').click()")
+    try: await pg.wait_for_selector('#dishYes', timeout=12000)
+    except Exception: pass
+    c2 = await pg.evaluate("()=>{ var f = OvuStore.state().farm || {}; return {dish: (f.dishes||{}).codtomato || 0, cod: (f.kitchen||{}).cod || 0, olives: (f.kitchen||{}).olives || 0, tomato: (f.harvest||{}).tomato || 0, sheet: OvuRoom.sheetId()} }")
+    check("cooking: the four steps make the dish, use the cod fillet, the olives and two tomatoes, and ask whether she ate something like it", c2["dish"] == 1 and c2["cod"] == 0 and c2["olives"] == 0 and c2["tomato"] == 0 and c2["sheet"] == "kitchen-dish", c2)
+    check("cooking: no page errors", not errs, errs[:3]); await ctx.close()
+
+
 async def check_body_log(browser):
     """The symptom day's body log (23 Oct): Ovaria's discharge photos, sex and sex drive, a pregnancy test with its urgent
     signs, and a basal temperature that joins the day's temperature."""
@@ -2470,6 +2498,8 @@ async def main():
             await page.click("#spotActs [data-bite=lift]"); await page.wait_for_timeout(400)
             rv = await page.evaluate("(b)=>({first: /First time/.test(document.querySelector('#sheet').textContent), fact: !!document.querySelector('#sheet .fishfact'), src: !!document.querySelector('#sheet .fishsrc'), img: (document.querySelector('#sheet .fishcard img')||{}).naturalWidth||0, line: !!document.querySelector('#ownedProps .castline'), book: Object.keys(OvuHarbour.harbourState(OvuStore).book), spent: b.e - OvuStamina.value(), diary: OvuStore.list().length - b.d, go: !!document.querySelector('#fishGo')})", base)
             check("lifting shows the fish with its fact and source, writes a first meeting in the book, charges one cast of energy, takes the line in, and writes no diary entry", rv["first"] and rv["fact"] and not rv["src"] and rv["img"] > 0 and not rv["line"] and len(rv["book"]) == 1 and rv["spent"] == 3 and rv["diary"] == 0 and rv["go"], rv)
+            kp = await page.evaluate("()=>({keep: !!document.querySelector('#fishKeep'), help: (document.querySelector('#sheet .help')||{}).textContent||''})")
+            check("a white fish (the grouper here) offers Keep for the kitchen beside Let it go (Jamie, 23 Oct)", kp["keep"] and "fish dish" in kp["help"], kp)
             await page.click("#fishGo"); await page.wait_for_timeout(300)
             await page.evaluate("()=>document.querySelector('#spotActs [data-act=cast]').click()"); await page.wait_for_timeout(300)
             await page.click("#spotActs [data-bite=leave]"); await page.wait_for_timeout(300)
@@ -4486,6 +4516,7 @@ async def main():
             await check_cycle_tab(browser)  # Your cycle now, so-far score, rhythm cards, the time picker (23 Oct)
             await check_health_connect(browser)  # Apple Health and Health Connect from the phone app; no export file (23 Oct)
             await check_body_log(browser)  # discharge, sex and sex drive, pregnancy test, basal temperature (23 Oct)
+            await check_cooking(browser)  # Learn dishes cook in the kitchen, cod from the grocer or a kept fish (23 Oct)
             await gym_checks(browser, gate)  # Tideline Gym workouts, in a context of their own with a fake clock
 
             # 1t. tidy up (23 Oct): clutter on the floor by the clock, "Tidy up your room" with the magical broom (ovu-tidy.js).

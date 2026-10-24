@@ -2932,7 +2932,9 @@
   }
   /* a recipe opens its source's own page in a new tab; we only add a line on what is in it */
   function recCard(r) {
-    return '<a class="rcard" href="' + esc(r.url) + '" target="_blank" rel="noopener"><span class="ms ric">' + esc(r.icon) + '</span><span class="rtx"><b>' + esc(r.title) + '</b><small>' + esc(r.why) + '</small><i>' + esc(r.src) + '<span class="ms">open_in_new</span></i></span></a>';
+    var card = '<a class="rcard" href="' + esc(r.url) + '" target="_blank" rel="noopener"><span class="ms ric">' + esc(r.icon) + '</span><span class="rtx"><b>' + esc(r.title) + '</b><small>' + esc(r.why) + '</small><i>' + esc(r.src) + '<span class="ms">open_in_new</span></i></span></a>';
+    var k = window.OvuKitchen && OvuKitchen.forLearn ? OvuKitchen.forLearn(r.id) : null; /* a Learn dish that cooks in the game too (Jamie, 23 Oct) */
+    return k ? '<div class="rcook">' + card + '<button type="button" class="btn soft rcookbtn" data-cook="' + esc(k.id) + '"><img class="croppic" src="assets/food/dish-' + esc(k.id) + '.webp" alt=""><span>Cook it in your kitchen</span></button></div>' : card;
   }
   function openRecipes(group, refocus) {
     var R = window.OvuRecipes; if (!R) return;
@@ -2950,6 +2952,7 @@
     $('#recTabs').addEventListener('click', function (e) { var b = e.target.closest('[data-rg]'); if (!b || b.dataset.rg === g.id) return; chime('tap'); openRecipes(b.dataset.rg, true); });
     if (refocus) { var on = $('#recTabs [data-rg="' + g.id + '"]'); if (on) try { on.focus({ preventScroll: true }); } catch (e) { } }
     $('#recMedas').addEventListener('click', function () { chime('tap'); openMedas(); });
+    body.addEventListener('click', function (e) { var b = e.target.closest('[data-cook]'); if (!b || !window.OvuKitchen) return; chime('tap'); OvuKitchen.openRecipe(b.dataset.cook); });
   }
   /* The checklist answers itself as she taps (Yes or Not usually): each answer is kept on this phone (state.medas) and nothing is graded. */
   function openMedas() {
@@ -2997,6 +3000,7 @@
     });
     $('#mdClear').addEventListener('click', function () { chime('tap'); stored(true); keep({}); paint(); });
     $('#mdRecipes').addEventListener('click', function () { chime('tap'); openRecipes('every'); });
+    body.addEventListener('click', function (e) { var b = e.target.closest('[data-cook]'); if (!b || !window.OvuKitchen) return; chime('tap'); OvuKitchen.openRecipe(b.dataset.cook); }); /* a recipe idea that cooks in the game too */
     medasRefresh = function () { if (current === 'medas') { ans = stored(); paint(); } };
     paint();
   }
@@ -3808,7 +3812,7 @@
   hooks.on.activity = (hooks.on.activity || []).concat([function () { endTryOn(true); }]);
   hooks.on.layout = (hooks.on.layout || []).concat([function (L2) { if (trying && (!L2 || L2.id !== trying.at)) endTryOn(true); if (costume && (!L2 || L2.id !== costume.at)) undress(true); }]);
   function emit(name, a, b) { if (name === 'activity' || name === 'beforeWalk' || name === 'layout' || name === 'meditate') activityGen++; /* meditate too: a saved session's pending fade must not close a reopened Mind (Codex, 22 Oct) */ (hooks.on[name] || []).forEach(function (f) { try { f(a, b); } catch (e) { console.error('room hook ' + name, e); } }); }
-  window.OvuRoom = { openCalendar: openCalendar, openScores: openScores, mindfulQuick: mindfulQuick,
+  window.OvuRoom = { openRecipes: openRecipes, openCalendar: openCalendar, openScores: openScores, mindfulQuick: mindfulQuick,
     erin: erin, /* a no-op since 23 Oct: no voice lines for everyday actions */
     LAYOUTS: LAYOUTS, ART: ART, OUTFITS: OUTFITS, hotspotHandlers: hooks.hotspotHandlers,
     on: function (name, f) { (hooks.on[name] = hooks.on[name] || []).push(f); if (name === 'boot' && booted) f(); },

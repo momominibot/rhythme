@@ -1,8 +1,10 @@
 /* Rhythme harbour (Jamie, 21 Oct 2026: "generation of the harbour port and fishing capability"; the design is Codex's
  * harbour review, docs/design/2026-10-21-harbour-and-fishing.md). A small kelong-style jetty off the farm island's shore:
  * a timber jetty on stilts with a lantern shelter, a moored bumboat, a hut, a bench under a sea-almond tree, rocks.
- * Fishing is catch-and-release only. Cast, watch the float, and when a fish comes, Lift gently whenever you like: no
- * reaction window, no tension bar, no escape, no bait to lose. See it, write it in the catch book, let it go. Six
+ * Cast, watch the float, and when a fish comes, reel it in: no escape that costs anything, no bait to lose. See it, write it
+ * in the catch book, and let it go, or (Jamie, 23 Oct: cook the Learn dishes, "fishing for codfish.. or purchase at the
+ * grocers") keep one of the four white fish for the kitchen, where it stands in for the cod in a fish recipe. The rabbitfish
+ * (venomous spines) and the squid always go back. Six
  * Singapore species, each with one plain fact (no citations on screen or in the data, Jamie 22 Oct); they prefer a spot and a time of day, that is all.
  * No hearts, no rarity tiers, no clocks, no completion. The bench just watches the water, for anyone who would rather
  * not hook a fish. A cast costs the energy of a cast (OvuStamina.COSTS.fish), charged only when a fish is written in the
@@ -11,13 +13,13 @@
 (function (root) {
   'use strict';
   var SPECIES = [
-    { id: 'grouper', name: 'Orange-spotted grouper', local: 'kerapu', spots: ['rocks', 'jetty'], time: 'any', img: 'fish-grouper.webp',
+    { id: 'grouper', name: 'Orange-spotted grouper', local: 'kerapu', spots: ['rocks', 'jetty'], time: 'any', keep: true, img: 'fish-grouper.webp',
       fact: 'Young groupers grow up in estuaries and mangroves; the adults live out on the reefs.' },
-    { id: 'snapper', name: 'Mangrove red snapper', local: 'ikan merah', spots: ['rocks'], time: 'any', img: 'fish-snapper.webp',
+    { id: 'snapper', name: 'Mangrove red snapper', local: 'ikan merah', spots: ['rocks'], time: 'any', keep: true, img: 'fish-snapper.webp',
       fact: 'At home among mangrove roots when young, it moves out to open water to breed.' },
-    { id: 'barramundi', name: 'Barramundi', local: 'siakap', spots: ['jetty'], time: 'any', img: 'fish-barramundi.webp',
+    { id: 'barramundi', name: 'Barramundi', local: 'siakap', spots: ['jetty'], time: 'any', keep: true, img: 'fish-barramundi.webp',
       fact: 'Barramundi start life as males. In one study at a Singapore farm, most had become females by two to three years old.' },
-    { id: 'mullet', name: 'Flathead grey mullet', local: 'belanak', spots: ['jetty', 'rocks'], time: 'day', img: 'fish-mullet.webp',
+    { id: 'mullet', name: 'Flathead grey mullet', local: 'belanak', spots: ['jetty', 'rocks'], time: 'day', keep: true, img: 'fish-mullet.webp',
       fact: 'It feeds by sucking up the top layer of the sea floor, for tiny algae and bits of food.' },
     { id: 'rabbitfish', name: 'White-spotted rabbitfish', local: 'pek tor her', spots: ['rocks'], time: 'day', img: 'fish-rabbitfish.webp',
       fact: 'A grazer of seaweed and seagrass, with venom in its fin spines, so fishers handle it with care. Teochew families prize it at Chinese New Year.' },
@@ -110,13 +112,13 @@
     return s + '</svg>';
   }
   function spotHot(id) { return HARBOUR.hotspots.filter(function (h) { return h.id === id; })[0]; }
-  function bookLine() { var n = seenCount(S), c = harbourState(S).casts; return '<p class="help pantryline"><span class="ms">menu_book</span>' + (n ? n + ' of ' + SPECIES.length + ' kinds met, ' + c + ' fish recorded.' : 'Nothing in the catch book yet.') + ' Every fish goes back in the water.</p>'; }
+  function bookLine() { var n = seenCount(S), c = harbourState(S).casts; return '<p class="help pantryline"><span class="ms">menu_book</span>' + (n ? n + ' of ' + SPECIES.length + ' kinds met, ' + c + ' fish recorded.' : 'Nothing in the catch book yet.') + ' Let each one go, or keep a white fish for the kitchen.</p>'; }
   function step(box, o, done) { if (!CARE || !CARE.step) { done(); return; } CARE.step(box, Object.assign({ scene: 'harbour' }, o), done); }
 
   /* one spot, Harvest Moon style (Jamie, 22 Oct: "casting a line at the harbour needs actions"): hold Cast to fill a power
    * ring and let go to throw (a tap is a medium throw); the float drifts and nibbles for a while; a bite dips it and Erin
    * says so; Reel in within a few seconds (no clock with reduced motion), then hold Reel while the fish tugs. Nothing is
-   * lost by missing: the fish swims on, no cast is counted and no energy is spent. Every fish goes back. */
+   * lost by missing: the fish swims on, no cast is counted and no energy is spent. A caught fish goes back, or a white one may be kept for the kitchen. */
   var BITE_MS = 4000, REEL_MS = 2600;
   function reduced() { try { return root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } }
   function fast() { return !!(CARE && CARE.slowMs === 0); } /* the smoke suite's instant mode */
@@ -203,15 +205,19 @@
     raf = root.requestAnimationFrame(frame);
   }
   function reveal(spot, r) {
-    var sp = r.species, line3 = R.moment ? R.moment('release', { quiet: true }) : '';
+    var sp = r.species, canKeep = !!(sp.keep && root.OvuKitchen && root.OvuKitchen.keepFish), line3 = R.moment ? R.moment('release', { quiet: true }) : '';
     R.openSheet('harbour-fish', sp.name, (r.first ? 'First time! ' : '') + esc(sp.local) + (r.n > 1 ? ' · met ' + r.n + ' times' : ''), 'set_meal',
       '<div class="fishcard"><img src="' + ART + sp.img + '" alt="' + esc(sp.name) + '"><div><b>' + esc(sp.name) + '</b><small>' + esc(sp.local) + '</small></div></div>' +
       '<p class="fishfact">' + esc(sp.fact) + '</p>' + /* the citation stays in the data, not on screen (Jamie, 22 Oct) */
       (line3 ? '<p class="mindline"><span class="ms">spa</span><span>' + esc(line3) + '</span></p>' : '') +
-      '<div class="row"><button type="button" class="btn primary" id="fishGo"><span class="ms">water</span>Let it go</button><button type="button" class="btn ghost" id="fishBook"><span class="ms">menu_book</span>Catch book</button></div>' +
-      '<p class="help">It is already written in your catch book. Back it goes, the same as every fish here.</p>');
-    var go = doc.getElementById('fishGo'), bk = doc.getElementById('fishBook');
+      '<div class="row"><button type="button" class="btn primary" id="fishGo"><span class="ms">water</span>Let it go</button>' + (canKeep ? '<button type="button" class="btn soft" id="fishKeep"><span class="ms">skillet</span>Keep for the kitchen</button>' : '') + '<button type="button" class="btn ghost" id="fishBook"><span class="ms">menu_book</span>Catch book</button></div>' +
+      '<p class="help">It is already written in your catch book. ' + (canKeep ? 'Let it go, or keep it for a fish dish in the kitchen; it cooks in place of the cod.' : 'Back it goes: ' + (sp.id === 'rabbitfish' ? 'its fin spines carry venom, so it is not one to take home.' : 'it is not one for the kitchen.')) + '</p>');
+    var go = doc.getElementById('fishGo'), bk = doc.getElementById('fishBook'), kp = doc.getElementById('fishKeep');
     if (go) go.addEventListener('click', function () { R.toast('Back in the water.', 'water'); openSpot(spot); });
+    if (kp) kp.addEventListener('click', function () {
+      var res = root.OvuKitchen.keepFish(S); if (!res.ok) { R.toast(res.why, 'info'); return; }
+      R.chime('save'); R.toast('Kept for the kitchen: ' + res.have + (res.have === 1 ? ' white fish' : ' white fish') + ' to cook.', 'skillet'); openSpot(spot);
+    });
     if (bk) bk.addEventListener('click', function () { openBook(spot); });
   }
   function openBook(backTo) {
@@ -221,7 +227,7 @@
       return '<li class="bookrow' + (met ? '' : ' unseen') + '">' + (met ? '<img src="' + ART + sp.img + '" alt="">' : '<span class="bookq">?</span>') + '<span><b>' + (met ? esc(sp.name) : 'Not met yet') + '</b><small>' + (met ? esc(sp.local) + ' · first ' + esc(e.first || '') + ' · ' + e.n + (e.n === 1 ? ' time' : ' times') + '<br>' + esc(sp.fact) + ' <em>' + esc(sp.source) + '</em>' : (sp.spots.join(' or ') === 'jetty' ? 'Try the jetty' : sp.spots.indexOf('jetty') > -1 ? 'The jetty or the rocks' : 'Try the rocks') + (sp.time === 'night' ? ', after dark' : sp.time === 'day' ? ', in daylight' : '')) + '</small></span></li>';
     }).join('');
     R.openSheet('harbourbook', 'The catch book', n ? n + ' of ' + SPECIES.length + ' kinds met' : 'Nothing met yet', 'menu_book',
-      '<ul class="booklist">' + rows + '</ul><p class="help">' + h.casts + ' fish recorded so far. Every fish went back in the water. There is nothing to complete here; the book is for noticing.</p>' +
+      '<ul class="booklist">' + rows + '</ul><p class="help">' + h.casts + ' fish recorded so far. There is nothing to complete here; the book is for noticing.</p>' +
       (backTo ? '<div class="row"><button type="button" class="btn soft" id="bookBack"><span class="ms">phishing</span>Back to ' + esc(SPOTS[backTo].name.toLowerCase()) + '</button></div>' : ''));
     var b = doc.getElementById('bookBack'); if (b) b.addEventListener('click', function () { openSpot(backTo); });
   }

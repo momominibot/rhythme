@@ -1864,6 +1864,11 @@ span.frchip{cursor:default}
 .rcard:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(90,66,116,.16)}
 .rcard .ric{flex-shrink:0;width:38px;height:38px;border-radius:13px;display:grid;place-items:center;font-size:21px;color:var(--rm-plum);background:linear-gradient(135deg,var(--rm-blush-2),var(--rm-lilac-2))}
 .rcard .rtx{min-width:0}
+.rcook{display:grid;gap:6px}
+.rcook .rcard{margin:0}
+.rcookbtn{justify-content:flex-start;gap:8px;min-height:44px;margin-left:12px;font-size:13px}
+.rcookbtn .croppic{width:30px;height:30px}
+.learnline a{color:var(--rm-plum);font-weight:700}
 .rcard b{display:block;font:800 13px/1.3 var(--sans);color:var(--rm-ink)}
 .rcard small{display:block;font:600 11.5px/1.45 var(--sans);color:var(--rm-ink-2);margin-top:3px}
 .rcard i{display:inline-flex;align-items:center;gap:3px;font:800 10px var(--sans);font-style:normal;letter-spacing:.03em;color:var(--rm-mauve);margin-top:5px}
