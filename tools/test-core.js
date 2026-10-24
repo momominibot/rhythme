@@ -1625,6 +1625,12 @@ function addDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getU
   check('future dates are ignored', future.exact.join() === '2026-01-01');
   var old = R(rc(['2025-10-01', '2025-10-29', '2025-11-26'], { latest: 'yes', complete: 'yes' }), '2026-03-01');
   check('a latest start over 60 days ago pauses the window', old.reason === 'latest-old' && !old.ok);
+  /* Jamie's onboarding, 24 Oct: every bleeding day tapped, 3 days a month for 5 months, gave 15 starts and a question for each pair */
+  var taps = []; ['2026-06-18', '2026-07-18', '2026-08-18', '2026-09-18', '2026-10-18'].forEach(function (d) { var t = new Date(d + 'T00:00:00'); for (var k = 0; k < 3; k++) { var x = new Date(t.getTime() + k * 864e5); taps.push(x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0')); } });
+  var everyDay = R(rc(taps, { latest: 'yes', complete: 'yes' }), '2026-10-24');
+  check('every bleeding day tapped: 15 marks are 5 periods starting on the 18th, nothing to ask, and a window', taps.length === 15 && everyDay.exact.join() === '2026-06-18,2026-07-18,2026-08-18,2026-09-18,2026-10-18' && everyDay.unresolved.length === 0 && everyDay.ok, JSON.stringify(everyDay));
+  check('a day skipped inside a bleed still joins it (18 and 20), three days later starts a new one (18 and 21, then asked)', S.recallStarts(rc(['2026-01-18', '2026-01-20']), '2026-02-01').join() === '2026-01-18' && S.recallStarts(rc(['2026-01-18', '2026-01-21']), '2026-02-01').join() === '2026-01-18,2026-01-21' && R(rc(['2026-01-18', '2026-01-21']), '2026-02-01').unresolved.length === 1);
+  check('a run is chained mark to mark: 18, 19, 20, 21, 22 is one period however long', S.recallStarts(rc(['2026-01-18', '2026-01-19', '2026-01-20', '2026-01-21', '2026-01-22']), '2026-02-01').join() === '2026-01-18');
   var w2 = fresh('2026-03-05'), S2 = w2.OvuStore;
   S2.setProfile({ predictionMode: 'normal', periodRecall: rc(['2026-01-01', '2026-01-29', '2026-02-26'], { latest: 'yes', complete: 'yes' }) });
   var cs = S2.cycleStats('2026-03-05');

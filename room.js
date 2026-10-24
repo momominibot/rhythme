@@ -3391,10 +3391,12 @@
   function chipRow(key, options, val, multi) { return '<div class="chips" data-key="' + key + '"' + (multi ? ' data-multi="1"' : '') + '>' + options.map(function (o) { var v = o[0], lab = o[1], on = multi ? (val || []).indexOf(v) > -1 : val === v; return '<button type="button" class="chipbtn' + (on ? ' on' : '') + '" data-v="' + esc(v) + '">' + esc(lab) + '</button>'; }).join('') + '</div>'; }
   /* ---------- remembered periods: a 12-month calendar, newest month first ---------- */
   function recallState(A) { var r = A.periodRecall; if (!r || !Array.isArray(r.starts)) r = A.periodRecall = { version: 1, status: '', starts: [], clusters: {}, complete: '', latest: '' }; if (!r.clusters) r.clusters = {}; return r; }
-  function recallDays(r) { return r.starts.filter(function (x) { return x.precision === 'day'; }).map(function (x) { return x.date; }).sort(); }
+  /* period starts: marks on back-to-back days are one period (S.recallStarts), so tapping every bleeding day is fine */
+  function recallDays(r) { return S.recallStarts(r, S.today()); }
+  function recallMarks(r) { return r.starts.filter(function (x) { return x.precision === 'day'; }).map(function (x) { return x.date; }).sort(); }
   function shortDate(iso) { return new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }); }
   function recallHTML(A) {
-    var r = recallState(A), today = S.today(), t = new Date(today + 'T00:00:00'), h = '<p class="help rhelp">Mark when bleeding began, not spotting or every bleeding day. If one bleed lasted weeks, mark its start once. Remember the month but not the day? Tap <b>About this month</b>.</p><div class="rcal" id="rcal">';
+    var r = recallState(A), today = S.today(), t = new Date(today + 'T00:00:00'), starts = recallDays(r), h = '<p class="help rhelp">Tap the day each period began. Tapped every bleeding day? That’s fine: days next to each other count as one period. Remember the month but not the day? Tap <b>About this month</b>.</p><div class="rcal" id="rcal">';
     for (var k = 0; k < 12; k++) {
       var d0 = new Date(t.getFullYear(), t.getMonth() - k, 1), y = d0.getFullYear(), m = d0.getMonth(), mk = y + '-' + String(m + 1).padStart(2, '0');
       var lead = (d0.getDay() + 6) % 7, dim = new Date(y, m + 1, 0).getDate();
@@ -3402,7 +3404,7 @@
       h += '<div class="rmonth"><div class="rmhead"><b>' + d0.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }) + '</b><button type="button" class="rapprox' + (ap ? ' on' : '') + '" data-rmonth="' + mk + '" aria-pressed="' + ap + '">' + (ap ? '<span class="ms">check</span>' : '') + 'About this month</button></div><div class="rgrid">' + ['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(function (x) { return '<i>' + x + '</i>'; }).join('') + new Array(lead + 1).join('<span></span>');
       for (var d = 1; d <= dim; d++) {
         var iso = y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0'), on = r.starts.some(function (x) { return x.precision === 'day' && x.date === iso; });
-        h += '<button type="button" class="rday' + (on ? ' on' : '') + (iso === today ? ' today' : '') + '" data-rday="' + iso + '"' + (iso > today ? ' disabled' : '') + ' aria-pressed="' + on + '" aria-label="' + esc(shortDate(iso) + (iso === today ? ', today' : '') + (on ? ', period start' : '')) + '">' + d + '</button>';
+        h += '<button type="button" class="rday' + (on ? ' on' : '') + (on && starts.indexOf(iso) < 0 ? ' rcont' : '') + (iso === today ? ' today' : '') + '" data-rday="' + iso + '"' + (iso > today ? ' disabled' : '') + ' aria-pressed="' + on + '" aria-label="' + esc(shortDate(iso) + (iso === today ? ', today' : '') + (on ? ', period start' : '')) + '">' + d + '</button>';
       }
       h += '</div></div>';
     }
@@ -3410,11 +3412,11 @@
   }
   function rchips(attr, val, cur, opts) { return '<div class="chips">' + opts.map(function (o) { return '<button type="button" class="chipbtn' + (cur === o[0] ? ' on' : '') + '" ' + attr + '="' + esc(val) + '" data-rv="' + o[0] + '">' + esc(o[1]) + '</button>'; }).join('') + '</div>'; }
   function recallMoreHTML(A) {
-    var r = recallState(A), days = recallDays(r), months = r.starts.filter(function (x) { return x.precision === 'month'; }).length, n = days.length + months, h = '';
-    h += '<div class="rstatus"><span class="ms">' + (r.status === 'no-periods' ? 'pause_circle' : 'favorite') + '</span>' + (n ? n + ' start' + (n === 1 ? '' : 's') + ' remembered. You can add more later.' : (r.status === 'none-remembered' ? 'That’s okay. Start with your next period.' : (r.status === 'no-periods' ? 'No periods right now. Predictions stay paused.' : 'Newest months are at the top. Scroll down for older ones.'))) + '</div>';
+    var r = recallState(A), days = recallDays(r), marks = recallMarks(r).length, months = r.starts.filter(function (x) { return x.precision === 'month'; }).length, n = days.length + months, h = '', asked = 0;
+    h += '<div class="rstatus"><span class="ms">' + (r.status === 'no-periods' ? 'pause_circle' : 'favorite') + '</span>' + (n ? n + ' period' + (n === 1 ? '' : 's') + ' remembered' + (marks > days.length ? ' (' + marks + ' days marked)' : '') + '. You can add more later.' : (r.status === 'none-remembered' ? 'That’s okay. Start with your next period.' : (r.status === 'no-periods' ? 'No periods right now. Predictions stay paused.' : 'Newest months are at the top. Scroll down for older ones.'))) + '</div>';
     for (var i = 1; i < days.length; i++) {
       var g = S.diffDays(days[i - 1], days[i]);
-      if (g <= 14) { var key = days[i - 1] + '|' + days[i]; h += '<div class="field"><span class="lbl">' + esc(shortDate(days[i - 1]) + ' and ' + shortDate(days[i]) + ' are ' + g + ' days apart') + '</span>' + rchips('data-rcl', key, r.clusters[key] || '', [['separate', 'Separate periods'], ['one', 'One bleed that stopped and restarted'], ['unsure', 'Not sure']]) + '</div>'; }
+      if (g <= 14 && asked < 3) { asked++; var key = days[i - 1] + '|' + days[i]; h += '<div class="field"><span class="lbl">' + esc('Bleeding began on ' + shortDate(days[i - 1]) + ' and again on ' + shortDate(days[i]) + ', ' + g + ' day' + (g === 1 ? '' : 's') + ' later') + '</span>' + rchips('data-rcl', key, r.clusters[key] || '', [['separate', 'Separate periods'], ['one', 'One bleed that stopped and restarted'], ['unsure', 'Not sure']]) + '</div>'; }
     }
     if (days.length >= 2) h += '<div class="field"><span class="lbl">Could any periods be missing between these marks?</span>' + rchips('data-rk', 'complete', r.complete || '', [['yes', 'No, these are all'], ['some', 'Some may be missing'], ['unsure', 'Not sure']]) + '</div>';
     if (days.length) h += '<div class="field"><span class="lbl">' + esc('Was ' + shortDate(days[days.length - 1]) + ' your most recent period start?') + '</span>' + rchips('data-rk', 'latest', r.latest || '', [['yes', 'Yes'], ['no', 'No, there was a later one'], ['unsure', 'Not sure']]) + '</div>';
@@ -3443,6 +3445,7 @@
     /* a new most-recent mark needs its own confirmation */
     if (recallDays(r).slice(-1)[0] !== before) r.latest = '';
     A.lastPeriodStatus = r.status === 'no-periods' ? 'none' : '';
+    var st0 = recallDays(r); $$('.rday.on', body).forEach(function (b) { b.classList.toggle('rcont', st0.indexOf(b.dataset.rday) < 0); }); $$('.rday:not(.on)', body).forEach(function (b) { b.classList.remove('rcont'); });
     $('#recallMore').innerHTML = recallMoreHTML(A); chime('tap');
     return true;
   }
