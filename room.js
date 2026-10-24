@@ -516,6 +516,12 @@
    * (Codex branch review, 20 Oct: a late reading pose stayed after the moment ended) */
   var imgGen = 0;
   /* the picture half: she turns into it (or, silent, simply wears it); nothing is saved here */
+  /* Rhea in 3D, a preview (Jamie, 24 Oct 2026: "show me in the github.io"): her sweater pictures rendered from 3D models
+   * (tools/art/3d), each fitted on its painted picture's canvas so AVATAR_FIT holds. Off unless switched on in You, then
+   * Settings, on this phone only; other outfits and poses keep their painted pictures. */
+  var THREE_D = { 'base': 1, 'act-harvest': 1, 'act-eat': 1, 'act-coffee': 1, 'act-plants': 1, 'act-phone': 1, 'act-read': 1 };
+  function rhea3d() { try { return localStorage.getItem('rhythme_3d') === '1'; } catch (e) { return false; } }
+  function artFor(file) { var m = /^avatar-([a-z0-9-]+)\.webp$/.exec(file); return (m && THREE_D[m[1]] && rhea3d() ? ART + '3d/' : ART) + file; }
   function showOutfit(id, silent, fail) {
     var img = new Image(), gen = ++imgGen;
     img.onerror = function () { if (gen === imgGen && fail) fail(); }; /* she keeps what she was wearing */
@@ -528,7 +534,7 @@
       finishTwirl(); avatarImg.src = img.src; if (!silent && !avatar.classList.contains('hidden') && !scene.classList.contains('sitting')) { avatar.classList.add('poofing'); clearTimeout(poofTimer); poofTimer = setTimeout(function () { poofTimer = null; avatar.classList.remove('poofing'); if (gen === imgGen) moment('wardrobe'); }, 700); } /* tracked: a newer outfit or twirl clears it (Codex verification, 21 Oct) */
     };
     preloadBlink(id);
-    img.src = ART + 'avatar-' + id + '.webp';
+    img.src = artFor('avatar-' + id + '.webp');
   }
   function setOutfit(id, silent) {
     if (!isOutfit(id)) id = 'base';
@@ -1824,7 +1830,7 @@
       '<div class="ygroup"><span class="lbl">Your life chapter</span><div class="chips" role="group" aria-label="Your life chapter">' + PERSONAS.map(function (p) { return '<button type="button" class="chipbtn' + (p[0] === cur ? ' on' : '') + '" data-persona="' + p[0] + '" aria-pressed="' + (p[0] === cur) + '"><span class="ms">' + p[1] + '</span>' + esc(p[2]) + ' · ' + esc(p[3]) + '</button>'; }).join('') + '</div>' +
       '<p class="help">Marks your chapter on the Your life journey reading pages, so it is easy to find. It changes nothing else: it does not measure your cycle or change any check.</p><div class="msg" id="setPersonaMsg" role="status" aria-live="polite"></div></div>' +
       '<div class="ygroup"><span class="lbl">Apple Health and Health Connect</span>' + (window.OvuHealthNative && OvuHealthNative.available() ? (function (P) { return row(P.origin === 'healthkit' ? 'ios' : 'android', 'Connect ' + P.name, 'Read sleep, cycle days and more from ' + P.name + ' on ' + P.device + '; you choose what comes in', 'healthkit'); })(OvuHealthNative.info()) : conn('phone_iphone', 'In the Rhythme app', 'Apple Health on an iPhone and Health Connect on Android connect from the Rhythme app on your phone; a web page cannot reach them. You choose what comes in, and nothing is written back.', 'App only')) + '</div>' +
-      (window.OvuPerf ? '<div class="ygroup"><span class="lbl">This phone</span>' + row('speed', 'Effects: ' + ({ auto: 'Automatic', full: 'Full', lite: 'Lighter' })[OvuPerf.choice()], OvuPerf.choice() === 'auto' ? (OvuPerf.lite() ? 'Lighter on this phone, so the room stays smooth. Tap to change' : 'Full on this phone. It turns lighter by itself if the room runs slowly. Tap to change') : OvuPerf.choice() === 'lite' ? 'No glass blur, still sparkles, smoother on slower phones. Tap to change' : 'Every effect on, even on a slower phone. Tap to change', 'perf') + '</div>' : '') +
+      (window.OvuPerf ? '<div class="ygroup"><span class="lbl">This phone</span>' + row('speed', 'Effects: ' + ({ auto: 'Automatic', full: 'Full', lite: 'Lighter' })[OvuPerf.choice()], OvuPerf.choice() === 'auto' ? (OvuPerf.lite() ? 'Lighter on this phone, so the room stays smooth. Tap to change' : 'Full on this phone. It turns lighter by itself if the room runs slowly. Tap to change') : OvuPerf.choice() === 'lite' ? 'No glass blur, still sparkles, smoother on slower phones. Tap to change' : 'Every effect on, even on a slower phone. Tap to change', 'perf') + row('view_in_ar', 'Rhea in 3D (preview): ' + (rhea3d() ? 'On' : 'Off'), rhea3d() ? 'Her sweater pictures are 3D renders on this phone. Tap to go back to the painted pictures' : 'Try her new 3D look in her sweater: standing, eating, coffee, watering, phone, reading and the basket. Tap to switch on', 'rhea3d') + '</div>' : '') +
       '<div class="ygroup"><span class="lbl">Your records</span>' + row('medical_information', 'Your health notes', 'A short guide to keeping medicines, supplements and treatment notes for your care team', '', 'health-profile.html') + row('science', 'Lab records', 'Enter, review and export dated results', '', 'labs.html') + row('edit_note', 'Cycle observations', 'Dated signs on your wall calendar', 'calendar') + '</div>' +
       '<div class="ygroup"><span class="lbl">Your data and account</span>' + row('delete_sweep', 'Choose what to delete', 'Pick local records, export a copy, then confirm', '', 'privacy.html#privacy-local-title') + row('person_remove', 'Your account', 'Sign in, account status and deleting your account', 'you') + row('shield', 'Privacy and local data', 'What is kept on this phone and why', '', 'privacy.html') + '</div>' +
       '<p class="help" style="text-align:center">Rhythme offers wellness notes, not a medical diagnosis.</p>');
@@ -1838,6 +1844,7 @@
       }
       var b = e.target.closest('[data-sact]'); if (!b) return; chime('tap');
       var act = b.dataset.sact;
+      if (act === 'rhea3d') { var on3 = !rhea3d(); try { localStorage.setItem('rhythme_3d', on3 ? '1' : '0'); } catch (e) { } if (lastPose) setPose(lastPose); else restorePose(); toast(on3 ? 'Rhea in 3D: on. Her sweater pictures are the new 3D look.' : 'Rhea in 3D: off. Back to her painted pictures.', 'view_in_ar'); openSettings(); return; }
       if (act === 'perf') { var nx = { auto: 'lite', lite: 'full', full: 'auto' }[OvuPerf.choice()]; OvuPerf.setChoice(nx); toast(nx === 'auto' ? 'Effects: automatic. The room picks what runs smoothly here.' : nx === 'lite' ? 'Effects: lighter. Smoother on this phone.' : 'Effects: full.', 'speed'); openSettings(); return; }
       if (act === 'healthkit') return openHealthKit();
       if (act === 'calendar') return openCalendar();
@@ -3157,6 +3164,7 @@
   function blink(again) {
     if (reduced || !blinkOn) return;
     var o = wearing(), open = 'avatar-' + o + '.webp', cur = avatarImg.getAttribute('src') || '', shut = preloadBlink(o);
+    if (cur.indexOf('/3d/') > -1) { scheduleBlink(); return; } /* the 3D preview has no blink frames: a painted blink would flash over her 3D face */
     var free = !document.hidden && avatar.classList.contains('idle') && !avatar.classList.contains('walking') && !avatar.classList.contains('twirling') && !avatar.classList.contains('moment') && !avatar.classList.contains('hidden') && cur.slice(-open.length) === open && shut.complete && shut.naturalWidth > 0;
     if (!free) { scheduleBlink(); return; }
     var gen = imgGen; avatarImg.src = shut.src;
@@ -3262,7 +3270,7 @@
    * the original pose */
   var OUTFIT_POSES = { plants: 1, coffee: 1, teeth: 1, dishes: 1, pets: 1, bed: 1, outfit: 1, stretch: 1, note: 1, eat: 1, listen: 1, read: 1, tend: 1, harvest: 1, wave: 1, press: 1, phone: 1, shop: 1, scale: 1 }; /* stretch and the eleven moment poses joined on 20 Oct (ovu-moments.js); the shower keeps its robe */
   var BASE_SUFFIXED = { stretch: 1 }; /* the unsuffixed stretch file is the yoga set; her own clothes are avatar-act-stretch-base (Codex, 21 Oct) */
-  function poseSrc(pose, outfit) { return ART + 'avatar-act-' + pose + (OUTFIT_POSES[pose] && outfit && (outfit !== 'base' || BASE_SUFFIXED[pose]) ? '-' + outfit : '') + '.webp'; }
+  function poseSrc(pose, outfit) { return artFor('avatar-act-' + pose + (OUTFIT_POSES[pose] && outfit && (outfit !== 'base' || BASE_SUFFIXED[pose]) ? '-' + outfit : '') + '.webp'); }
   var lastPose = null; /* the pose she holds, so a new outfit can redraw it (redress) */
   function setPose(pose) {
     finishTwirl(); lastPose = pose;
