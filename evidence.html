@@ -19,6 +19,8 @@
   .evitem .num{font:800 11px var(--sans);letter-spacing:.03em;background:var(--rm-lilac-2);color:var(--rm-mauve);border-radius:999px;padding:4px 8px;min-width:40px;text-align:center}
   .evitem b{display:block;font:800 13.5px/1.3 var(--sans);color:var(--rm-plum)}
   .evitem p{font:600 12.5px/1.5 var(--sans);color:var(--rm-ink-2);margin-top:3px}
+  .evitem .evsrc{margin:6px 8px 0 0;width:36px;height:36px;vertical-align:middle;display:inline-grid}
+  .evitem .evhost{font:700 11.5px var(--sans);color:var(--rm-ink-3);vertical-align:middle}
   .evitem a{display:inline-flex;align-items:center;gap:4px;margin-top:5px;font:800 12px var(--sans);color:var(--rm-mauve);text-decoration:none;overflow-wrap:anywhere}
   .evitem a .ms{font-size:16px}
   .evitem.hit{background:linear-gradient(90deg,rgba(246,201,214,.35),rgba(255,255,255,0));border-radius:14px;padding-left:8px;padding-right:8px}
@@ -59,7 +61,7 @@
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function host(u) { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return 'source'; } }
   function item(e, hit) {
-    return '<div class="evitem' + (hit ? ' hit' : '') + '" id="' + e.id + '"><span class="num">' + e.id + '</span><div><b>' + esc(e.short) + '</b><p>' + esc(e.text) + '</p><a href="' + esc(e.url) + '" target="_blank" rel="noopener"><span class="ms">open_in_new</span>' + esc(host(e.url)) + '</a></div></div>';
+    return '<div class="evitem' + (hit ? ' hit' : '') + '" id="' + e.id + '"><span class="num">' + e.id + '</span><div><b>' + esc(e.short) + '</b><p>' + esc(e.text) + '</p><button type="button" class="srcinfo evsrc" data-src="' + esc(e.url) + '" data-srct="' + esc(e.short) + '" aria-label="About this source: ' + esc(e.short) + '"><span class="ms">info</span></button><small class="evhost">' + esc(host(e.url)) + '</small></div></div>';
   }
   function render() {
     var t = q.value.trim().toLowerCase(), byNum = /^e?\d+$/.test(t) ? 'E' + t.replace(/^e/, '') : '';
@@ -77,5 +79,6 @@
   if (focus) { var el = document.getElementById(focus); if (el) setTimeout(function () { el.scrollIntoView({ block: 'start' }); }, 60); }
 })();
 </script>
+<script src="ovu-sources.js"></script>
 </body>
 </html>

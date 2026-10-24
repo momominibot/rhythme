@@ -3088,6 +3088,56 @@ function scenes(todayIso) {
   var msrc = fs.readFileSync(path.join(root, 'ovu-music.js'), 'utf8');
   check('the music players are never counted as a voice (no ducking under itself) and live outside assets/audio (the voice mute never touches them)', /el\.__ovuMusic\) return false;/.test(msrc) && M.MUSIC_DIR === 'assets/music/' && M.audible({ tagName: 'AUDIO', __ovuMusic: true, paused: false, ended: false, muted: false, volume: 1, src: 'assets/music/home.mp3' }) === false);
 })();
+(function sourcesStayInTheApp() {
+  console.log('sources stay in the app (Jamie, 23 Oct): no link leaves; an (i) popup names the source and its points');
+  var w = {}; vm.createContext(w); w.window = w;
+  ['ovu-evidence.js', 'ovu-recipes.js', 'ovu-sources.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w, { filename: f }); });
+  var SR = w.OvuSources, E = w.OvuEvidence, R = w.OvuRecipes, here = 'https://momominibot.github.io/rhythme/room.html';
+  check('only addresses on another site count as leaving; phone numbers, mail and in-app links do not', SR.leaves('https://www.nhs.uk/x', here) && SR.leaves('http://example.org', here) && !SR.leaves('tel:995', here) && !SR.leaves('journal.html#share', here) && !SR.leaves('https://momominibot.github.io/rhythme/evidence.html', here) && !SR.leaves('mailto:hello@ranklore.ai', here));
+  var ev = E.LIST[1], ei = SR.info(ev.url), rc = R.byId('cod'), ri = SR.info(rc.url), hi = SR.info('https://findahelpline.com/');
+  check('an evidence source shows its number, its checked summary as points and its publisher; a recipe shows our line and its charity', ei.title.indexOf(ev.id) > -1 && ei.points.length >= 1 && ei.org && ri.title === rc.title && ri.org === 'Bone Health & Osteoporosis Foundation' && ri.points.join(' ').indexOf('olive') > -1);
+  check('every evidence source and every recipe has at least one point and a named publisher', E.LIST.every(function (e) { var i = SR.info(e.url); return i.points.length > 0 && i.org && i.org !== 'Another website'; }) && R.RECIPES.concat(R.LOCAL).every(function (r) { return SR.info(r.url).points.length > 0; }), E.LIST.filter(function (e) { var i = SR.info(e.url); return !(i.points.length > 0 && i.org && i.org !== 'Another website'); }).map(function (e) { return e.id + ' ' + SR.host(e.url); }).join(', '));
+  check('the helpline popup still says how to reach help: the address as text, the local emergency number', hi.points.join(' ').indexOf('findahelpline.com') > -1 && /local emergency number/.test(hi.points.join(' ')) && hi.address === 'findahelpline.com');
+  var ssrc = fs.readFileSync(path.join(root, 'ovu-sources.js'), 'utf8'), pages = fs.readdirSync(root).filter(function (f) { return /\.html$/.test(f); });
+  check('the guard catches every link click and window.open in the capture phase, and uses no regex lookbehind (older iPhones cannot parse it)', /addEventListener\('click'[\s\S]*?\}, true\);/.test(ssrc) && /root\.open = function/.test(ssrc) && !/\(\?<[=!]/.test(ssrc));
+  check('every page of the app loads the guard', pages.every(function (f) { return fs.readFileSync(path.join(root, f), 'utf8').indexOf('<script src="ovu-sources.js"></script>') > -1; }), pages.filter(function (f) { return fs.readFileSync(path.join(root, f), 'utf8').indexOf('ovu-sources.js') < 0; }).join(', '));
+})();
+(function lighterOnSlowPhones() {
+  console.log('the lighter look for slower phones (23 Oct): her choice wins, a small phone starts lighter, a slow measured room turns lighter for a week');
+  var w = { localStorage: { getItem: function () { return null; }, setItem: function () { } } }; vm.createContext(w); w.window = w;
+  vm.runInContext(fs.readFileSync(path.join(root, 'ovu-perf.js'), 'utf8'), w, { filename: 'ovu-perf.js' });
+  var P = w.OvuPerf, now = Date.UTC(2026, 9, 23), fast = new Array(120).fill(16.7), slow = new Array(120).fill(16.7).concat(new Array(80).fill(40));
+  check('her choice wins over everything', P.decide('full', { look: 'lite', at: now }, { cores: 2 }, now).look === 'full' && P.decide('lite', null, { cores: 8, memory: 8 }, now).look === 'lite');
+  check('on automatic a small phone (2 cores or 2 GB) starts lighter; a big one is measured', P.decide('auto', null, { cores: 2 }, now).look === 'lite' && P.decide('auto', null, { memory: 2 }, now).look === 'lite' && P.decide('auto', null, { cores: 8, memory: 8 }, now).why === 'measure');
+  check('a measured answer holds for a week, then the room measures again', P.decide('auto', { look: 'lite', at: now - 86400000 }, {}, now).look === 'lite' && P.decide('auto', { look: 'lite', at: now - 8 * 86400000 }, {}, now).why === 'measure');
+  check('60 frames a second is full; one frame in four over 28 ms is lighter; too few frames (a hidden page) gives no answer, and stalls over 250 ms are ignored', P.judge(fast) === 'full' && P.judge(slow) === 'lite' && P.judge(new Array(10).fill(16)) === null && P.judge(fast.concat([900, 1200, 4000])) === 'full');
+  var css = fs.readFileSync(path.join(root, 'room.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ''), rh = fs.readFileSync(path.join(root, 'room.html'), 'utf8'), lf = fs.readFileSync(path.join(root, 'ovu-lightflower.js'), 'utf8');
+  var glass = (css.match(/[^}{]*\{[^}]*backdrop-filter:blur[^}]*\}/g) || []).map(function (r) { return r.split('{')[0].trim(); }).filter(function (sel) { return sel && sel.indexOf('html[data-perf') < 0 && sel !== '.veil' && sel.indexOf('@') < 0; });
+  var liteRule = (css.match(/html\[data-perf=lite\] \.icon-btn[^{]*\{[^}]*\}/) || [''])[0];
+  check('every frosted-glass panel in room.css loses its blur in the lighter look', glass.length > 10 && glass.every(function (sel) { return sel.split(',').every(function (one) { return liteRule.indexOf('html[data-perf=lite] ' + one.trim()) > -1; }); }), glass.filter(function (sel) { return liteRule.indexOf('html[data-perf=lite] ' + sel) < 0; }).join(' | '));
+  check('the look is set before the room script runs, and the Light Flower draws fewer points and pixels when lighter', rh.indexOf('<script src="ovu-perf.js"></script>') > -1 && rh.indexOf('<script src="ovu-perf.js"></script>') < rh.indexOf('<script src="room.js"></script>') && /nb = lite\(\) \? 12 : 34/.test(lf) && /dpr = Math\.min\(lite\(\) \? 1\.5 : 2/.test(lf));
+})();
+(function cookTheLearnDishes() {
+  console.log('cooking the Learn dishes (Jamie, 23 Oct): cod from the grocer or a white fish kept at the harbour, six Learn recipes in the kitchen');
+  var w = scenes('2026-10-23'); w.OvuRoom = null; w.OvuZones = null;
+  ['ovu-recipes.js', 'ovu-farm.js', 'ovu-stamina.js', 'ovu-barn.js', 'ovu-harbour.js', 'ovu-lane.js', 'ovu-kitchen.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w, { filename: f }); });
+  var K = w.OvuKitchen, S = w.OvuStore, H = w.OvuHarbour, LR = w.OvuRecipes;
+  var learn = K.RECIPES.filter(function (r) { return r.learn; });
+  check('six Learn dishes cook in the kitchen, each tied to a real Learn card, each with its own picture on disk', learn.length === 6 && learn.every(function (r) { return LR.byId(r.learn) && K.forLearn(r.learn) === r && fs.existsSync(path.join(root, 'assets/food/dish-' + r.id + '.webp')); }));
+  check('every staple has a picture on disk (cod and olives made from the app\'s own art)', Object.keys(K.STAPLES).every(function (k) { return fs.existsSync(path.join(root, 'assets/food/' + K.STAPLE_PIC[k] + '.webp')); }));
+  var keep = H.SPECIES.filter(function (x) { return x.keep; }).map(function (x) { return x.id; }).sort().join();
+  check('only the four white fish can be kept; the rabbitfish (venomous spines) and the squid always go back', keep === 'barramundi,grouper,mullet,snapper');
+  check('the cod dish waits for a white fish and says where to get one', !K.canCook(S, 'codtomato').ok && K.canCook(S, 'codtomato').missing.some(function (m) { return m.key === 'whitefish'; }));
+  var f = w.OvuFarm.farmState(S); f.harvest = Object.assign({}, f.harvest, { tomato: 4 }); f.kitchen = Object.assign({}, f.kitchen, { olives: 2, cod: 1 }); S.setState({ farm: f });
+  var k1 = K.keepFish(S);
+  check('keeping a fish puts one white fish in the kitchen, in one save', k1.ok && K.have(w.OvuFarm.farmState(S), 'fish') === 1 && K.have(K.kitchenOf ? { kitchen: K.kitchenOf(S.state().farm), harvest: {}, pantry: {} } : {}, 'whitefish') === 2);
+  var c1 = K.cook(S, 'codtomato'), st = S.state().farm;
+  check('cooking uses her own catch before a bought cod fillet, and the dish goes in her bag', c1.ok && st.kitchen.fish === 0 && st.kitchen.cod === 1 && st.kitchen.olives === 1 && st.harvest.tomato === 2 && st.dishes.codtomato === 1);
+  var c2 = K.cook(S, 'codtomato'), st2 = S.state().farm;
+  check('with no catch left the cod fillet goes in', c2.ok && st2.kitchen.cod === 0 && st2.dishes.codtomato === 2 && !K.canCook(S, 'codtomato').ok);
+  var hsrc = fs.readFileSync(path.join(root, 'ovu-harbour.js'), 'utf8'), rsrc = fs.readFileSync(path.join(root, 'room.js'), 'utf8');
+  check('the catch sheet offers Keep for the kitchen only for a fish that can be kept, and a Learn card with a kitchen version offers Cook it', /canKeep \? '<button type="button" class="btn soft" id="fishKeep"/.test(hsrc) && /OvuKitchen\.forLearn\(r\.id\)/.test(rsrc) && /data-cook=/.test(rsrc));
+})();
 (function plazaHasOnlyRealPeople() {
   console.log('the plaza shows only real people (Jamie, 23 Oct: no sample neighbours; nobody there means an empty plaza)');
   var w = scenes('2026-10-18'), C = w.OvuCommunity;
@@ -4772,17 +4822,17 @@ var summarised = false;
 })();
 
 (function farmKitchen() {
-  console.log('2k8a. the farm kitchen (21 Oct): staples for hearts in one save, recipes from the basket and the barn, cooking in one save with no hearts, no energy and no diary; no fish');
+  console.log('2k8a. the farm kitchen (21 Oct): staples for hearts in one save, recipes from the basket and the barn, cooking in one save with no hearts, no energy and no diary; fish only in the Learn dishes (23 Oct)');
   var w = scenes('2026-10-21'); w.OvuRoom = null; w.OvuZones = null;
   ['ovu-farm.js', 'ovu-stamina.js', 'ovu-barn.js', 'ovu-harbour.js', 'ovu-lane.js', 'ovu-kitchen.js'].forEach(function (f) { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), w, { filename: f }); });
   var K = w.OvuKitchen, F = w.OvuFarm, S = w.OvuStore, RW = w.OvuRewards, B = w.OvuBarn, d1 = '2026-10-21';
   var src = fs.readFileSync(path.join(root, 'ovu-kitchen.js'), 'utf8'), laneSrc = fs.readFileSync(path.join(root, 'ovu-lane.js'), 'utf8'), roomSrc = fs.readFileSync(path.join(root, 'room.js'), 'utf8');
   var ids = Object.keys(K.STAPLES);
-  check('eight staples at Hay & Harvest, 2 to 4 hearts each: rice, eggs, noodles, tofu, garlic, coconut milk, honey and yoghurt', ids.join() === 'rice,egg,noodles,tofu,garlic,coconut,honey,yoghurt' && ids.every(function (k) { return K.STAPLES[k].cost >= 2 && K.STAPLES[k].cost <= 4; }));
-  var known = function (k) { return !!F.CROPS[k] || !!K.STAPLES[k] || !!K.HERBS[k]; };
-  check('every recipe is vegetables, herbs and staples only: no fish, no unknown ingredient', K.RECIPES.every(function (r) { return Object.keys(r.needs).every(known) && !/fish|ikan|prawn|bilis/i.test(JSON.stringify(r)); }) && !/fish/i.test(Object.keys(F.CROPS).join() + ids.join()));
+  check('fifteen staples at Hay & Harvest, 2 to 5 hearts each: the first eight, then cod, canned salmon, olives, chickpeas, broccoli, sesame and lemon for the Learn dishes (23 Oct)', ids.join() === 'rice,egg,noodles,tofu,garlic,coconut,honey,yoghurt,cod,salmon,olives,chickpeas,broccoli,sesame,lemon' && ids.every(function (k) { return K.STAPLES[k].cost >= 2 && K.STAPLES[k].cost <= 5; }));
+  var known = function (k) { return !!F.CROPS[k] || !!K.STAPLES[k] || !!K.HERBS[k] || k === 'whitefish'; };
+  check('every ingredient is known; fish comes only in Learn dishes, as a white fish (cod or one she kept) or canned salmon, and every Learn dish names a real Learn card', K.RECIPES.every(function (r) { return Object.keys(r.needs).every(known) && (r.learn || !/fish|salmon|cod|ikan|prawn|bilis/i.test(JSON.stringify(r.needs))); }) && !/fish/i.test(Object.keys(F.CROPS).join()));
   check('the design’s recipes are there, and the two with ginger or pandan cook once the greenhouse herbs are picked into the basket (collation, 21 Oct)', ['garlicpakchoy', 'kangkongfry', 'tomatoegg', 'pumpkinsoup', 'carrotradish', 'strawberrybowl', 'sweetpotatoginger', 'pandanrice'].every(function (id) { return !!K.recipe(id); }) && K.RECIPES.every(function (r) { return !r.soon && r.steps.length === 4; }) && (function () { S.setState({ farm: { harvest: { sweetpotato: 1, ginger: 1, pandan: 1 }, kitchen: { rice: 1 }, pantry: {} } }); var a = K.canCook(S, 'sweetpotatoginger'), b = K.canCook(S, 'pandanrice'); S.setState({ farm: { harvest: { sweetpotato: 1 }, kitchen: { rice: 1 } } }); var c = K.canCook(S, 'sweetpotatoginger'); return a.ok && b.ok && !c.ok && c.missing && c.missing[0].key === 'ginger' && c.missing[0].herb; })());
-  check('every staple sold has a dish that uses it, and every dish she can cook has its four steps', ids.every(function (k) { return K.RECIPES.some(function (r) { return !r.soon && r.needs[k]; }); }) && K.RECIPES.every(function (r) { return r.soon || (r.steps.length === 4 && r.steps.every(function (t) { return !/—|–/.test(t); })); }) && K.STEPS.map(function (x) { return x.id; }).join() === 'wash,chop,smell,taste');
+  check('every staple sold has a dish that uses it (cod through a white-fish dish), and every dish she can cook has its four steps', ids.every(function (k) { return K.RECIPES.some(function (r) { return !r.soon && (r.needs[k] || (k === 'cod' && r.needs.whitefish)); }); }) && K.RECIPES.every(function (r) { return r.soon || (r.steps.length === 4 && r.steps.every(function (t) { return !/—|–/.test(t); })); }) && K.STEPS.map(function (x) { return x.id; }).join() === 'wash,chop,smell,taste');
   /* buying staples */
   S.setState({ farm: { harvest: {}, pantry: { egg: 2, milk: 1 } }, rewards: { hearts: 10, earned: 10, log: [], owned: [], placed: {} } });
   var b1 = K.buyStaple(S, RW, 'rice');
@@ -4794,7 +4844,7 @@ var summarised = false;
   S.setState({ farm: { kitchen: { garlic: 99 }, pantry: { egg: 99 } }, rewards: Object.assign({}, RW.ledger(), { hearts: 50 }) });
   check('the kitchen holds 99 of a staple and the pantry 99 eggs; a full shelf charges nothing', !K.buyStaple(S, RW, 'garlic').ok && !K.buyStaple(S, RW, 'egg').ok && RW.ledger().hearts === 50);
   S.setState({ farm: { kitchen: { rice: '3', tofu: -2, garlic: 'lots', honey: 1e9, saffron: 4, 'bad key': 2, egg: 7 } } });
-  check('restored kitchen values are cleaned: whole numbers, at most 99, eggs only in the pantry; a newer build’s staple is carried, not dropped', JSON.stringify(K.kitchenOf(S.state().farm)) === '{"saffron":4,"rice":3,"noodles":0,"tofu":0,"garlic":0,"coconut":0,"honey":99,"yoghurt":0}');
+  check('restored kitchen values are cleaned: whole numbers, at most 99, eggs only in the pantry; a newer build’s staple is carried, not dropped', JSON.stringify(K.kitchenOf(S.state().farm)) === '{"saffron":4,"rice":3,"noodles":0,"tofu":0,"garlic":0,"coconut":0,"honey":99,"yoghurt":0,"cod":0,"salmon":0,"olives":0,"chickpeas":0,"broccoli":0,"sesame":0,"lemon":0,"fish":0}');
   /* cooking */
   S.setState({ farm: { harvest: { tomato: 3, pakchoy: 2 }, pantry: { egg: 1 }, kitchen: { rice: 1 } }, stamina: { v: 40, max: 100, day: d1 }, rewards: { hearts: 5, earned: 5, log: [], owned: [], placed: {} } });
   var gp = K.canCook(S, 'garlicpakchoy');

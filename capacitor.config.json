@@ -1,13 +1,13 @@
 {
-  "appId": "app.vercel.ovuluna.dev",
-  "appName": "Ovuluna Dev",
+  "appId": "sg.rhythme.app",
+  "appName": "Rhythme",
   "webDir": "www",
   "loggingBehavior": "none",
   "zoomEnabled": true,
   "server": {
     "hostname": "localhost",
     "iosScheme": "capacitor",
-    "appStartPath": "/home.html"
+    "appStartPath": "/room.html"
   },
   "ios": {
     "contentInset": "never",

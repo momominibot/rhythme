@@ -1824,6 +1824,7 @@
       '<div class="ygroup"><span class="lbl">Your life chapter</span><div class="chips" role="group" aria-label="Your life chapter">' + PERSONAS.map(function (p) { return '<button type="button" class="chipbtn' + (p[0] === cur ? ' on' : '') + '" data-persona="' + p[0] + '" aria-pressed="' + (p[0] === cur) + '"><span class="ms">' + p[1] + '</span>' + esc(p[2]) + ' · ' + esc(p[3]) + '</button>'; }).join('') + '</div>' +
       '<p class="help">Marks your chapter on the Your life journey reading pages, so it is easy to find. It changes nothing else: it does not measure your cycle or change any check.</p><div class="msg" id="setPersonaMsg" role="status" aria-live="polite"></div></div>' +
       '<div class="ygroup"><span class="lbl">Apple Health and Health Connect</span>' + (window.OvuHealthNative && OvuHealthNative.available() ? (function (P) { return row(P.origin === 'healthkit' ? 'ios' : 'android', 'Connect ' + P.name, 'Read sleep, cycle days and more from ' + P.name + ' on ' + P.device + '; you choose what comes in', 'healthkit'); })(OvuHealthNative.info()) : conn('phone_iphone', 'In the Rhythme app', 'Apple Health on an iPhone and Health Connect on Android connect from the Rhythme app on your phone; a web page cannot reach them. You choose what comes in, and nothing is written back.', 'App only')) + '</div>' +
+      (window.OvuPerf ? '<div class="ygroup"><span class="lbl">This phone</span>' + row('speed', 'Effects: ' + ({ auto: 'Automatic', full: 'Full', lite: 'Lighter' })[OvuPerf.choice()], OvuPerf.choice() === 'auto' ? (OvuPerf.lite() ? 'Lighter on this phone, so the room stays smooth. Tap to change' : 'Full on this phone. It turns lighter by itself if the room runs slowly. Tap to change') : OvuPerf.choice() === 'lite' ? 'No glass blur, still sparkles, smoother on slower phones. Tap to change' : 'Every effect on, even on a slower phone. Tap to change', 'perf') + '</div>' : '') +
       '<div class="ygroup"><span class="lbl">Your records</span>' + row('medical_information', 'Your health notes', 'A short guide to keeping medicines, supplements and treatment notes for your care team', '', 'health-profile.html') + row('science', 'Lab records', 'Enter, review and export dated results', '', 'labs.html') + row('edit_note', 'Cycle observations', 'Dated signs on your wall calendar', 'calendar') + '</div>' +
       '<div class="ygroup"><span class="lbl">Your data and account</span>' + row('delete_sweep', 'Choose what to delete', 'Pick local records, export a copy, then confirm', '', 'privacy.html#privacy-local-title') + row('person_remove', 'Your account', 'Sign in, account status and deleting your account', 'you') + row('shield', 'Privacy and local data', 'What is kept on this phone and why', '', 'privacy.html') + '</div>' +
       '<p class="help" style="text-align:center">Rhythme offers wellness notes, not a medical diagnosis.</p>');
@@ -1837,6 +1838,7 @@
       }
       var b = e.target.closest('[data-sact]'); if (!b) return; chime('tap');
       var act = b.dataset.sact;
+      if (act === 'perf') { var nx = { auto: 'lite', lite: 'full', full: 'auto' }[OvuPerf.choice()]; OvuPerf.setChoice(nx); toast(nx === 'auto' ? 'Effects: automatic. The room picks what runs smoothly here.' : nx === 'lite' ? 'Effects: lighter. Smoother on this phone.' : 'Effects: full.', 'speed'); openSettings(); return; }
       if (act === 'healthkit') return openHealthKit();
       if (act === 'calendar') return openCalendar();
       if (act === 'you') { openYou(); setTab('you'); var ya = $('#youAccount'); if (ya) ya.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
@@ -2932,7 +2934,10 @@
   }
   /* a recipe opens its source's own page in a new tab; we only add a line on what is in it */
   function recCard(r) {
-    return '<a class="rcard" href="' + esc(r.url) + '" target="_blank" rel="noopener"><span class="ms ric">' + esc(r.icon) + '</span><span class="rtx"><b>' + esc(r.title) + '</b><small>' + esc(r.why) + '</small><i>' + esc(r.src) + '<span class="ms">open_in_new</span></i></span></a>';
+    /* the source stays in the app (Jamie, 23 Oct): the card is not a link; its (i) opens who published it and its points */
+    var card = '<div class="rcard"><span class="ms ric">' + esc(r.icon) + '</span><span class="rtx"><b>' + esc(r.title) + '</b><small>' + esc(r.why) + '</small><i>' + esc(r.src) + '</i></span><button type="button" class="srcinfo" data-src="' + esc(r.url) + '" data-srct="' + esc(r.title) + '" aria-label="About this source: ' + esc(r.title) + '"><span class="ms">info</span></button></div>';
+    var k = window.OvuKitchen && OvuKitchen.forLearn ? OvuKitchen.forLearn(r.id) : null; /* a Learn dish that cooks in the game too (Jamie, 23 Oct) */
+    return k ? '<div class="rcook">' + card + '<button type="button" class="btn soft rcookbtn" data-cook="' + esc(k.id) + '"><img class="dishbig" src="assets/food/dish-' + esc(k.id) + '.webp" alt=""><span>Cook it in your kitchen</span></button></div>' : card;
   }
   function openRecipes(group, refocus) {
     var R = window.OvuRecipes; if (!R) return;
@@ -2950,6 +2955,7 @@
     $('#recTabs').addEventListener('click', function (e) { var b = e.target.closest('[data-rg]'); if (!b || b.dataset.rg === g.id) return; chime('tap'); openRecipes(b.dataset.rg, true); });
     if (refocus) { var on = $('#recTabs [data-rg="' + g.id + '"]'); if (on) try { on.focus({ preventScroll: true }); } catch (e) { } }
     $('#recMedas').addEventListener('click', function () { chime('tap'); openMedas(); });
+    body.addEventListener('click', function (e) { var b = e.target.closest('[data-cook]'); if (!b || !window.OvuKitchen) return; chime('tap'); OvuKitchen.openRecipe(b.dataset.cook); });
   }
   /* The checklist answers itself as she taps (Yes or Not usually): each answer is kept on this phone (state.medas) and nothing is graded. */
   function openMedas() {
@@ -2997,6 +3003,7 @@
     });
     $('#mdClear').addEventListener('click', function () { chime('tap'); stored(true); keep({}); paint(); });
     $('#mdRecipes').addEventListener('click', function () { chime('tap'); openRecipes('every'); });
+    body.addEventListener('click', function (e) { var b = e.target.closest('[data-cook]'); if (!b || !window.OvuKitchen) return; chime('tap'); OvuKitchen.openRecipe(b.dataset.cook); }); /* a recipe idea that cooks in the game too */
     medasRefresh = function () { if (current === 'medas') { ans = stored(); paint(); } };
     paint();
   }
@@ -3808,7 +3815,7 @@
   hooks.on.activity = (hooks.on.activity || []).concat([function () { endTryOn(true); }]);
   hooks.on.layout = (hooks.on.layout || []).concat([function (L2) { if (trying && (!L2 || L2.id !== trying.at)) endTryOn(true); if (costume && (!L2 || L2.id !== costume.at)) undress(true); }]);
   function emit(name, a, b) { if (name === 'activity' || name === 'beforeWalk' || name === 'layout' || name === 'meditate') activityGen++; /* meditate too: a saved session's pending fade must not close a reopened Mind (Codex, 22 Oct) */ (hooks.on[name] || []).forEach(function (f) { try { f(a, b); } catch (e) { console.error('room hook ' + name, e); } }); }
-  window.OvuRoom = { openCalendar: openCalendar, openScores: openScores, mindfulQuick: mindfulQuick,
+  window.OvuRoom = { openRecipes: openRecipes, openCalendar: openCalendar, openScores: openScores, mindfulQuick: mindfulQuick,
     erin: erin, /* a no-op since 23 Oct: no voice lines for everyday actions */
     LAYOUTS: LAYOUTS, ART: ART, OUTFITS: OUTFITS, hotspotHandlers: hooks.hotspotHandlers,
     on: function (name, f) { (hooks.on[name] = hooks.on[name] || []).push(f); if (name === 'boot' && booted) f(); },

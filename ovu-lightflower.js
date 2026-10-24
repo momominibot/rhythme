@@ -56,6 +56,7 @@
 
   /* ---- the screen ---- */
   var el = null, st = null, raf = 0, opts = {}, reduced = false, pending = null;
+  function lite() { return !!(root.OvuPerf && root.OvuPerf.lite && root.OvuPerf.lite()); }
   function h(html) { var d = document.createElement('div'); d.innerHTML = html.trim(); return d.firstChild; }
   function $(s) { return el ? el.querySelector(s) : null; }
   function store() { return root.OvuStore || null; }
@@ -193,15 +194,15 @@
   function rnd(seed) { var s = seed; return function () { s = (s * 16807) % 2147483647; return s / 2147483647; }; }
   function size() {
     cv = $('#lfCanvas'); var r = $('#lfStage').getBoundingClientRect();
-    W = Math.max(280, r.width || root.innerWidth); H = Math.max(400, r.height || root.innerHeight); dpr = Math.min(2, root.devicePixelRatio || 1);
+    W = Math.max(280, r.width || root.innerWidth); H = Math.max(400, r.height || root.innerHeight); dpr = Math.min(lite() ? 1.5 : 2, root.devicePixelRatio || 1); /* a slower phone draws fewer pixels (ovu-perf.js) */
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); cv.style.width = W + 'px'; cv.style.height = H + 'px';
     ctx = cv.getContext('2d');
     var R = Math.min(W * 0.36, H * 0.25), geo = { cx: W / 2, cy: H * 0.4, R: R, rot: BASE_ROT };
     if (st) st.geo = geo; else return;
     var fl = $('#lfFlower'); fl.style.left = (geo.cx - R * 1.15) + 'px'; fl.style.top = (geo.cy - R * 1.15) + 'px'; fl.style.width = fl.style.height = (R * 2.3) + 'px';
     var g = rnd(11); bokeh = [];
-    for (var i = 0; i < 34; i++) bokeh.push({ x: g() * W, y: g() * H, r: 4 + g() * 24, a: 0.05 + g() * 0.15, hue: g(), vx: (g() - 0.5) * 6, vy: -(4 + g() * 9), ph: g() * 6.28 });
-    motes = []; for (var m = 0; m < 70; m++) motes.push({ x: g() * W, y: g() * H, r: 0.5 + g() * 0.9, ph: g() * 6.28, sp: 1400 + g() * 2600 });
+    for (var i = 0, nb = lite() ? 12 : 34; i < nb; i++) bokeh.push({ x: g() * W, y: g() * H, r: 4 + g() * 24, a: 0.05 + g() * 0.15, hue: g(), vx: (g() - 0.5) * 6, vy: -(4 + g() * 9), ph: g() * 6.28 });
+    motes = []; for (var m = 0, nm = lite() ? 28 : 70; m < nm; m++) motes.push({ x: g() * W, y: g() * H, r: 0.5 + g() * 0.9, ph: g() * 6.28, sp: 1400 + g() * 2600 });
   }
   function petalPath(c, L, Wd) {
     /* a petal pointing along +x from the centre: wide in the middle, a soft rounded tip with a little ruffle */
@@ -257,8 +258,18 @@
   }
   function spark(k) {
     var geo = st.geo, a = geo.rot + (k / PETALS) * Math.PI * 2 - Math.PI / 2, g = Math.random;
-    for (var i = 0; i < 18; i++) { var d = geo.R * (0.3 + g() * 0.7), out = 10 + g() * 18; st.sparks.push({ x: geo.cx + Math.cos(a) * d + (g() - 0.5) * 14, y: geo.cy + Math.sin(a) * d + (g() - 0.5) * 14, vy: Math.sin(a) * out - (10 + g() * 14), vx: Math.cos(a) * out + (g() - 0.5) * 8, born: root.performance.now(), life: 2200 + g() * 900, r: 0.8 + g() * 1.1 }); }
+    for (var i = 0, ns = lite() ? 8 : 18; i < ns; i++) { var d = geo.R * (0.3 + g() * 0.7), out = 10 + g() * 18; st.sparks.push({ x: geo.cx + Math.cos(a) * d + (g() - 0.5) * 14, y: geo.cy + Math.sin(a) * d + (g() - 0.5) * 14, vy: Math.sin(a) * out - (10 + g() * 14), vx: Math.cos(a) * out + (g() - 0.5) * 8, born: root.performance.now(), life: 2200 + g() * 900, r: 0.8 + g() * 1.1 }); }
     if (st.sparks.length > 140) st.sparks.splice(0, st.sparks.length - 140);
+  }
+  /* a soft light drawn once per colour and kind on a small canvas, then stamped with drawImage and globalAlpha: 'bokeh' is
+   * the floating discs (full to 60 percent, then out), 'dot' is dot()'s spark (full, 45 percent at a third, then out) */
+  var glows = {};
+  function glow(col, kind) {
+    var key = kind + col; if (glows[key]) return glows[key];
+    var c = document.createElement('canvas'), n = 64; c.width = c.height = n; var x = c.getContext('2d'), g = x.createRadialGradient(n / 2, n / 2, 0, n / 2, n / 2, n / 2);
+    if (kind === 'bokeh') { g.addColorStop(0, 'rgba(' + col + ',1)'); g.addColorStop(0.7, 'rgba(' + col + ',0.6)'); g.addColorStop(1, 'rgba(' + col + ',0)'); }
+    else { g.addColorStop(0, 'rgba(' + col + ',1)'); g.addColorStop(0.35, 'rgba(' + col + ',0.45)'); g.addColorStop(1, 'rgba(0,0,0,0)'); }
+    x.fillStyle = g; x.fillRect(0, 0, n, n); glows[key] = c; return c;
   }
   function draw(now) {
     if (!ctx || !base || !head) return;
@@ -272,8 +283,7 @@
     /* soft bokeh floating upward and swaying */
     bokeh.forEach(function (b) {
       if (!reduced) { b.x += b.vx / 60 + Math.sin(now / 2600 + b.ph) * 0.12; b.y += b.vy / 60; if (b.y < -30) { b.y = H + 30; b.x = Math.random() * W; } if (b.x < -30) b.x = W + 30; if (b.x > W + 30) b.x = -30; }
-      var col = b.hue < 0.4 ? '255,190,160' : b.hue < 0.75 ? '190,170,255' : '150,200,255', gr = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
-      gr.addColorStop(0, 'rgba(' + col + ',' + b.a + ')'); gr.addColorStop(0.7, 'rgba(' + col + ',' + (b.a * 0.6) + ')'); gr.addColorStop(1, 'rgba(' + col + ',0)'); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = b.a; ctx.drawImage(glow(b.hue < 0.4 ? '255,190,160' : b.hue < 0.75 ? '190,170,255' : '150,200,255', 'bokeh'), b.x - b.r, b.y - b.r, b.r * 2, b.r * 2); ctx.globalAlpha = 1; /* each glow drawn once and reused: a gradient per point per frame was most of the frame */
     });
     /* a breathing aura behind the flower: it swells as the flower breathes in */
     var aura = ctx.createRadialGradient(geo.cx, geo.cy, 0, geo.cx, geo.cy, geo.R * 1.6), aa = 0.07 + 0.05 * (breath + 1) / 2;
@@ -306,7 +316,8 @@
     /* light drifting up and away from a lit petal, slowing as it goes */
     st.sparks = st.sparks.filter(function (p) {
       var tt = now - p.born; if (tt > p.life) return false; var f = 1 - tt / p.life, q = tt / 1000, slow = 1 - Math.exp(-q * 1.2);
-      var x = p.x + p.vx * slow / 1.2 + Math.sin(q * 2 + p.r * 9) * 4, y = p.y + p.vy * slow / 1.2 - q * 6; dot(ctx, x, y, p.r, 'rgba(255,238,214,' + (0.75 * f * f) + ')'); return true;
+      var x = p.x + p.vx * slow / 1.2 + Math.sin(q * 2 + p.r * 9) * 4, y = p.y + p.vy * slow / 1.2 - q * 6;
+      ctx.globalAlpha = Math.max(0, Math.min(1, 0.75 * f * f)); ctx.drawImage(glow('255,238,214', 'dot'), x - p.r * 3, y - p.r * 3, p.r * 6, p.r * 6); ctx.globalAlpha = 1; return true;
     });
   }
   root.OvuLightFlower = { rgba: rgba, PACES: PACES, breathAt: breathAt, LENGTHS: LENGTHS, PETALS: PETALS, headAt: headAt, BREATH_S: BREATH_S, RISE_MS: RISE_MS, SETTLE_MS: SETTLE_MS, MIN_GAP_MS: MIN_GAP_MS, glowAt: glowAt, holdFrom: holdFrom, petalFor: petalFor, entryFor: entryFor, open: open, close: close, start: start, stop: stop, running: function () { return !!st; } };

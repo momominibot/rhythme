@@ -1864,6 +1864,14 @@ span.frchip{cursor:default}
 .rcard:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(90,66,116,.16)}
 .rcard .ric{flex-shrink:0;width:38px;height:38px;border-radius:13px;display:grid;place-items:center;font-size:21px;color:var(--rm-plum);background:linear-gradient(135deg,var(--rm-blush-2),var(--rm-lilac-2))}
 .rcard .rtx{min-width:0}
+.rcook{display:grid;gap:6px}
+.rcook .rcard{margin:0}
+.rcookbtn{justify-content:flex-start;gap:8px;min-height:44px;margin-left:12px;font-size:13px}
+.rcookbtn .dishbig{width:64px;height:64px;object-fit:contain;flex:none}
+.btn img.croppic.dishlist{width:72px;height:72px;border-radius:16px}
+.learnline{display:flex;gap:6px;align-items:flex-start}
+.rcard{position:relative}.rcard .rtx{flex:1}
+.learnline a{color:var(--rm-plum);font-weight:700}
 .rcard b{display:block;font:800 13px/1.3 var(--sans);color:var(--rm-ink)}
 .rcard small{display:block;font:600 11.5px/1.45 var(--sans);color:var(--rm-ink-2);margin-top:3px}
 .rcard i{display:inline-flex;align-items:center;gap:3px;font:800 10px var(--sans);font-style:normal;letter-spacing:.03em;color:var(--rm-mauve);margin-top:5px}
@@ -2694,3 +2702,12 @@ button.rmgroup:focus-visible{outline:3px solid var(--rm-mauve);outline-offset:2p
 .bnote{margin-top:6px;min-height:1em}.bnote.flag{color:#9a5a00;font-weight:700}
 .sublbl{display:block;margin-top:8px}
 @media (prefers-reduced-motion:reduce){.dctile{transition:none}}
+
+/* ---------- lighter look for slower phones (ovu-perf.js, 23 Oct 2026) ----------
+   No glass blur over the moving scene (the panels turn nearly solid instead), no soft shadows on sprites and hotspots,
+   and the ambient loops (sparkles, twinkles, idle sways, the bench effects) hold still. Walking, fishing and the
+   breathing guides keep their motion: those carry meaning. */
+html[data-perf=lite] .icon-btn,html[data-perf=lite] .chip,html[data-perf=lite] .nav,html[data-perf=lite] .hint,html[data-perf=lite] .hud,html[data-perf=lite] .menubar,html[data-perf=lite] .dock,html[data-perf=lite] .visitbar,html[data-perf=lite] .welcome .btn.ghost,html[data-perf=lite] .c-list li,html[data-perf=lite] .c-opt,html[data-perf=lite] .podmini,html[data-perf=lite] .camctl button,html[data-perf=lite] .minimap,html[data-perf=lite] .btap-card,html[data-perf=lite] .gamehud,html[data-perf=lite] .zonename,html[data-perf=lite] .plazapill,html[data-perf=lite] .farmcan,html[data-perf=lite] .pv-bar,html[data-perf=lite] .c-caps div,html[data-perf=lite] .trybar{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;background-color:rgba(255,255,255,.95)}
+html[data-perf=lite] .veil{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;background:rgba(40,24,70,.48)}
+html[data-perf=lite] .hotspot,html[data-perf=lite] .hotspot *,html[data-perf=lite] .prop,html[data-perf=lite] .prop img,html[data-perf=lite] .nbperson img,html[data-perf=lite] .villager img,html[data-perf=lite] .keeper img,html[data-perf=lite] .plot,html[data-perf=lite] .shopprop img{filter:none!important}
+html[data-perf=lite] .star,html[data-perf=lite] .sparkle,html[data-perf=lite] .win-night i.s,html[data-perf=lite] .welcome::after,html[data-perf=lite] .w-hero::before,html[data-perf=lite] .c-moon::before,html[data-perf=lite] .nbperson img,html[data-perf=lite] .villager img,html[data-perf=lite] .keeper img,html[data-perf=lite] .barnthing.animal img,html[data-perf=lite] .prop.owned.pet .petbody,html[data-perf=lite] .shopprop.kind-pet img,html[data-perf=lite] .plot.stage-5 svg,html[data-perf=lite] .holo-disc .scan,html[data-perf=lite] .holo-cone,html[data-perf=lite] #seatfx *,html[data-perf=lite] .scring .scspark,html[data-perf=lite] .sccloud,html[data-perf=lite] .cnic,html[data-perf=lite] .avatar.idle img,html[data-perf=lite] .avatar.flip.idle img,html[data-perf=lite] .hotspot .pulse,html[data-perf=lite] .hotspot.m .mbadge{animation:none!important}
