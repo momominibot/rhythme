@@ -22,6 +22,8 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Rhythme never writes to Health. It only reads the kinds of data you choose to bring into your diary.</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Rhythme reads only your sleep, period days, spotting, steps, workouts, resting heart rate and temperature from Health, so you can choose which of them join your diary. It never writes to Health and never uses this for ads.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
