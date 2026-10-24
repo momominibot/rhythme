@@ -355,14 +355,16 @@
     sortDepth(cur.y);
   }
   /* ---------- the walk cycle ---------- */
-  function outfitNow() { var m = /avatar-([a-z0-9-]+?)(?:-blink)?\.webp/.exec(avatar.querySelector('#avatarImg').getAttribute('src') || ''); return m && m[1].indexOf('act-') !== 0 && m[1] !== 'meditate' && m[1] !== 'sleeping' ? m[1] : null; }
+  /* standing in the 3D preview (the picture comes from 3d/), her sweater walks on the 3D strips: Meshy's preset walk on her
+     own rig, rendered by tools/art/3d/walk3d.sh (Jamie, 24 Oct: "walking naturally"); every other outfit keeps its painted strips */
+  function outfitNow() { var src = avatar.querySelector('#avatarImg').getAttribute('src') || '', m = /avatar-([a-z0-9-]+?)(?:-blink)?\.webp/.exec(src); var o = m && m[1].indexOf('act-') !== 0 && m[1] !== 'meditate' && m[1] !== 'sleeping' ? m[1] : null; return o === 'base' && src.indexOf('/3d/') > -1 ? 'base@3d' : o; }
   /* the outfits with walk strips drawn (tools/art/walkcycle.py). An outfit missing here, or a missing direction, falls back
      without a request, so a drop without strips yet (the gown, the kebayas, the tudung) does not log a 404 per direction */
-  var STRIPS = { base: 'side away towards', cozy: 'side away towards', pajamas: 'side away towards', party: 'side away', sundress: 'side away towards', yoga: 'side away towards', 'gym-tudung': 'side' }; /* the gym's covered-head kit walks on the treadmill (ovu-gym.js) */
+  var STRIPS = { base: 'side away towards', 'base@3d': 'side away towards', cozy: 'side away towards', pajamas: 'side away towards', party: 'side away', sundress: 'side away towards', yoga: 'side away towards', 'gym-tudung': 'side' }; /* the gym's covered-head kit walks on the treadmill (ovu-gym.js) */
   function sheet(outfit, dir) {
     var k = outfit + '-' + dir, e = cyc.sheets[k];
     if (!e && (!STRIPS[outfit] || STRIPS[outfit].indexOf(dir) < 0)) return (cyc.sheets[k] = { ok: false, img: { src: '' } });
-    if (!e) { e = cyc.sheets[k] = { ok: null, img: new Image() }; e.img.onload = function () { if (e.img.decode) e.img.decode().then(function () { e.ok = true; }, function () { e.ok = true; }); else e.ok = true; }; e.img.onerror = function () { e.ok = false; }; e.img.src = R.ART + 'avatar-walk-' + k + '.webp'; }
+    if (!e) { e = cyc.sheets[k] = { ok: null, img: new Image() }; e.img.onload = function () { if (e.img.decode) e.img.decode().then(function () { e.ok = true; }, function () { e.ok = true; }); else e.ok = true; }; e.img.onerror = function () { e.ok = false; }; e.img.src = R.ART + (outfit === 'base@3d' ? '3d/avatar-walk-base-' + dir : 'avatar-walk-' + k) + '.webp'; }
     return e;
   }
   var BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';

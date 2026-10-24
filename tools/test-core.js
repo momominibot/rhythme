@@ -3156,6 +3156,11 @@ function scenes(todayIso) {
   var bad = keys.filter(function (k) { var a = path.join(root, 'assets/room/dream/avatar-' + k + '.webp'), b = path.join(root, 'assets/room/dream/3d/avatar-' + k + '.webp');
     if (!fs.existsSync(b)) return true; var sa = size(a), sb = size(b); return !sa || !sb || sa[0] !== sb[0] || sa[1] !== sb[1]; });
   check('each 3D picture exists and sits on exactly its painted picture\'s canvas, so the room\'s sizing numbers hold (' + keys.length + ' pictures)', keys.length === 7 && bad.length === 0, bad);
+  /* the 3D walk (Jamie, 24 Oct: "walking naturally"): three 8-frame strips, each cell as tall as her standing canvas */
+  var walkBad = ['side', 'away', 'towards'].filter(function (d) { var f = path.join(root, 'assets/room/dream/3d/avatar-walk-base-' + d), j;
+    try { j = JSON.parse(fs.readFileSync(f + '.json', 'utf8')); } catch (e) { return true; } var sz = size(f + '.webp'); return !sz || j.frames !== 8 || sz[0] !== j.w * 8 || sz[1] !== 720 || j.h !== 720; });
+  var wsrc = fs.readFileSync(path.join(root, 'ovu-walk.js'), 'utf8');
+  check('standing in 3D, her sweater walks on three 3D strips (8 frames, her standing canvas tall); other outfits keep their painted walk', walkBad.length === 0 && /'base@3d': 'side away towards'/.test(wsrc) && /outfit === 'base@3d' \? '3d\/avatar-walk-base-' \+ dir/.test(wsrc) && /o === 'base' && src\.indexOf\('\/3d\/'\) > -1 \? 'base@3d' : o/.test(wsrc), walkBad);
   check('the preview is off unless this phone switched it on, and a 3D face never gets a painted blink', /localStorage\.getItem\('rhythme_3d'\) === '1'/.test(src) && /indexOf\('\/3d\/'\) > -1\) \{ scheduleBlink\(\); return; \}/.test(src));
 })();
 (function plazaHasOnlyRealPeople() {
