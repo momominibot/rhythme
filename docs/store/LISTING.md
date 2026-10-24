@@ -62,3 +62,21 @@ a harbour to explore. Your diary stays on your phone.
    (a) a "Use on this phone only" path in the iPhone build, so a reviewer can use the diary without an account; or
    (b) a custom email service for Supabase (Resend or similar) plus a review account Jamie controls.
 2. Availability: Singapore only, or more countries.
+
+## Update, 24 Oct 2026 (store setup started)
+
+- The app ID is now sg.rhythme.app (chosen in PR 93 before any store record existed); ai.ranklore.rhythme stays
+  registered but unused. HealthKit is on for sg.rhythme.app. Signing team X534KT8F6Z, iPhone only (no iPad screenshots).
+- Native shells: Rhythme icon (the watercolour brain and heart, 1024 px), lavender splash, the camera prompt names
+  Rhythme, ITSAppUsesNonExemptEncryption = NO. Release iPhone archive and a signed Android bundle are built (upload key in
+  ~/.config/rhythme, outside the repo).
+- Google Play: a Rhythme draft exists in the ranklore.ai developer account (app id 4972892310757677443). Nothing is
+  published or sent for review.
+- App Store Connect: the app record still needs Jamie's Apple sign-in in Chrome (the API cannot create it).
+- Privacy policy URL for both stores: https://momominibot.github.io/rhythme/terms.html (the full policy, with
+  hello@ranklore.ai); the in-app notice is privacy.html.
+- Android images (1080 x 1920) and the Play feature graphic were made from real screens of the current build; the
+  iPhone set stays the 21 Oct frames.
+- Blocker found: inside the phone apps, the Apple and Google buttons cannot finish (the sign-in page leaves the app's
+  web view and Google refuses embedded web views), so only the emailed code works there, capped at 2 emails an hour by
+  Supabase's built-in mailer. Open question 1 above is still the gate for submitting.

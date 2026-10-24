@@ -1,6 +1,11 @@
 apply plugin: 'com.android.application'
 apply plugin: 'org.jetbrains.kotlin.android'
 
+// Upload key for Google Play, kept outside the repo (~/.config/rhythme/upload-keystore.properties).
+def uploadProps = new Properties()
+def uploadPropsFile = new File(System.getProperty("user.home"), ".config/rhythme/upload-keystore.properties")
+if (uploadPropsFile.exists()) { uploadPropsFile.withInputStream { uploadProps.load(it) } }
+
 android {
     namespace = "app.vercel.ovuluna.dev"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -24,8 +29,19 @@ android {
     kotlinOptions {
         jvmTarget = '21'
     }
+    signingConfigs {
+        upload {
+            if (uploadPropsFile.exists()) {
+                storeFile file(uploadProps['storeFile'])
+                storePassword uploadProps['storePassword']
+                keyAlias uploadProps['keyAlias']
+                keyPassword uploadProps['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
+            if (uploadPropsFile.exists()) { signingConfig signingConfigs.upload }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

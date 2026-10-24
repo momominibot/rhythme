@@ -24,6 +24,8 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Rhythme reads only your sleep, period days, spotting, steps, workouts, resting heart rate and temperature from Health, so you can choose which of them join your diary. It never writes to Health and never uses this for ads.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>
@@ -69,7 +71,7 @@
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>Ovuluna uses your camera when you start a fingertip pulse observation or choose to scan a food or label. The pulse recording is processed on this device.</string>
+	<string>Rhythme uses your camera only when you choose to scan a food barcode or label, or start a fingertip pulse check. Pictures and pulse readings are handled on this phone.</string>
 	<key>WKAppBoundDomains</key>
 	<array>
 		<string>localhost</string>
