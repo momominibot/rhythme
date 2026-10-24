@@ -1906,6 +1906,10 @@ html[data-text="larger"] .tiles.ci{grid-template-columns:minmax(0,1fr)}
 .citile b{margin-top:0;font-size:15px;overflow-wrap:anywhere}
 .citile small{margin-top:0}
 .citile.s-add.key{border-style:dashed;border-color:var(--rm-lilac)}
+.citile.choose small.cinside{display:flex;align-items:center;gap:4px;font-weight:700;color:var(--rm-mauve)}
+.citile.choose small.cinside .ms{font-size:16px}
+.citile.choose:not(.on){opacity:.72}
+.citile.choose:not(.on) small.cinside{color:var(--rm-ink-2)}
 .citile.s-add.key b{color:var(--rm-mauve)}
 .citile.s-optional b{color:var(--rm-ink-3);font-weight:700}
 /* a recorded tile looks like any tile; the green tick alone says it is done (Jamie, 20 Oct) */

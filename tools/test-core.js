@@ -3916,7 +3916,7 @@ function scenes(todayIso) {
   var hgt = function () { return 30.4; };
   var over = function (spots) { var k = Object.keys(spots), bad = []; k.forEach(function (a, i) { k.slice(i + 1).forEach(function (b) { if (Math.abs(spots[a][0] - spots[b][0]) < 22 && spots[a][1] < spots[b][1] + hgt(b) && spots[b][1] < spots[a][1] + hgt(a)) bad.push(a + '/' + b); }); }); return bad; };
   var inside = function (spots) { return Object.keys(spots).every(function (k) { var q = spots[k]; return q[0] >= 0 && q[0] + 22 <= 100 && q[1] >= 0 && q[1] + hgt(k) <= 100; }); };
-  check('the desk has room for every folder on its grid (12 places; a 13th folder needs a new layout)', folderIds.length >= 10 && folderIds.length <= 12, folderIds.join());
+  check('the desk has room for every folder on its grid (12 places; a 13th folder needs a new layout; the doctor folder left on 24 Oct, its share is the top-right icon)', folderIds.length >= 9 && folderIds.length <= 12 && folderIds.indexOf('doctor') < 0, folderIds.join());
   var d0 = deskSpots ? deskSpots({}, desk) : { spots: {} };
   check('with no saved spots every folder fits: no two overlap and none past the edge, all pairs checked', !d0.tidied && Object.keys(d0.spots).length === desk.length && over(d0.spots).length === 0 && inside(d0.spots), JSON.stringify(d0.spots) + ' ' + over(d0.spots).join());
   var saved = { cycle: [14, 19], fertility: [64, 19], chapters: [14, 50], nutrition: [64, 50] };
