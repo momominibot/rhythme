@@ -1365,15 +1365,24 @@ async def main():
             await po.evaluate("()=>document.querySelector('nav a[data-tab=you]').click()"); await po.wait_for_selector('#sheet[aria-hidden="false"] [data-yact=intro]', timeout=8000)
             await po.click('[data-yact=intro]'); await po.wait_for_selector('#onbNext', timeout=8000)
             urg = {"step": False, "ticked": None, "card": False}
+            recall_seen, recall_res = False, None
             for _ in range(30):
                 if await po.evaluate("()=>!!document.querySelector('#onbBMonth')"): break
                 if await po.evaluate("()=>!!document.querySelector('#urgentNext')"): urg["card"] = True; await po.click('#urgentNext'); await po.wait_for_timeout(150); continue
+                if not recall_seen and await po.evaluate("()=>!!document.querySelector('#rcal')"):
+                    recall_seen = True  # Jamie, 24 Oct: tapping every bleeding day made 15 'starts' and a question per pair
+                    taps = await po.evaluate("()=>{var t=OvuStore.today(), out=[]; [1,2,3].forEach(function(k){var d=new Date(+t.slice(0,4), +t.slice(5,7)-1-k, 18); for (var j=0;j<3;j++){var x=new Date(d.getFullYear(), d.getMonth(), 18+j); out.push(x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0'));}}); return out;}")
+                    for d in taps: await po.click('[data-rday="%s"]' % d)
+                    rv = await po.evaluate("()=>({status: document.querySelector('#recallMore .rstatus').textContent, asks: document.querySelectorAll('#recallMore [data-rcl]').length, cont: document.querySelectorAll('#rcal .rday.on.rcont').length, on: document.querySelectorAll('#rcal .rday.on').length})")
+                    recall_res = rv
+                    for d in taps: await po.click('[data-rday="%s"]' % d)  # leave the step as it was
                 u = await po.evaluate("()=>({step: !!document.querySelector('#sheet .chips[data-key=urgent]'), ticked: document.querySelectorAll('#sheet .chips[data-key=urgent] .chipbtn.on').length})")
                 if u["step"] and not urg["step"]:
                     urg["step"] = True; urg["ticked"] = u["ticked"]
                     await po.click('#sheet .chips[data-key=urgent] .chipbtn[data-v=severepain]')  # a fresh answer, about today
                 await po.click('#onbNext')
                 await po.wait_for_timeout(150)
+            check("remembered periods: nine bleeding days tapped over three months read as 3 periods (9 days marked), the later days joined to the first, and nothing asked about days a day apart", recall_res and "3 periods remembered (9 days marked)" in recall_res["status"] and recall_res["asks"] == 0 and recall_res["on"] == 9 and recall_res["cont"] == 6, recall_res)
             check("updating the intro asks 'anything happening right now?' afresh: an earlier day's answer is not ticked, and a fresh answer still brings the urgent card", urg["step"] and urg["ticked"] == 0 and urg["card"], urg)
             ob = await po.evaluate("()=>({step: (document.querySelector('.onb-head h3')||{}).textContent, sub: (document.querySelector('.onb-head p')||{}).textContent, skip: !!document.querySelector('#onbSkip'), selects: document.querySelectorAll('#sheet select').length})")
             check("the intro asks her birthday just before her name: optional, a month, a day and an optional year, kept on the phone", ob["step"] == "Your birthday (optional)" and "The year is optional" in (ob["sub"] or "") and "stays on this phone" in (ob["sub"] or "") and ob["skip"] and ob["selects"] == 3, ob)
