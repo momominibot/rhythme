@@ -10,7 +10,8 @@ const root = path.resolve(__dirname, '..');
 const native = process.argv.includes('--native');
 const stage = path.join(root, '.build', 'web-next');
 const output = path.join(root, 'www');
-const assetTypes = new Set(['.png','.jpg','.jpeg','.webp','.svg','.gif','.ico','.mp4','.webm','.json','.lottie','.woff','.woff2','.ttf','.txt']);
+/* audio (voice clips, sounds, CC0 music), the barcode reader's wasm and its vendored scripts joined the reviewed list on 23 Oct 2026 */
+const assetTypes = new Set(['.png','.jpg','.jpeg','.webp','.svg','.gif','.ico','.mp4','.webm','.json','.lottie','.woff','.woff2','.ttf','.txt','.mp3','.wav','.wasm','.js']);
 fs.rmSync(stage, { recursive:true, force:true });
 fs.mkdirSync(stage, { recursive:true });
 function copy(source, target) {
@@ -32,7 +33,9 @@ const remoteScripts = new Map([
  ['https://unpkg.com/@lottiefiles/lottie-player@2.0.8/dist/lottie-player.js','assets/vendor/lottie-player.js'],
  ['https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js','assets/vendor/lottie.min.js']
 ]);
-const policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'";
+/* the phone app talks to its own backend (Supabase: sign-in, cloud backup, Luna, the podcast list) and Open Food Facts (barcodes);
+   podcast audio and covers stream from their publisher, and the barcode reader compiles its wasm ('wasm-unsafe-eval') */
+const policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; media-src 'self' blob: https:; connect-src 'self' https://zodkohwaznqgrfrcfdkf.supabase.co wss://zodkohwaznqgrfrcfdkf.supabase.co https://world.openfoodfacts.org; object-src 'none'; base-uri 'none'; form-action 'self'";
 const publicFiles = fs.readdirSync(root).filter(name=>/\.(html|css|js)$/.test(name)).sort();
 for (const name of publicFiles) {
   const from=path.join(root,name);
@@ -87,7 +90,7 @@ function inventory(dir) {
  }
 }
 inventory(stage);
-const manifest={schema:1,target:native?'ios-development':'web',revision,sourceDirty,entry:native?'home.html':'index.html',files:entries};
+const manifest={schema:1,target:native?'ios-development':'web',revision,sourceDirty,entry:native?'room.html':'index.html',files:entries};
 fs.writeFileSync(path.join(stage,'build-manifest.json'),JSON.stringify(manifest,null,2)+'\n');
 fs.rmSync(output,{recursive:true,force:true});
 fs.renameSync(stage,output);

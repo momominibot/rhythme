@@ -5,7 +5,7 @@ android {
     namespace = "app.vercel.ovuluna.dev"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "app.vercel.ovuluna.dev"
+        applicationId "sg.rhythme.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
