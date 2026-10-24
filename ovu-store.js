@@ -422,19 +422,27 @@
    * - a gap of 38 days or less counts as consecutive (a missed start inside it would need a cycle under
    *   20 days); a longer gap counts only when the person says none are missing;
    * - an approximate month between two marks breaks the chain, and is never turned into a date;
+   * - marks on back-to-back days, or one day apart, are one period, its start the first mark: people tap
+   *   every bleeding day even when asked for the first (Jamie's onboarding, 24 Oct, 15 marks for 5 periods);
    * - starts 14 days or less apart need an answer: separate periods, or one bleed that restarted;
    * - a window needs two consecutive gaps of 15 to 60 days whose spread is 20 days or less, and a
    *   confirmed most recent start no more than 60 days ago. */
+  var RECALL_JOIN = 2;   /* a mark this many days or fewer after the previous mark continues its period */
+  function recallStarts(rc, asOf) {
+    asOf = asOf || today();
+    var dates = (rc && Array.isArray(rc.starts) ? rc.starts : []).filter(function (st) { return st && st.precision === 'day' && validDate(st.date) && st.date <= asOf; }).map(function (st) { return st.date; });
+    dates = dates.filter(function (d, i) { return dates.indexOf(d) === i; }).sort();
+    return dates.filter(function (d, i) { return !i || diffDays(dates[i - 1], d) > RECALL_JOIN; });
+  }
   function rhythmFromRecall(rc, asOf) {
     asOf = asOf || today();
     var out = { exact: [], approx: [], gaps: [], adjacent: [], run: [], median: null, min: null, max: null, spread: null, ok: false, reason: 'none', latest: null, unresolved: [] };
     if (!rc || !Array.isArray(rc.starts)) return out;
     var dates = [], months = [];
     rc.starts.forEach(function (st) {
-      if (st && st.precision === 'day' && validDate(st.date) && st.date <= asOf) dates.push(st.date);
-      else if (st && st.precision === 'month' && /^\d{4}-\d{2}$/.test(st.month || '') && st.month <= asOf.slice(0, 7)) months.push(st.month);
+      if (st && st.precision === 'month' && /^\d{4}-\d{2}$/.test(st.month || '') && st.month <= asOf.slice(0, 7)) months.push(st.month);
     });
-    dates = dates.filter(function (d, i) { return dates.indexOf(d) === i; }).sort();
+    dates = recallStarts(rc, asOf);
     months = months.filter(function (m, i) { return months.indexOf(m) === i; }).sort();
     var cl = rc.clusters || {}, kept = [];
     dates.forEach(function (d) {
@@ -669,7 +677,7 @@
     addMany: addMany, removeWhere: removeWhere,
     profile: profile, setProfile: setProfile, state: state, setState: setState, commit: commit, reload: function () { load(true); return state(); },
     subscribe: function (fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (f) { return f !== fn; }); }; },
-    sleepHours: sleepHours, sleepStats: sleepStats, cleanSleepDetails: cleanSleepDetails, cleanSleepCheck: cleanSleepCheck, SLEEP_DETAIL: SLEEP_DETAIL, SLEEP_WOKE: SLEEP_WOKE, SLEEP_CHECK: SLEEP_CHECK, periodEpisodes: periodEpisodes, cycleStats: cycleStats, rhythmFromRecall: rhythmFromRecall,
+    sleepHours: sleepHours, sleepStats: sleepStats, cleanSleepDetails: cleanSleepDetails, cleanSleepCheck: cleanSleepCheck, SLEEP_DETAIL: SLEEP_DETAIL, SLEEP_WOKE: SLEEP_WOKE, SLEEP_CHECK: SLEEP_CHECK, periodEpisodes: periodEpisodes, cycleStats: cycleStats, rhythmFromRecall: rhythmFromRecall, recallStarts: recallStarts,
     exportJSON: exportJSON, importJSON: importJSON, clearAll: clearAll,
     OWN_KEYS: OWN_KEYS, KEEP_ON_CLEAR: KEEP_ON_CLEAR, crypto: { PASS_ALPHABET: PASS_ALPHABET, encrypt: encrypt, decrypt: decrypt, generatePassphrase: generatePassphrase, toCode: toCode, fromCode: fromCode }
   };
