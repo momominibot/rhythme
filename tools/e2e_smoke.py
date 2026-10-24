@@ -2694,8 +2694,8 @@ async def main():
             except Exception: pass
             kb = await page.evaluate("()=>({id: OvuRoom.sheetId(), cook: !!document.querySelector('#basketCook')})")
             await page.click("#basketCook"); await page.wait_for_timeout(200)
-            kl = await page.evaluate("()=>({id: OvuRoom.sheetId(), n: document.querySelectorAll('#kitchenList [data-recipe]').length, ready: [...document.querySelectorAll('#kitchenList [data-recipe]:not([disabled])')].map(b=>b.dataset.recipe).join(','), herb: /greenhouse/.test((document.querySelector('#kitchenList [data-recipe=pandanrice]')||{}).textContent||'') && !!document.querySelector('#kitchenList [data-recipe=pandanrice][disabled]'), fish: /fish/i.test(document.querySelector('#kitchenList').textContent)})")
-            check("the farm basket offers Cook a dish; the kitchen lists ten dishes, tomato and egg ready, pandan rice waiting for pandan from the greenhouse, and no fish", kb["id"] == "farmbasket" and kb["cook"] and kl["id"] == "kitchen" and kl["n"] == 10 and kl["ready"] == "tomatoegg" and kl["herb"] and not kl["fish"], [kb, kl])
+            kl = await page.evaluate("()=>({id: OvuRoom.sheetId(), n: document.querySelectorAll('#kitchenList [data-recipe]').length, ready: [...document.querySelectorAll('#kitchenList [data-recipe]:not([disabled])')].map(b=>b.dataset.recipe).join(','), herb: /greenhouse/.test((document.querySelector('#kitchenList [data-recipe=pandanrice]')||{}).textContent||'') && !!document.querySelector('#kitchenList [data-recipe=pandanrice][disabled]'), fish: [...document.querySelectorAll('#kitchenList [data-recipe]')].filter(b=>/fish/i.test(b.textContent)).map(b=>b.dataset.recipe).sort().join(',')})")
+            check("the farm basket offers Cook a dish; the kitchen lists sixteen dishes (six from Learn since 23 Oct), tomato and egg ready, pandan rice waiting for pandan from the greenhouse, and fish only in the two white-fish dishes", kb["id"] == "farmbasket" and kb["cook"] and kl["id"] == "kitchen" and kl["n"] == 16 and kl["ready"] == "tomatoegg" and kl["herb"] and kl["fish"] == "codtomato,fishkebabs", [kb, kl])
             await page.evaluate("()=>{OvuCare.slowMs = 4000}")
             await page.click("#kitchenList [data-recipe=tomatoegg]"); await page.wait_for_timeout(200)
             await page.click("#cookBegin"); await page.wait_for_timeout(300)
@@ -2721,7 +2721,7 @@ async def main():
             await page.evaluate("()=>{var e=document.querySelector('#grocerStaples [data-staple=egg]'); if(e) e.click();}")
             await page.wait_for_timeout(600)  # the farm lock answers on a later task
             kg = await page.evaluate("()=>{var g0=window.__t.g0, e0=window.__t.e0, n=window.__t.n; var f=OvuFarm.farmState(OvuStore); return {id: OvuRoom.sheetId(), n: n, garlic: (f.kitchen.garlic||0) - g0, egg: f.pantry.egg - e0}}")
-            check("Hay & Harvest sells eight kitchen staples; garlic goes to the kitchen and an egg to the barn's pantry", kg["id"] == "lane-grocer" and kg["n"] == 8 and kg["garlic"] == 1 and kg["egg"] == 1, kg)
+            check("Hay & Harvest sells fifteen kitchen staples (cod and six more for the Learn dishes since 23 Oct); garlic goes to the kitchen and an egg to the barn's pantry", kg["id"] == "lane-grocer" and kg["n"] == 15 and kg["garlic"] == 1 and kg["egg"] == 1, kg)
             await page.evaluate("()=>{OvuRoom.hideSheet(); OvuWalk.travel('familyhome', {visit: true})}")
             try: await page.wait_for_function("()=>document.querySelector('#scene').dataset.layout==='familyhome' && !document.querySelector('#scene').classList.contains('fading')", timeout=12000)
             except Exception: pass
